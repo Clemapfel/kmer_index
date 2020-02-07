@@ -1,0 +1,420 @@
+//
+// Created by Clemens Cords on 2/6/20.
+// Copyright (c) 2020 Clemens Cords. All rights reserved.
+//
+
+#pragma once
+
+#include <seqan3/alphabet/concept.hpp>
+#include <seqan3/alphabet/hash.hpp>
+#include <seqan3/range/views/kmer_hash.hpp>
+
+#include <type_traits>
+#include <cstdint>
+#include <cassert>
+
+namespace detail
+{
+
+// constexpr pow for longs
+constexpr unsigned long long pow_ul(unsigned int base, unsigned int exponent)
+{
+    unsigned long result = 1;
+    while (exponent > 0)
+    {
+        if (exponent & 1)   // odd exponent
+            result = result * base;
+
+        exponent = exponent >> 1;
+        base = base * base;
+    }
+
+    return result;
+}
+
+// picks the smallest datatype that still fits n_bits
+template<uint64_t n_bits>
+using minimal_memory_t = std::conditional_t<(n_bits < UINT8_MAX), uint8_t,
+        std::conditional_t<(n_bits < UINT16_MAX), uint16_t,
+                std::conditional_t<(n_bits < UINT32_MAX), uint32_t,
+                        uint64_t
+                >
+        >
+>;
+}
+
+// represents a kmer index for a single k
+template<seqan3::alphabet alphabet_t,
+        size_t k,
+        typename hash_t = detail::minimal_memory_t<detail::pow_ul(k, seqan3::alphabet_size<alphabet_t>)>,
+        typename position_t = uint32_t,
+        bool should_use_direct_addressing = false>
+class kmer_index
+{
+    private:
+        // regular mode: minimal memory used, constant runtime for search
+        std::unordered_map<hash_t, std::vector<position_t>> _data;
+
+        // direct addressing mode: maximum memory k^sigma * hash_t + position_t * text_length used but o(1) runtime
+        // size 0 if should_use_direct_adressing = false
+        std::array<std::vector<position_t>,
+                static_cast<int>(should_use_direct_addressing) * detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k)> _da_data;
+
+        std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
+
+    protected:
+        static hash_t hash(std::vector<alphabet_t> query)
+        {
+            assert(query.size() == k);
+
+            auto shape = seqan3::shape{seqan3::ungapped{static_cast<uint8_t>(query.size())}};
+            return static_cast<hash_t>( *(query | seqan3::views::kmer_hash(shape)).begin());
+        }
+
+        // split query into parts of length k with rest at the end
+        static std::vector<std::vector<alphabet_t>> split_query(std::vector<alphabet_t> query)
+        {
+            std::vector<std::vector<alphabet_t>> parts{};
+            parts.reserve(query.size() / k + 1);
+
+            if (query.size() < k)
+                return std::vector{query};
+
+            for (size_t offset = 0; offset <= query.size() - k; offset += k)
+                parts.emplace_back(query.begin() + offset, query.begin() + offset + k);
+
+            if (query.size() % k != 0)
+                parts.emplace_back(query.end() - k + 1, query.end());
+
+            return parts;
+        }
+
+        // get all possible kmers that have query as suffix, needed for subk search
+        static std::unordered_set<std::vector<alphabet_t>> get_all_kmer_with_suffix(std::vector<alphabet_t> sequence)
+        {
+            assert(sequence.size() <= k);
+
+            std::vector<alphabet_t> all_letters{};
+
+            for (size_t i = 0; i < alphabet_t::alphabet_size; ++i)
+                all_letters.push_back(seqan3::assign_rank_to(i, alphabet_t{}));
+
+            std::unordered_set<std::vector<alphabet_t>> output{};
+
+            size_t size = pow(alphabet_t::alphabet_size, (sequence.size()));
+
+            auto current = output;
+            current.reserve(size);
+
+            for (auto letter : all_letters)
+                output.insert({letter});
+
+            for (size_t i = 1; i < k; i++)
+            {
+                current.swap(output);
+                output.clear();
+
+                if (i < k - sequence.size())
+                {
+                    for (auto seq : current)
+                    {
+                        for (auto letter : all_letters)
+                        {
+                            auto temp = seq;
+                            temp.push_back(letter);
+                            output.insert(temp);
+                        }
+                    }
+                }
+                else
+                {
+                    for (auto seq : current)
+                    {
+                        auto temp = seq;
+                        temp.push_back(sequence.at(i - (k - sequence.size())));
+                        output.insert(temp);
+                    }
+                }
+            }
+
+            return output;
+        }
+
+        // exact search for query.size() == k
+        std::vector<position_t> search_query_length_k(std::vector<alphabet_t> query) const
+        {
+            assert(query.size() == k);
+
+            // average lookup o(_data.size() / 2)
+            if (not should_use_direct_addressing)
+            {
+                auto it = _data.find(hash(query));
+                if (it != _data.end())
+                    return it->second;
+                else
+                    return std::vector<position_t>{};
+            }
+                // lookup always o(1)
+            else
+                return _da_data[hash(query)];
+        }
+
+        // exact search for query.size() % k == 0
+        std::vector<position_t> search_query_length_nk(std::vector<alphabet_t> query) const
+        {
+            assert(query.size() % k == 0);
+
+            auto query_parts = split_query(query);
+
+            std::vector<std::vector<position_t>> positions{};
+            for (auto &part : query_parts)
+            {
+                positions.push_back(search_query_length_k(part));
+
+                if (positions.back().empty())
+                    return std::vector<position_t>{}; // if one segment is missing, no match
+            }
+
+            std::vector<position_t> confirmed_positions{};
+            for (auto &start_pos : positions.at(0))
+            {
+                position_t previous_pos = start_pos;
+
+                for (size_t i = 1; i <= positions.size(); ++i)
+                {
+                    if (i == positions.size())
+                    {
+                        confirmed_positions.push_back(start_pos);
+                        break;
+                    }
+
+                    const auto current = positions.at(i);
+
+                    if (std::find(current.begin(), current.end(), previous_pos + k) != current.end())
+                        previous_pos += k;
+                    else
+                        break;
+                }
+            }
+
+            return confirmed_positions;
+        }
+
+        // exact search for query.size() < k
+        std::vector<position_t> search_query_length_subk(std::vector<alphabet_t> query) const
+        {
+            assert(query.size() < k);
+
+            std::vector<position_t> confirmed_positions{};
+
+            // edge case: query at the very beginning
+            bool not_equal = false;
+            for (size_t i = 0; i < query.size(); ++i)
+            {
+                if (query.at(i) != _first_kmer.at(i))
+                {
+                    not_equal = true;
+                    break;
+                }
+            }
+
+            if (not not_equal)
+                confirmed_positions.push_back(0);
+
+            auto all_kmer = get_all_kmer_with_suffix(query);
+            position_t offset = k - query.size();
+
+            for (auto kmer : all_kmer)
+            {
+                for (auto &pos : search_query_length_k(kmer))
+                    confirmed_positions.push_back(pos + offset);
+            }
+
+            return confirmed_positions;
+        }
+
+        // search any query, returns bool so fold expression in kmer_index can shortcircuit (c.f. line TODO)
+        bool search_if(bool expression, std::vector<alphabet_t> query, std::vector<position_t> &result) const
+        {
+            if (expression == true)
+            {
+                result = search(query);
+                return true;
+            }
+            else
+                return false;
+        }
+
+    public:
+        template<std::ranges::range text_t>
+        void construct(text_t &&text)
+        {
+            auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
+            _first_kmer = std::vector<alphabet_t>{text.begin() + (text.size() - k), text.end()};
+
+            if (should_use_direct_addressing)
+                _da_data.fill(std::vector<position_t>{});
+
+            position_t pos = 0;
+            for (const hash_t hash : hashes)
+            {
+                if (should_use_direct_addressing)
+                    _da_data[hash].push_back(pos);
+                else
+                    _data[hash].push_back(pos);
+
+                pos += 1;
+            }
+        }
+
+        // ctors
+        kmer_index() = delete;
+        ~kmer_index() = default;
+
+        template<std::ranges::range text_t>
+        kmer_index(text_t &&text)
+        {
+            construct(std::forward<text_t>(text));
+        }
+
+        // search any query
+        std::vector<position_t> search(std::vector<alphabet_t> query) const
+        {
+            std::vector<position_t> result;
+
+            if (query.size() == k)
+                return search_query_length_k(query);
+
+            else if (query.size() % k == 0)
+                return search_query_length_nk(query);
+
+            else if (query.size() < k)
+            {
+                // subk results need to be sorted since get_kmers_with_suffix does not return in order
+                auto result = search_query_length_subk(query);
+                std::sort(result.begin(), result.end());
+                return result;
+            }
+            else
+            {
+                auto rest = query.size() % k;
+                std::vector<alphabet_t> part_nk{query.begin(), query.begin() + query.size() - rest};
+                std::vector<alphabet_t> part_subk{query.begin() + query.size() - rest, query.end()};
+
+                auto nk_results = search_query_length_nk(part_nk);
+                auto subk_results = search_query_length_subk(part_subk);
+
+                std::vector<position_t> confirmed_positions{};
+
+                for (auto &pos : nk_results)
+                {
+                    if (std::find(subk_results.begin(), subk_results.end(), pos + query.size() - rest) !=
+                        subk_results.end())
+                        confirmed_positions.push_back(pos);
+                }
+
+                return confirmed_positions;
+            }
+        }
+};
+
+template<seqan3::alphabet alphabet_t, size_t... ks>
+class multi_kmer_index
+        : kmer_index<alphabet_t, ks,
+                     multi_kmer_index<alphabet_t, ks>::hash_t ,
+                     multi_kmer_index<alphabet_t, ks>::position_t,
+                     multi_kmer_index<alphabet_t, ks>::should_use_direct_addressing>...
+{
+    private:
+        // params have to be fix since you can't have param pack and defaulted template param
+        using hash_t = uint64_t;
+        using position_t = uint32_t;
+        inline static constexpr bool should_use_direct_addressing = false;
+
+        template<size_t k>
+        using index = kmer_index<alphabet_t, k, hash_t, position_t, should_use_direct_addressing>;
+
+        inline static auto _all_ks = std::vector<size_t>{ks...};
+
+        // search query <= k with index element with optimal k
+        std::vector<position_t> search_query_length_subk_or_k(std::vector<alphabet_t> query) const
+        {
+            assert(query.size() > 0);
+
+            size_t optimal_k = 0;
+            for (auto k : _all_ks)
+                if (abs(k - query.size()) < abs(k - optimal_k))
+                    optimal_k = k;
+
+            std::vector<position_t> result;
+            (... || index<ks>::search_if(ks == optimal_k, query, result));
+            // use boolean fold expression to short-circuit execution and save a few search calls
+            return result;
+        }
+
+    public:
+        // ctor
+        template<std::ranges::range text_t>
+        multi_kmer_index(text_t && text)
+            : kmer_index<alphabet_t, ks, hash_t, position_t, should_use_direct_addressing>(text)...
+        {
+        }
+
+        // exact search
+        std::vector<position_t> search(std::vector<alphabet_t> query) const
+        {
+            size_t max_k = 0;
+            for (auto k : _all_ks)
+                if (k > max_k)
+                    max_k = k;
+
+            if (query.size() <= max_k)
+            {
+                return search_query_length_subk_or_k(query);
+            }
+            else
+            {
+                // if one kmer_index has a way to call search_nk
+                std::vector<position_t> result;
+                bool possible = (... || index<ks>::search_if(query.size() % ks == 0, query, result));
+
+                if (possible)
+                    return result;
+
+                // if not, split optimally so that as many segments as possible can be searched as kmers
+                size_t optimal_k = query.size();
+                for (auto k : _all_ks)
+                    if (optimal_k % query.size() < k % query.size()) //[1]
+                        optimal_k = k;
+
+                auto rest = query.size() % optimal_k;
+                std::vector<alphabet_t> part_nk{query.begin(), query.begin() + query.size() - rest};
+                std::vector<alphabet_t> part_subk{query.begin() + query.size() - rest, query.end()};
+
+                std::vector<position_t> nk_results{};
+                (... || index<ks>::search_if(ks == optimal_k, part_nk, nk_results));
+
+                std::vector<position_t> subk_results = search_query_length_subk_or_k(part_subk);
+
+                std::vector<position_t> confirmed_positions{};
+
+                for (auto& pos : nk_results)
+                {
+                    if (std::find(subk_results.begin(), subk_results.end(), pos + query.size() - rest) != subk_results.end())
+                        confirmed_positions.push_back(pos);
+                }
+
+                return confirmed_positions;
+
+                // [1] : kmer runtime is inversly proprotional to abs(query.size() - k)
+                // so k that's closest to query.size() should be chosen
+            }
+        }
+};
+
+
+
+
+
+
+
