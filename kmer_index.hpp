@@ -321,9 +321,9 @@ class kmer_index
 template<seqan3::alphabet alphabet_t, size_t... ks>
 class multi_kmer_index
         : kmer_index<alphabet_t, ks,
-                     multi_kmer_index<alphabet_t, ks>::hash_t ,
-                     multi_kmer_index<alphabet_t, ks>::position_t,
-                     multi_kmer_index<alphabet_t, ks>::should_use_direct_addressing>...
+                     uint64_t,
+                     uint32_t,
+                     false>...
 {
     private:
         // params have to be fix since you can't have param pack and defaulted template param
@@ -343,7 +343,7 @@ class multi_kmer_index
 
             size_t optimal_k = 0;
             for (auto k : _all_ks)
-                if (abs(k - query.size()) < abs(k - optimal_k))
+                if (std::labs(k - query.size()) < std::labs(k - optimal_k))
                     optimal_k = k;
 
             std::vector<position_t> result;
