@@ -3,9 +3,9 @@
 // Copyright (c) 2020 Clemens Cords. All rights reserved.
 //
 #include <vector>
-#include <stdlib.h>
 
 #include <benchmark/benchmark.h>
+
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/search/algorithm/search.hpp>
 #include <seqan3/search/fm_index/fm_index.hpp>
@@ -24,9 +24,9 @@ query_size
 query_size_distribution: half non n*k, half nk for average case
 n hits per query
 % of queries with 0 hits
- */
 
-// name format: <text_size, k, query_size, n_queries, no_hit_ratio, use_da>
+constexpr size_t
+ */
 
 // input config in a single struct for convenience
 struct input_generator_config
@@ -43,12 +43,12 @@ struct input_generator_config
     {
     }
 
-    const size_t _query_length;
+    const std::vector<size_t> _query_lengths;
     const size_t _n_queries;
     const size_t _text_length;
     const float _no_hit_queries_ratio;
 
-    std::string name(size_t k, std::string alphabet_id, bool use_da)
+    std::string name()
     {
         return "todo";
     }
@@ -74,9 +74,9 @@ void generate_queries_and_text(
 
 // benchmark: kmer_index exact search time
 template<seqan3::alphabet alphabet_t, bool use_da, size_t k>
-static void kmer_search(benchmark::State& state, input_generator_config input)
+static void kmer_search(benchmark::State& state)
 {
-    //auto input = input_generator_config(10, std::vector<size_t>{5, 6, 7}, 1000, 0.f);
+    auto input = input_generator_config(10, std::vector<size_t>{5, 6, 7}, 1000, 0.f);
 
     // generate text and queries
     std::vector<std::vector<alphabet_t>> queries;
@@ -116,14 +116,17 @@ static void fm_search(benchmark::State& state, input_generator_config input)
 
 // wrapper that programmatically registers all
 template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
-struct register_benchmark
+struct register_benchmarks
 {
-    static void kmer_exact_search(std::vector<input_generator_config> configs)
+    static void register_kmer_exact_search(std::vector<input_generator_config> configs)
     {
         for (auto config : configs)
         {
-            (benchmark::RegisterBenchmark(config.name().c_str(), &kmer_search<alphabet_t, use_da, ks>, config), ...);
+            (benchmark::RegisterBenchmark(config.name().c_str(), &kmer_search<alphabet_t, use_da, ks>), ...);
         }
+
+        benchmark::Initialize(0, nullptr);
+        benchmark::RunSpecifiedBenchmarks();
     }
 
     const std::vector<size_t> _query_lengths;
@@ -132,13 +135,11 @@ struct register_benchmark
     const float _no_hit_queries_ratio;
 };
 
-int main(int argc, char** argv) {
-
+int main()
+{
     auto cfg = input_generator_config(10, std::vector<size_t>{5, 6, 7}, 1000, 0.f);
-    register_benchmark<seqan3::dna4, false, 4, 5>::kmer_exact_search({cfg});
+    register_benchmarks<seqan3::dna4, false, 4, 5, 6, 7, 8>::kmer_exact_search({cfg});
 
-    benchmark::Initialize(&argc, argv);
-    benchmark::RunSpecifiedBenchmarks();
 }
 
 

@@ -51,16 +51,13 @@ class input_generator
             return sequence;
         }
 
-        // overload: generate a total of n queries of each size
-        static std::vector<std::vector<alphabet_t>> generate_queries(size_t n_queries, std::vector<size_t> lenghts)
+        // overload: generate a total of n queries of size length
+        static std::vector<std::vector<alphabet_t>> generate_queries(size_t n_queries, size_t length)
         {
             std::vector<std::vector<alphabet_t>> queries;
 
-            size_t n_queries_per_size = n_queries / float(lenghts.size());
-
-            for (auto size : lenghts)
-                for (size_t i = 0; i < n_queries_per_size; ++i)
-                    queries.push_back(generate_sequence(size));
+            for (size_t i = 0; i < n_queries; ++i)
+                queries.push_back(generate_sequence(length));
 
             return queries;
         }
