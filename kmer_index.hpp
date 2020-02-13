@@ -316,8 +316,6 @@ class kmer_index
                 return confirmed_positions;
             }
         }
-
-        // estimate size
 };
 
 template<seqan3::alphabet alphabet_t, size_t... ks>

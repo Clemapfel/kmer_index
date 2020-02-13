@@ -103,11 +103,6 @@ class input_generator
                 else
                 {
                     auto to_insert = generate_sequence(random_insert_length(_engine));
-
-                    // prevent accidental insertion of missing seq
-                    if (missing.find(input_generator::hash(to_insert)) != missing.end())
-                        continue;
-
                     for (auto &c : to_insert)
                         text.push_back(c);
                 }
