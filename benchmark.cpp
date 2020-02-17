@@ -4,6 +4,7 @@
 //
 #include <vector>
 #include <type_traits>
+#include <sstream>
 
 #include <benchmark/benchmark.h>
 
@@ -16,6 +17,32 @@
 
 #include "input_generator.hpp"
 #include "kmer_index.hpp"
+
+// convert to string for naming
+template<seqan3::alphabet T>
+std::string alphabet_to_string()
+{
+    if (std::is_same<T, seqan3::dna4>::value)
+        return "dna4";
+    else if (std::is_same<T, seqan3::dna5>::value)
+        return "dna5";
+    else if (std::is_same<T, seqan3::dna15>::value)
+        return "dna15";
+    else if (std::is_same<T, seqan3::aa10li>::value or std::is_same<T, seqan3::aa10murphy>::value)
+        return "aa10";
+    else if (std::is_same<T, seqan3::aa20>::value)
+        return "aa20";
+    else if (std::is_same<T, seqan3::aa27>::value)
+        return "aa27";
+    else if (std::is_same<T, seqan3::rna4>::value)
+        return "rna4";
+    else if (std::is_same<T, seqan3::rna5>::value)
+        return "rna5";
+    else if (std::is_same<T, seqan3::rna15>::value)
+        return "rna15";
+    else
+        return "other";
+}
 
 // benchmark arguments struct for readability
 struct benchmark_arguments
@@ -57,10 +84,22 @@ struct benchmark_arguments
             text->push_back(c);
     }
 
+    template<seqan3::alphabet alphabet_t, bool use_da, int k>
+    void add_counters_to(benchmark::State& state) const
+    {
+        state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
+        state.counters["text_size"] = _text_size;
+        state.counters["k"] = k;
+        state.counters["query_size"] = _query_size;
+        state.counters["n_queries"] = _n_queries;
+        state.counters["no_hit_query_ratio"] = _no_hit_queries_ratio;
+        state.counters["used_da"] = use_da;
+    }
+
     // generate csv header
     static const std::string get_header()
     {
-        return "name,alphabet,text_size,k,query_size,n_queries,no_hit_query_ratio,uses_direct_addressing,";
+        return "name,alphabet,text_size,k,query_size,n_queries,no_hit_query_ratio,uses_direct_addressing,report_type";
     }
 
     // generate benchmark name which forms first few columns of csv
@@ -90,6 +129,10 @@ static void kmer_search(benchmark::State& state, benchmark_arguments input)
     input.generate_queries_and_text(&queries, &text, true);
 
     kmer_index<alphabet_t, k, uint64_t, uint32_t, use_da> index{text};
+
+    // add custom vars to output
+    input.add_counters_to<alphabet_t, use_da, k>(state);
+    state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
 
     // cycle through queries
     unsigned long long i = 0;
@@ -130,6 +173,9 @@ static void fm_search(benchmark::State& state, benchmark_arguments input)
 
     seqan3::fm_index index{text};
 
+    input.add_counters_to<alphabet_t, false, -1>(state);
+    state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
+
     unsigned long long i = 0;
     for (auto _ : state)
     {
@@ -151,7 +197,9 @@ static void kmer_construction(benchmark::State& state, benchmark_arguments input
 
     // log memory used
     kmer_index<alphabet_t, k, uint64_t, uint32_t, use_da> index{text};
-    state.counters["memory_used(mb)"] = sizeof(index) / 1e6; // in mb
+
+    input.add_counters_to<alphabet_t, use_da, k>(state);
+    state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
 }
 
 /*
@@ -160,7 +208,7 @@ template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
 static void multi_kmer_search(benchmark::State& state, benchmark_arguments input)
 {
     std::vector<std::vector<alphabet_t>> queries;
-    std::vector<alphabet_t> text;
+    std::vector<alphabet_t> text;-
     input.generate_queries_and_text(&queries, &text, true);
 
     for (auto _ : state)
@@ -181,10 +229,11 @@ static void fm_construction(benchmark::State& state, benchmark_arguments input)
 
     // log memory used
     seqan3::fm_index index{text};
-    state.counters["memory_used(mb)"] = sizeof(index) / 1e6; // in mb
+    input.add_counters_to<alphabet_t, false, -1>(state);
+    state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
 }
 
-// #####################################################################################################################
+//#####################################################################################################################
 
 // wrapper that programmatically registers benchmarks
 template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
@@ -199,10 +248,15 @@ class register_benchmarks
         {
             _configs.clear();
 
-            size_t n_benchmarks = 0;
             for (auto k : std::vector{ks...})
             {
-                for (auto query_size : query_sizes_per_k[k])
+                std::vector<size_t> query_sizes;
+                if (query_sizes_per_k.find(k) != query_sizes_per_k.end())
+                    query_sizes = query_sizes_per_k.at(k);
+                else
+                    query_sizes = {k};
+
+                for (auto query_size : query_sizes)
                 {
                     for (auto text_size : text_sizes)
                     {
@@ -214,7 +268,6 @@ class register_benchmarks
                                 _configs.insert(std::make_pair(k, std::vector<benchmark_arguments>{}));
 
                             _configs[k].emplace_back(query_size, n_queries, text_size, no_hit_ratio);
-                            n_benchmarks++;
                         }
                     }
                 }
@@ -224,47 +277,73 @@ class register_benchmarks
             {
                 for (auto& config : pair.second)
                 {
-                     (benchmark::RegisterBenchmark(config.get_name("kmer_exact_search", _alphabet_id, use_da, ks).c_str(), &kmer_search<alphabet_t, use_da, ks>, config), ...);
-                    benchmark::RegisterBenchmark(config.get_name("fm_exact_search", _alphabet_id, use_da, 0).c_str(), &fm_search<alphabet_t>, config);
+                    // add replaced later on
+                    std::string name = "kmer_exact_search";
+                    (benchmark::RegisterBenchmark(name.c_str(), &kmer_search<alphabet_t, use_da, ks>, config), ...);
 
-                    std::cout << "[DEBUG] " << config.get_name("<benchmark_name>", _alphabet_id, use_da, pair.first) << "\n" ;
+                    name = "fm_exact_search";
+                    benchmark::RegisterBenchmark(name.c_str(), &fm_search<alphabet_t>, config);
+
+                    name = "kmer_construction";
+                    (benchmark::RegisterBenchmark(name.c_str(), &kmer_construction<alphabet_t, use_da, ks>, config), ...);
+
+                    name = "fm_construction";
+                    benchmark::RegisterBenchmark(name.c_str(), &fm_construction<alphabet_t>, config);
                 }
             }
-            std::cout << "[DEBUG] " << 2*n_benchmarks << " benchmarks registered.\n" << std::endl;
         }
 
     private:
         // fields
         static inline std::map<size_t, std::vector<benchmark_arguments>> _configs{};
-
-        // convert to string for naming
-        template<seqan3::alphabet T>
-        static std::string alphabet_to_string()
-        {
-            if (std::is_same<T, seqan3::dna4>::value)
-                return "dna4";
-            else if (std::is_same<T, seqan3::dna5>::value)
-                return "dna5";
-            else if (std::is_same<T, seqan3::dna15>::value)
-                return "dna15";
-            else if (std::is_same<T, seqan3::aa10li>::value or std::is_same<T, seqan3::aa10murphy>::value)
-                return "aa10";
-            else if (std::is_same<T, seqan3::aa20>::value)
-                return "aa20";
-            else if (std::is_same<T, seqan3::aa27>::value)
-                return "aa27";
-            else if (std::is_same<T, seqan3::rna4>::value)
-                return "rna4";
-            else if (std::is_same<T, seqan3::rna5>::value)
-                return "rna5";
-            else if (std::is_same<T, seqan3::rna15>::value)
-                return "rna15";
-            else
-                return "other";
-        }
-
         static inline std::string _alphabet_id = alphabet_to_string<alphabet_t>();
 };
+
+void cleanup_csv(std::string path)
+{
+    std::ifstream file_in;
+    file_in.open(path);
+
+    if (file_in.fail())
+        std::cerr << "Error opening file " + path + "\naborting...";
+
+    // name outfile
+    auto it = path.find("_raw");
+    std::string out_path = path.erase(it, 4);
+
+    std::ofstream file_out;
+    file_out.open(out_path);
+
+    if (file_out.fail())
+        std::cerr << "Error opening file " + out_path + "\naborting...";
+
+    std::string line;
+    bool past_header = false;
+
+    while (std::getline(file_in, line))
+    {
+        if (not past_header)
+        {
+            // csv header line
+            if (line.substr(0, 4) == "name")
+            {
+                line.erase(std::remove(line.begin(), line.end(), '\"'), line.end());
+                file_out << line;
+                past_header = true;
+            }
+            // skip gbenchmark header
+            else
+                continue;
+        }
+        else
+            file_out << line;
+    }
+
+    std::cout << "[DEBUG] csv written to " + out_path + "\n";
+
+    file_in.close();
+    file_out.close();
+}
 
 // #####################################################################################################################
 
@@ -276,7 +355,6 @@ int main(int argc, char** argv)
     query_sizes_per_k[5] = {5};
     query_sizes_per_k[6] = {5, 6};
 
-
     register_benchmarks<seqan3::dna4, false, 4, 5, 6>::register_all(
             query_sizes_per_k,
             // text size
@@ -285,8 +363,16 @@ int main(int argc, char** argv)
             {1}
     );
 
+    register_benchmarks<seqan3::dna4, true, 5>::register_all(
+            {{5, {5}}},
+            {3000},
+            {1}
+    );
+
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
+
+    cleanup_csv("../source/benchmark_out_raw.csv");
 }
 
 
