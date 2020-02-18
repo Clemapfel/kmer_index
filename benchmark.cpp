@@ -83,7 +83,7 @@ static void kmer_search(benchmark::State& state, benchmark_arguments input)
     std::vector<alphabet_t> text;
     input.generate_queries_and_text(&queries, &text, true);
 
-    kmer_index<alphabet_t, k, uint64_t, uint32_t, use_da> index{text};
+    auto index = make_kmer_index<alphabet_t, k>{text};
 
     // add custom vars to output
     input.add_counters_to<alphabet_t, use_da, k>(state);
@@ -148,11 +148,10 @@ static void kmer_construction(benchmark::State& state, benchmark_arguments input
     input.generate_queries_and_text<seqan3::dna4>(&queries, &text, true);
 
     for (auto _ : state)
-        benchmark::DoNotOptimize(kmer_index<alphabet_t, k, uint64_t, uint32_t, use_da>{text});
+        benchmark::DoNotOptimize(make_kmer_index<alphabet_t, k, uint64_t, uint32_t, use_da>{text});
 
     // log memory used
-    kmer_index<alphabet_t, k, uint64_t, uint32_t, use_da> index{text};
-
+    auto index = make_kmer_index<alphabet_t, k>{text};
     input.add_counters_to<alphabet_t, use_da, k>(state);
     state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
 }

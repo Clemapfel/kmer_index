@@ -16,10 +16,8 @@ using namespace seqan3;
 int main()
 {
     auto text = "ACTGACTGCATCGATCGATCGTACGTACG"_dna4;
-    kmer_index<dna4, 4> single{text};
-    kmer_index<dna4, 4, uint32_t, uint16_t, true> single_da{text};
-
-    multi_kmer_index<dna4, 3, 4, 5> collection{text};
+    auto single = make_kmer_index<4>(text);
+    //auto collection =  make_kmer_index<dna4, 3, 4, 5>(text);
     fm_index fm{text};
 
     auto queries = std::vector{"ACGT"_dna4, "ACTGAC"_dna4, "GACTGCATC"_dna4, "CTGCATCGATCGATCGTACGTACG"_dna4};
@@ -27,7 +25,6 @@ int main()
     for (auto q : queries)
     {
         debug_stream << single.search(q) << " | ";
-        debug_stream << collection.search(q) << " | ";
         debug_stream << search(q, fm) << "\n";
     }
 }

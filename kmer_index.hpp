@@ -8,6 +8,7 @@
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/hash.hpp>
 #include <seqan3/range/views/kmer_hash.hpp>
+#include <seqan3/core/type_traits/range.hpp>
 
 #include <type_traits>
 #include <cstdint>
@@ -15,7 +16,6 @@
 
 namespace detail
 {
-
 // constexpr pow for longs
 constexpr unsigned long long pow_ul(unsigned int base, unsigned int exponent)
 {
@@ -41,24 +41,25 @@ using minimal_memory_t = std::conditional_t<(n_bits < UINT8_MAX), uint8_t,
                 >
         >
 >;
-}
 
 // represents a kmer index for a single k
 template<seqan3::alphabet alphabet_t,
         size_t k,
-        typename hash_t = detail::minimal_memory_t<detail::pow_ul(k, seqan3::alphabet_size<alphabet_t>)>,
-        typename position_t = uint32_t,
-        bool should_use_direct_addressing = false>
-class kmer_index
+        typename hash_t,
+        typename position_t,
+        bool use_direct_addressing>
+class kmer_index_element
 {
+    static_assert(k > 0 and detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k) < UINT64_MAX,
+        "k and alphabet combination are invalid, please choose a smaller non-zero k");
+
     private:
         // regular mode: minimal memory used, constant runtime for search
         std::unordered_map<hash_t, std::vector<position_t>> _data;
 
-        // direct addressing mode: maximum memory k^sigma * hash_t + position_t * text_length used but o(1) runtime
-        // size 0 if should_use_direct_adressing = false
+        // direct addressing mode: maximum memory used but o(1) runtime
         std::array<std::vector<position_t>,
-                static_cast<int>(should_use_direct_addressing) * detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k)> _da_data;
+                static_cast<int>(use_direct_addressing) * detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k)> _da_data;
 
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
 
@@ -146,7 +147,7 @@ class kmer_index
             assert(query.size() == k);
 
             // average lookup o(_data.size() / 2)
-            if (not should_use_direct_addressing)
+            if (not use_direct_addressing)
             {
                 auto it = _data.find(hash(query));
                 if (it != _data.end())
@@ -233,32 +234,19 @@ class kmer_index
             return confirmed_positions;
         }
 
-        // search any query, returns bool so fold expression in kmer_index can shortcircuit (c.f. line TODO)
-        bool search_if(bool expression, std::vector<alphabet_t> query, std::vector<position_t> &result) const
-        {
-            if (expression == true)
-            {
-                result = search(query);
-                return true;
-            }
-            else
-                return false;
-        }
-
-    public:
         template<std::ranges::range text_t>
         void construct(text_t &&text)
         {
             auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
             _first_kmer = std::vector<alphabet_t>{text.begin() + (text.size() - k), text.end()};
 
-            if (should_use_direct_addressing)
+            if (use_direct_addressing)
                 _da_data.fill(std::vector<position_t>{});
 
             position_t pos = 0;
             for (const hash_t hash : hashes)
             {
-                if (should_use_direct_addressing)
+                if (use_direct_addressing)
                     _da_data[hash].push_back(pos);
                 else
                     _data[hash].push_back(pos);
@@ -268,11 +256,11 @@ class kmer_index
         }
 
         // ctors
-        kmer_index() = delete;
-        ~kmer_index() = default;
+        kmer_index_element() = delete;
+        ~kmer_index_element() = default;
 
         template<std::ranges::range text_t>
-        kmer_index(text_t &&text)
+        kmer_index_element(text_t &&text)
         {
             construct(std::forward<text_t>(text));
         }
@@ -316,24 +304,32 @@ class kmer_index
                 return confirmed_positions;
             }
         }
-};
 
-template<seqan3::alphabet alphabet_t, size_t... ks>
-class multi_kmer_index
-        : kmer_index<alphabet_t, ks,
-                     uint64_t,
-                     uint32_t,
-                     false>...
+        // returns bool so fold expression in kmer_index can shortcircuit (c.f. kmer_index exact search comments)
+        bool search_if(bool expression, std::vector<alphabet_t> query, std::vector<position_t> &result) const
+        {
+            if (expression == true)
+            {
+                result = search(query);
+                return true;
+            }
+            else
+                return false;
+        }
+};
+}
+
+template<seqan3::alphabet alphabet_t,
+        typename hash_t,
+        typename position_t,
+        bool should_use_direct_addressing,
+        size_t... ks>
+class kmer_index
+        : detail::kmer_index_element<alphabet_t, ks, hash_t, position_t, should_use_direct_addressing>...
 {
     private:
-        // params have to be fix since you can't have param pack and defaulted template param
-        using hash_t = uint64_t;
-        using position_t = uint32_t;
-        inline static constexpr bool should_use_direct_addressing = false;
-
         template<size_t k>
-        using index = kmer_index<alphabet_t, k, hash_t, position_t, should_use_direct_addressing>;
-
+        using index = detail::kmer_index_element<alphabet_t, k, hash_t, position_t, should_use_direct_addressing>;
         inline static auto _all_ks = std::vector<size_t>{ks...};
 
         // search query <= k with index element with optimal k
@@ -355,14 +351,17 @@ class multi_kmer_index
     public:
         // ctor
         template<std::ranges::range text_t>
-        multi_kmer_index(text_t && text)
-            : kmer_index<alphabet_t, ks, hash_t, position_t, should_use_direct_addressing>(text)...
+        kmer_index(text_t && text)
+            : detail::kmer_index_element<alphabet_t, ks, hash_t, position_t, should_use_direct_addressing>(text)...
         {
         }
 
         // exact search
         std::vector<position_t> search(std::vector<alphabet_t> query) const
         {
+            if (_all_ks.size() == 1)
+                return (index<ks>::search(query), ...); // expands to one call
+
             size_t max_k = 0;
             for (auto k : _all_ks)
                 if (k > max_k)
@@ -406,15 +405,48 @@ class multi_kmer_index
 
                 return confirmed_positions;
 
-                // [1] : kmer runtime is inversly proprotional to abs(query.size() - k)
+                // [1] : kmer runtime is inversely proprotional to abs(query.size() - k)
                 // so k that's closest to query.size() should be chosen
             }
         }
+
+    TODO: approximate search
 };
 
+// MAKE FUNCTION for easier use by defaulting all the template params
+// can't be defaulted in the class template because param pack has to be last and you can't use default
+// template params along with param pack
 
+template<size_t... ks, bool use_direct_addressing, typename hash_t, typename position_t, std::ranges::range text_t>
+auto make_kmer_index(text_t text)
+{
+    return kmer_index<seqan3::innermost_value_type_t<text_t>, hash_t, position_t, use_direct_addressing, ks...>{text};
+}
 
+template<size_t... ks, bool use_direct_addressing, std::ranges::range text_t>
+auto make_kmer_index(text_t text)
+{
+    assert(text.size() < UINT32_MAX && "please specify template parameter position_t = uint64_t manually");
 
+    using alphabet_t = seqan3::innermost_value_type_t<text_t>;
+    using hash_t = detail::minimal_memory_t<std::max(detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)..., 0ull)>;
+    using position_t = uint32_t;
+
+    return kmer_index<alphabet_t, hash_t, position_t, use_direct_addressing, ks...>{text};
+}
+
+template<size_t... ks, std::ranges::range text_t>
+auto make_kmer_index(text_t text)
+{
+    assert(text.size() < UINT32_MAX && "please specify template parameter position_t = uint64_t manually");
+
+    // code copy pasted to prevent circular type deduction (not possible: make_kmer_index<ks..., false>(text))
+    using alphabet_t = seqan3::innermost_value_type_t<text_t>;
+    using hash_t = detail::minimal_memory_t<std::max(detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)..., 0ull)>;
+    using position_t = uint32_t;
+
+    return kmer_index<alphabet_t, hash_t, position_t, false, ks...>{text};
+}
 
 
 
