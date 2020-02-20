@@ -9,6 +9,7 @@
 #include <seqan3/alphabet/hash.hpp>
 #include <seqan3/range/views/kmer_hash.hpp>
 #include <seqan3/core/type_traits/range.hpp>
+#include <seqan3/search/configuration/max_error.hpp>
 
 #include <type_traits>
 #include <cstdint>
@@ -360,7 +361,7 @@ class kmer_index
         std::vector<position_t> search(std::vector<alphabet_t> query) const
         {
             if (_all_ks.size() == 1)
-                return (index<ks>::search(query), ...); // expands to one call
+                return (index<ks>::search(query), ...); // expands to single call
 
             size_t max_k = 0;
             for (auto k : _all_ks)
@@ -409,8 +410,6 @@ class kmer_index
                 // so k that's closest to query.size() should be chosen
             }
         }
-
-    TODO: approximate search
 };
 
 // MAKE FUNCTION for easier use by defaulting all the template params
@@ -426,7 +425,7 @@ auto make_kmer_index(text_t text)
 template<size_t... ks, bool use_direct_addressing, std::ranges::range text_t>
 auto make_kmer_index(text_t text)
 {
-    assert(text.size() < UINT32_MAX && "please specify template parameter position_t = uint64_t manually");
+    assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
 
     using alphabet_t = seqan3::innermost_value_type_t<text_t>;
     using hash_t = detail::minimal_memory_t<std::max(detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)..., 0ull)>;
@@ -438,7 +437,7 @@ auto make_kmer_index(text_t text)
 template<size_t... ks, std::ranges::range text_t>
 auto make_kmer_index(text_t text)
 {
-    assert(text.size() < UINT32_MAX && "please specify template parameter position_t = uint64_t manually");
+    assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
 
     // code copy pasted to prevent circular type deduction (not possible: make_kmer_index<ks..., false>(text))
     using alphabet_t = seqan3::innermost_value_type_t<text_t>;
