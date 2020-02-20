@@ -10,10 +10,12 @@
 #include <seqan3/range/views/kmer_hash.hpp>
 #include <seqan3/core/type_traits/range.hpp>
 #include <seqan3/search/configuration/max_error.hpp>
+#include <seqan3/core/debug_stream.hpp>
 
 #include <type_traits>
 #include <cstdint>
 #include <cassert>
+#include <algorithm>
 
 namespace detail
 {
@@ -55,8 +57,16 @@ class kmer_index_element
         "k and alphabet combination are invalid, please choose a smaller non-zero k");
 
     private:
+        struct id_hash
+        {
+            hash_t operator()(hash_t const& hash) const noexcept
+            {
+               return hash;
+            }
+        };
+
         // regular mode: minimal memory used, constant runtime for search
-        std::unordered_map<hash_t, std::vector<position_t>> _data;
+        std::unordered_map<hash_t, std::vector<position_t>, id_hash> _data; // use key itself as hash value
 
         // direct addressing mode: maximum memory used but o(1) runtime
         std::array<std::vector<position_t>,
@@ -65,6 +75,7 @@ class kmer_index_element
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
 
     protected:
+        // hash shortcut for kmers for convenience
         static hash_t hash(std::vector<alphabet_t> query)
         {
             assert(query.size() == k);
@@ -80,7 +91,7 @@ class kmer_index_element
             parts.reserve(query.size() / k + 1);
 
             if (query.size() < k)
-                return std::vector{query};
+                return {query};
 
             for (size_t offset = 0; offset <= query.size() - k; offset += k)
                 parts.emplace_back(query.begin() + offset, query.begin() + offset + k);
@@ -147,18 +158,16 @@ class kmer_index_element
         {
             assert(query.size() == k);
 
-            // average lookup o(_data.size() / 2)
             if (not use_direct_addressing)
             {
-                auto it = _data.find(hash(query));
+                auto it = _data.find(hash(query));  // average o(_data.size / 2)
                 if (it != _data.end())
                     return it->second;
                 else
                     return std::vector<position_t>{};
             }
-                // lookup always o(1)
             else
-                return _da_data[hash(query)];
+                return _da_data[hash(query)];   // o(1)
         }
 
         // exact search for query.size() % k == 0
@@ -381,10 +390,10 @@ class kmer_index
                 if (possible)
                     return result;
 
-                // if not, split optimally so that as many segments as possible can be searched as kmers
+                // find k so that rest at the end is as close to that k as possible [1]
                 size_t optimal_k = query.size();
                 for (auto k : _all_ks)
-                    if (optimal_k % query.size() < k % query.size()) //[1]
+                    if (abs(query.size() % k - k) < abs(query.size() % optimal_k - optimal_k))
                         optimal_k = k;
 
                 auto rest = query.size() % optimal_k;
@@ -406,7 +415,8 @@ class kmer_index
 
                 return confirmed_positions;
 
-                // [1] : kmer runtime is inversely proprotional to abs(query.size() - k)
+                // [1] : kmer runtime is inversely proprotional to abs(query.size() - k) bc the bigger the difference,
+                // the bigger is the set of kmers that have to be searched as possiblities
                 // so k that's closest to query.size() should be chosen
             }
         }
@@ -428,7 +438,7 @@ auto make_kmer_index(text_t text)
     assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
 
     using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-    using hash_t = detail::minimal_memory_t<std::max(detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)..., 0ull)>;
+    using hash_t = detail::minimal_memory_t<std::max({0ull, detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)...})>;
     using position_t = uint32_t;
 
     return kmer_index<alphabet_t, hash_t, position_t, use_direct_addressing, ks...>{text};
@@ -441,7 +451,7 @@ auto make_kmer_index(text_t text)
 
     // code copy pasted to prevent circular type deduction (not possible: make_kmer_index<ks..., false>(text))
     using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-    using hash_t = detail::minimal_memory_t<std::max(detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)..., 0ull)>;
+    using hash_t = detail::minimal_memory_t<std::max({detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)..., 0ull})>;
     using position_t = uint32_t;
 
     return kmer_index<alphabet_t, hash_t, position_t, false, ks...>{text};

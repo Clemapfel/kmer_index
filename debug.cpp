@@ -4,6 +4,7 @@
 //
 
 #include <kmer_index.hpp>
+#include <input_generator.hpp>
 
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/alphabet/all.hpp>
@@ -15,16 +16,19 @@ using namespace seqan3;
 
 int main()
 {
-    auto text = "ACTGACTGCATCGATCGATCGTACGTACG"_dna4;
-    auto single = make_kmer_index<4>(text);
-    //auto collection =  make_kmer_index<dna4, 3, 4, 5>(text);
-    fm_index fm{text};
+    std::vector<std::vector<dna4>> queries;
+    for (size_t length : {21, 25, 26})
+        for (auto q : input_generator<dna4>::generate_queries(1, length))
+            queries.push_back(q);
 
-    auto queries = std::vector{"ACGT"_dna4, "ACTGAC"_dna4, "GACTGCATC"_dna4, "CTGCATCGATCGATCGTACGTACG"_dna4};
+    auto text = input_generator<dna4>::generate_text(10000, queries);
+
+    auto index = make_kmer_index<5, 7>(text);
+    fm_index fm{text};
 
     for (auto q : queries)
     {
-        debug_stream << single.search(q) << " | ";
+        debug_stream << index.search(q) << " | ";
         debug_stream << search(q, fm) << "\n";
     }
 }
