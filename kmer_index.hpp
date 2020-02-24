@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <cassert>
 #include <algorithm>
+#include <unordered_set>
 
 namespace detail
 {
@@ -25,7 +26,7 @@ constexpr unsigned long long pow_ul(unsigned int base, unsigned int exponent)
     unsigned long result = 1;
     while (exponent > 0)
     {
-        if (exponent & 1)   // odd exponent
+        if (exponent & 1)
             result = result * base;
 
         exponent = exponent >> 1;
@@ -53,8 +54,7 @@ template<seqan3::alphabet alphabet_t,
         bool use_direct_addressing>
 class kmer_index_element
 {
-    static_assert(k > 0 and detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k) < UINT64_MAX,
-        "k and alphabet combination are invalid, please choose a smaller non-zero k");
+    static_assert(detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k) < sizeof(hash_t), "invalid alphabet and k combination, please choose a smaller k.");
 
     private:
         struct id_hash
@@ -326,6 +326,8 @@ class kmer_index_element
             else
                 return false;
         }
+
+
 };
 }
 
@@ -393,7 +395,7 @@ class kmer_index
                 // find k so that rest at the end is as close to that k as possible [1]
                 size_t optimal_k = query.size();
                 for (auto k : _all_ks)
-                    if (abs(query.size() % k - k) < abs(query.size() % optimal_k - optimal_k))
+                    if (std::labs(query.size() % k - k) < std::labs(query.size() % optimal_k - optimal_k))
                         optimal_k = k;
 
                 auto rest = query.size() % optimal_k;
@@ -422,28 +424,27 @@ class kmer_index
         }
 };
 
-// MAKE FUNCTION for easier use by defaulting all the template params
-// can't be defaulted in the class template because param pack has to be last and you can't use default
-// template params along with param pack
-
+// make functions so enduser doesn't have to deal with template params of kmer_index
 template<size_t... ks, bool use_direct_addressing, typename hash_t, typename position_t, std::ranges::range text_t>
 auto make_kmer_index(text_t text)
 {
     return kmer_index<seqan3::innermost_value_type_t<text_t>, hash_t, position_t, use_direct_addressing, ks...>{text};
 }
 
+// overload: only specify ks and direct_addressing
 template<size_t... ks, bool use_direct_addressing, std::ranges::range text_t>
 auto make_kmer_index(text_t text)
 {
     assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
 
     using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-    using hash_t = detail::minimal_memory_t<std::max({0ull, detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)...})>;
+    using hash_t = detail::minimal_memory_t<std::max({detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)..., 0ull})>;
     using position_t = uint32_t;
 
     return kmer_index<alphabet_t, hash_t, position_t, use_direct_addressing, ks...>{text};
 }
 
+// overload: only specify ks
 template<size_t... ks, std::ranges::range text_t>
 auto make_kmer_index(text_t text)
 {

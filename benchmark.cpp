@@ -83,7 +83,7 @@ static void kmer_search(benchmark::State& state, benchmark_arguments input)
     std::vector<alphabet_t> text;
     input.generate_queries_and_text(&queries, &text, true);
 
-    auto index = make_kmer_index<alphabet_t, k>{text};
+    auto index = make_kmer_index<k>(text);
 
     // add custom vars to output
     input.add_counters_to<alphabet_t, use_da, k>(state);
@@ -148,10 +148,10 @@ static void kmer_construction(benchmark::State& state, benchmark_arguments input
     input.generate_queries_and_text<seqan3::dna4>(&queries, &text, true);
 
     for (auto _ : state)
-        benchmark::DoNotOptimize(make_kmer_index<alphabet_t, k, uint64_t, uint32_t, use_da>{text});
+        benchmark::DoNotOptimize(make_kmer_index<k, use_da>(text));
 
     // log memory used
-    auto index = make_kmer_index<alphabet_t, k>{text};
+    auto index = make_kmer_index<k>(text);
     input.add_counters_to<alphabet_t, use_da, k>(state);
     state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
 }
@@ -188,6 +188,20 @@ static void fm_construction(benchmark::State& state, benchmark_arguments input)
 }
 
 //#####################################################################################################################
+
+// function that can be expanded in fold expression
+template<seqan3::alphabet alphabet_t, bool use_da, size_t k>
+bool register_kmer_benchmarks(benchmark_arguments config)
+{
+    // skip invalid config automatically
+    if (detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k) < UINT64_MAX)
+        return false;
+
+    benchmark::RegisterBenchmark("kmer_exact_search", &kmer_search<alphabet_t, use_da, k>, config);
+    benchmark::RegisterBenchmark("kmer_construction", &kmer_construction<alphabet_t, use_da, k>, config);
+
+    return true;
+}
 
 // wrapper that programmatically registers benchmarks for all permutations of template params and args
 template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
@@ -227,18 +241,9 @@ void register_all_benchmarks(
     {
         for (auto& config : pair.second)
         {
-            // add replaced later on
-            std::string name = "kmer_exact_search";
-            (benchmark::RegisterBenchmark(name.c_str(), &kmer_search<alphabet_t, use_da, ks>, config), ...);
-
-            name = "fm_exact_search";
-            benchmark::RegisterBenchmark(name.c_str(), &fm_search<alphabet_t>, config);
-
-            name = "kmer_construction";
-            (benchmark::RegisterBenchmark(name.c_str(), &kmer_construction<alphabet_t, use_da, ks>, config), ...);
-
-            name = "fm_construction";
-            benchmark::RegisterBenchmark(name.c_str(), &fm_construction<alphabet_t>, config);
+            (register_kmer_benchmarks<alphabet_t, use_da, ks>(config, true), ...);
+            benchmark::RegisterBenchmark("fm_search", &fm_search<alphabet_t>, config);
+            benchmark::RegisterBenchmark("fm_construction", &fm_construction<alphabet_t>, config);
         }
     }
 }
@@ -292,25 +297,19 @@ void cleanup_csv(std::string path)
 
 // #####################################################################################################################
 
+std::index_sequence<5, 10, 15, 20, 25, 30> all_ks;
+std::vector<size_t> text_sizes = {50e3, 100e3, 250e3, 500e3, 1e6};//, 2e6, 5e6, 10e6, 250e6, 3e9};
+std::vector<float> no_hit_ratio = {0, 0.25, 0.5, 0.75, 1};
+
 // main
 int main(int argc, char** argv)
 {
-    std::map<size_t, std::vector<size_t>> query_sizes_per_k{};
-    query_sizes_per_k[4] = {3, 4, 5};
+    std::map<size_t, std::vector<size_t>> query_sizes;
+    query_sizes[20] = {19, 20};
+    query_sizes[25] = {24, 25};
 
-    register_all_benchmarks<seqan3::dna4, false, 4, 5, 6>(
-            query_sizes_per_k,
-            // text size
-            {1000, 3000},
-            // hit ratios
-            {1}
-    );
-
-    register_all_benchmarks<seqan3::dna4, true, 5>(
-            {{5, {5}}},
-            {3000},
-            {1}
-    );
+    register_all_benchmarks<seqan3::dna4, false, all_ks>(query_sizes, text_sizes, hit_ratios);
+    register_all_benchmarks<seqan3::dna4, true, all_ks>(query_sizes, text_sizes, hit_ratios);
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
