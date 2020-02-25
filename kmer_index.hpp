@@ -17,6 +17,7 @@
 #include <cassert>
 #include <algorithm>
 #include <unordered_set>
+#include <limits>
 
 namespace detail
 {
@@ -54,7 +55,7 @@ template<seqan3::alphabet alphabet_t,
         bool use_direct_addressing>
 class kmer_index_element
 {
-    static_assert(detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k) < sizeof(hash_t), "invalid alphabet and k combination, please choose a smaller k.");
+    static_assert(detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k) < std::numeric_limits<hash_t>::max(), "invalid alphabet and k combination, please choose a smaller k.");
 
     private:
         struct id_hash
@@ -438,7 +439,7 @@ auto make_kmer_index(text_t text)
     assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
 
     using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-    using hash_t = detail::minimal_memory_t<std::max({detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)..., 0ull})>;
+    using hash_t = detail::minimal_memory_t<std::max({detail::pow_ul(seqan3::alphabet_size<alphabet_t>, ks)..., 0ull})>;
     using position_t = uint32_t;
 
     return kmer_index<alphabet_t, hash_t, position_t, use_direct_addressing, ks...>{text};
@@ -452,7 +453,7 @@ auto make_kmer_index(text_t text)
 
     // code copy pasted to prevent circular type deduction (not possible: make_kmer_index<ks..., false>(text))
     using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-    using hash_t = detail::minimal_memory_t<std::max({detail::pow_ul(ks, seqan3::alphabet_size<alphabet_t>)..., 0ull})>;
+    using hash_t = detail::minimal_memory_t<std::max({detail::pow_ul(seqan3::alphabet_size<alphabet_t>, ks)..., 0ull})>;
     using position_t = uint32_t;
 
     return kmer_index<alphabet_t, hash_t, position_t, false, ks...>{text};

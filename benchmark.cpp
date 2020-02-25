@@ -241,7 +241,7 @@ void register_all_benchmarks(
     {
         for (auto& config : pair.second)
         {
-            (register_kmer_benchmarks<alphabet_t, use_da, ks>(config, true), ...);
+            (register_kmer_benchmarks<alphabet_t, use_da, ks>(config), ...);
             benchmark::RegisterBenchmark("fm_search", &fm_search<alphabet_t>, config);
             benchmark::RegisterBenchmark("fm_construction", &fm_construction<alphabet_t>, config);
         }
@@ -278,7 +278,7 @@ void cleanup_csv(std::string path)
             if (line.substr(0, 4) == "name")
             {
                 line.erase(std::remove(line.begin(), line.end(), '\"'), line.end());
-                file_out << line;
+                file_out << line + "\n";
                 past_header = true;
             }
             // skip gbenchmark header
@@ -286,7 +286,7 @@ void cleanup_csv(std::string path)
                 continue;
         }
         else
-            file_out << line;
+            file_out << line + "\n";
     }
 
     std::cout << "[DEBUG] csv written to " + out_path + "\n";
@@ -297,22 +297,22 @@ void cleanup_csv(std::string path)
 
 // #####################################################################################################################
 
-std::index_sequence<5, 10, 15, 20, 25, 30> all_ks;
-std::vector<size_t> text_sizes = {50e3, 100e3, 250e3, 500e3, 1e6};//, 2e6, 5e6, 10e6, 250e6, 3e9};
-std::vector<float> no_hit_ratio = {0, 0.25, 0.5, 0.75, 1};
+std::vector<size_t> text_sizes = {50000, 100000, 250000, 500000, 1000000};
+std::vector<float> no_hit_ratios = {0, 0.25, 0.5, 0.75, 1};
 
 // main
 int main(int argc, char** argv)
 {
+    /*
     std::map<size_t, std::vector<size_t>> query_sizes;
     query_sizes[20] = {19, 20};
     query_sizes[25] = {24, 25};
 
-    register_all_benchmarks<seqan3::dna4, false, all_ks>(query_sizes, text_sizes, hit_ratios);
-    register_all_benchmarks<seqan3::dna4, true, all_ks>(query_sizes, text_sizes, hit_ratios);
+    register_all_benchmarks<seqan3::dna4, false, 3, 4, 5, 6, 7>(query_sizes, text_sizes, no_hit_ratios);
+    register_all_benchmarks<seqan3::dna4, true,  3, 4, 5, 6, 7>(query_sizes, text_sizes, no_hit_ratios);
 
     benchmark::Initialize(&argc, argv);
-    benchmark::RunSpecifiedBenchmarks();
+    benchmark::RunSpecifiedBenchmarks();*/
 
     cleanup_csv("../source/benchmark_out_raw.csv");
 }
