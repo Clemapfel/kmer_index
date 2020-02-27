@@ -52,26 +52,116 @@ template<seqan3::alphabet alphabet_t,
         size_t k,
         typename hash_t,
         typename position_t,
-        bool use_direct_addressing>
+        bool use_fast_search>   // ca 15% speedup during search, slow construction
 class kmer_index_element
 {
     static_assert(detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k) < std::numeric_limits<hash_t>::max(), "invalid alphabet and k combination, please choose a smaller k.");
 
     private:
-        struct id_hash
+        // custom hash table
+        class kmer_hash_table
         {
-            hash_t operator()(hash_t const& hash) const noexcept
-            {
-               return hash;
-            }
+            private:
+                std::vector<std::vector<position_t>> _data;
+                size_t _min_hash, _max_hash;
+
+                size_t hash_hash(size_t hash)
+                {
+                    return (hash * 11400714819323198485llu) >> _shift_amount;
+                }
+
+                uint8_t _shift_amount = 0;
+                bool _use_direct_addressing = false;
+
+            public:
+                // create from text
+                template<std::ranges::range text_t>
+                kmer_hash_table(text_t text)
+                {
+                    auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
+
+                    _min_hash = std::numeric_limits<size_t>::max();
+                    _max_hash = 0;
+
+                    // run heuristic and decide wether to use hash table or direct addressing
+                    std::unordered_set<size_t> different_hashes;
+
+                    for (auto h : hashes)
+                    {
+                        if (h < _min_hash)
+                            _min_hash = h;
+
+                        if (h > _max_hash)
+                            _max_hash = h;
+
+                        different_hashes.insert(h);
+                    }
+
+                    // mode 01: direct addressing
+                    if (different_hashes.size() >= 0.75 * std::abs(_min_hash - _max_hash)) //TODO
+                    {
+                        _use_direct_addressing = true;
+                        _data.reserve(std::abs(_min_hash - _max_hash));
+
+                        for (size_t i = 0; i < std::abs(_min_hash - _max_hash); ++i)
+                            _data.emplace_back();
+
+                        position_t i = 0;
+                        for (auto h : hashes)
+                        {
+                            _data[h - _min_hash].push_back(i);
+                            i += 1;
+                        }
+                    }
+                    // mode 02: fibonacci hash table
+                    else
+                    {
+                        _use_direct_addressing = false;
+                        _data.reserve(different_hashes.size());
+
+                        _shift_amount = 64 - std::log2l(different_hash.size());
+
+                        for (size_t i = 0; i < std::abs(_min_hash - _max_hash); ++i)
+                            _data.emplace_back();
+
+                        for (auto h : hashes)
+                        {
+                            _data[hash_hash(h)].push_back(i);
+                            i += 1;
+                        }
+                    }
+                }
+
+                std::vector<position_t> at(std::vector<alphabet_t> query)
+                {
+                    // hash query
+                    hash_t hash = 0;
+                    for (size_t i = k-1; i >= 0; i--)
+                        hash += seqan3::to_rank(query.at(k-i)) * pow(k, i);
+
+                    // access data
+                    if (_use_direct_addressing)
+                    {
+                        if (hash < _min_hash or hash > _max_hash)
+                            return std::vector<position_t>{};
+                        else
+                            return _data.at(hash - _min_hash);
+                    }
+                    else
+                    {
+                        if (hash < _min_hash or hash > _max_hash)
+                            return std::vector<position_t>{};
+                        else
+                            return _data.at(hash_hash(hash));
+                    }
+                }
         };
 
         // regular mode: minimal memory used, constant runtime for search
-        std::unordered_map<hash_t, std::vector<position_t>, id_hash> _data; // use key itself as hash value
+        std::unordered_map<hash_t, std::vector<position_t>, id_hash> _data;
 
         // direct addressing mode: maximum memory used but o(1) runtime
-        std::array<std::vector<position_t>,
-                static_cast<int>(use_direct_addressing) * detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k)> _da_data;
+        kmer_hash_table _da_data;
 
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
 
@@ -159,16 +249,10 @@ class kmer_index_element
         {
             assert(query.size() == k);
 
-            if (not use_direct_addressing)
-            {
-                auto it = _data.find(hash(query));  // average o(_data.size / 2)
-                if (it != _data.end())
-                    return it->second;
-                else
-                    return std::vector<position_t>{};
-            }
+            if (use_fast_search)
+                return _da_data.at(query);
             else
-                return _da_data[hash(query)];   // o(1)
+                return _data.at(hash(query));
         }
 
         // exact search for query.size() % k == 0
@@ -248,21 +332,21 @@ class kmer_index_element
         template<std::ranges::range text_t>
         void construct(text_t &&text)
         {
-            auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
-            _first_kmer = std::vector<alphabet_t>{text.begin() + (text.size() - k), text.end()};
-
-            if (use_direct_addressing)
-                _da_data.fill(std::vector<position_t>{});
-
-            position_t pos = 0;
-            for (const hash_t hash : hashes)
+            if (use_fast_search)
+                _da_data{text};
+            else
             {
-                if (use_direct_addressing)
-                    _da_data[hash].push_back(pos);
-                else
-                    _data[hash].push_back(pos);
+                auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
+                _first_kmer = std::vector<alphabet_t>{text.begin() + (text.size() - k), text.end()};
 
-                pos += 1;
+                size_t i = 0;
+                for (auto h : hashes)
+                {
+                    if (_data.find(h) != _data.end())
+                        _data[h].push_back(i);
+                    else
+                        _data.emplace(std::make_pair(h, {i}));
+                }
             }
         }
 
@@ -327,8 +411,6 @@ class kmer_index_element
             else
                 return false;
         }
-
-
 };
 }
 
@@ -425,26 +507,6 @@ class kmer_index
         }
 };
 
-// make functions so enduser doesn't have to deal with template params of kmer_index
-template<size_t... ks, bool use_direct_addressing, typename hash_t, typename position_t, std::ranges::range text_t>
-auto make_kmer_index(text_t text)
-{
-    return kmer_index<seqan3::innermost_value_type_t<text_t>, hash_t, position_t, use_direct_addressing, ks...>{text};
-}
-
-// overload: only specify ks and direct_addressing
-template<size_t... ks, bool use_direct_addressing, std::ranges::range text_t>
-auto make_kmer_index(text_t text)
-{
-    assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
-
-    using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-    using hash_t = detail::minimal_memory_t<std::max({detail::pow_ul(seqan3::alphabet_size<alphabet_t>, ks)..., 0ull})>;
-    using position_t = uint32_t;
-
-    return kmer_index<alphabet_t, hash_t, position_t, use_direct_addressing, ks...>{text};
-}
-
 // overload: only specify ks
 template<size_t... ks, std::ranges::range text_t>
 auto make_kmer_index(text_t text)
@@ -458,6 +520,21 @@ auto make_kmer_index(text_t text)
 
     return kmer_index<alphabet_t, hash_t, position_t, false, ks...>{text};
 }
+
+// overload: only specify ks and direct_addressing
+template<size_t... ks, bool use_fast_search, std::ranges::range text_t>
+auto make_kmer_index(text_t text)
+{
+    assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
+
+    using alphabet_t = seqan3::innermost_value_type_t<text_t>;
+    using hash_t = detail::minimal_memory_t<std::max({detail::pow_ul(seqan3::alphabet_size<alphabet_t>, ks)..., 0ull})>;
+    using position_t = uint32_t;
+
+    return kmer_index<alphabet_t, hash_t, position_t, use_fast_search, ks...>{text};
+}
+
+
 
 
 
