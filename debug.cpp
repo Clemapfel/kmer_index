@@ -18,9 +18,9 @@ int main()
 {
     auto text = input_generator<dna4>::generate_text(1000, {"ACGT"_dna4});
 
-    auto index = make_kmer_index<4>(text);
+    auto index = make_fast_kmer_index<4>(text);
     fm_index fm{text};
 
-        debug_stream << index.search("ACGT"_dna4) << " | ";
-        debug_stream << search("ACGT"_dna4, fm) << "\n";
+    debug_stream << index.search("ACGT"_dna4) << " | ";
+    debug_stream << search("ACGT"_dna4, fm) << "\n";
 }

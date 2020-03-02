@@ -109,7 +109,7 @@ class kmer_index_element
                         _use_direct_addressing = true;
                         _data.reserve(_max_hash - _min_hash);
 
-                        for (size_t i = 0; i < hash_range; ++i)
+                        for (size_t i = 0; i <= hash_range; ++i)
                             _data.emplace_back();
 
                         position_t i = 0;
@@ -139,12 +139,14 @@ class kmer_index_element
                     }
                 }
 
-                std::vector<position_t> at(std::vector<alphabet_t> query) const
+                std::vector<position_t> at(std::vector<alphabet_t>& query) const
                 {
+                    assert(query.size() == k);
+
                     // hash query
                     hash_t hash = 0;
-                    for (size_t i = k-1; i >= 0; i--)
-                        hash += seqan3::to_rank(query.at(k-i)) * pow(k, i);
+                    for (size_t i = 0; i < k; ++i)
+                        hash += seqan3::to_rank(query.at(i)) * pow(k, k-i-1);
 
                     // access data
                     if (_use_direct_addressing)
@@ -257,7 +259,9 @@ class kmer_index_element
             assert(query.size() == k);
 
             if (use_fast_search)
+            {
                 return _da_data.at(query);
+            }
             else
                 return _data.at(hash(query));
         }
@@ -531,8 +535,8 @@ auto make_kmer_index(text_t text)
 }
 
 // overload: only specify ks and direct_addressing
-template<size_t... ks, bool use_fast_search, std::ranges::range text_t>
-auto make_kmer_index(text_t text)
+template<size_t... ks, std::ranges::range text_t>
+auto make_fast_kmer_index(text_t text)
 {
     assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
 
@@ -540,7 +544,7 @@ auto make_kmer_index(text_t text)
     using hash_t = detail::minimal_memory_t<std::max({detail::pow_ul(seqan3::alphabet_size<alphabet_t>, ks)..., 0ull})>;
     using position_t = uint32_t;
 
-    return kmer_index<alphabet_t, hash_t, position_t, use_fast_search, ks...>{text};
+    return kmer_index<alphabet_t, hash_t, position_t, true, ks...>{text};
 }
 
 
