@@ -16,9 +16,9 @@ using namespace seqan3;
 
 int main()
 {
-    auto text = input_generator<dna4>::generate_text(100000, {"ACGT"_dna4});
+    auto text = input_generator<dna4>::generate_text(1000, {"ACGT"_dna4});
 
-    auto index = make_kmer_index<15, 4, 14>(text);
+    auto index = make_kmer_index<4>(text);
     fm_index fm{text};
 
         debug_stream << index.search("ACGT"_dna4) << " | ";

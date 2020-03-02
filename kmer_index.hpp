@@ -65,7 +65,7 @@ class kmer_index_element
                 std::vector<std::vector<position_t>> _data;
                 size_t _min_hash, _max_hash;
 
-                size_t hash_hash(size_t hash)
+                size_t hash_hash(size_t hash) const
                 {
                     return (hash * 11400714819323198485llu) >> _shift_amount;
                 }
@@ -74,6 +74,8 @@ class kmer_index_element
                 bool _use_direct_addressing = false;
 
             public:
+                kmer_hash_table() = default;
+
                 // create from text
                 template<std::ranges::range text_t>
                 kmer_hash_table(text_t text)
@@ -97,13 +99,17 @@ class kmer_index_element
                         different_hashes.insert(h);
                     }
 
+                    assert(not different_hashes.empty());
+
+                    auto hash_range = _max_hash - _min_hash;
+
                     // mode 01: direct addressing
-                    if (different_hashes.size() >= 0.75 * std::abs(_min_hash - _max_hash)) //TODO
+                    if (different_hashes.size() >= 0.75 * hash_range) //TODO
                     {
                         _use_direct_addressing = true;
-                        _data.reserve(std::abs(_min_hash - _max_hash));
+                        _data.reserve(_max_hash - _min_hash);
 
-                        for (size_t i = 0; i < std::abs(_min_hash - _max_hash); ++i)
+                        for (size_t i = 0; i < hash_range; ++i)
                             _data.emplace_back();
 
                         position_t i = 0;
@@ -116,14 +122,15 @@ class kmer_index_element
                     // mode 02: fibonacci hash table
                     else
                     {
-                        _use_direct_addressing = false;
+                        _use_direct_addressing = 0;
                         _data.reserve(different_hashes.size());
 
-                        _shift_amount = 64 - std::log2l(different_hash.size());
+                        _shift_amount = 64 - std::log2l(different_hashes.size());
 
-                        for (size_t i = 0; i < std::abs(_min_hash - _max_hash); ++i)
+                        for (size_t i = 0; i < hash_range; ++i)
                             _data.emplace_back();
 
+                        size_t i = 0;
                         for (auto h : hashes)
                         {
                             _data[hash_hash(h)].push_back(i);
@@ -132,7 +139,7 @@ class kmer_index_element
                     }
                 }
 
-                std::vector<position_t> at(std::vector<alphabet_t> query)
+                std::vector<position_t> at(std::vector<alphabet_t> query) const
                 {
                     // hash query
                     hash_t hash = 0;
@@ -158,7 +165,7 @@ class kmer_index_element
         };
 
         // regular mode: minimal memory used, constant runtime for search
-        std::unordered_map<hash_t, std::vector<position_t>, id_hash> _data;
+        std::unordered_map<hash_t, std::vector<position_t>> _data;
 
         // direct addressing mode: maximum memory used but o(1) runtime
         kmer_hash_table _da_data;
@@ -333,19 +340,21 @@ class kmer_index_element
         void construct(text_t &&text)
         {
             if (use_fast_search)
-                _da_data{text};
+                _da_data = kmer_hash_table{text};
             else
             {
                 auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
                 _first_kmer = std::vector<alphabet_t>{text.begin() + (text.size() - k), text.end()};
 
-                size_t i = 0;
+                position_t i = 0;
                 for (auto h : hashes)
                 {
                     if (_data.find(h) != _data.end())
                         _data[h].push_back(i);
                     else
-                        _data.emplace(std::make_pair(h, {i}));
+                        _data.emplace(std::make_pair(h, std::vector<position_t>{i}));
+
+                    ++i;
                 }
             }
         }

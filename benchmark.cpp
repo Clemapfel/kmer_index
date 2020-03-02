@@ -297,6 +297,26 @@ void cleanup_csv(std::string path)
 
 // #####################################################################################################################
 
+// alphabets: dna4
+// ks: 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30
+// query_size_i = k_i -0.5*k, k_i, k+1 (-1 = average case, +1 = worst case);
+
+// text_sizes: 3e9 = human dna, 249e6 = biggest chromosome,
+
+// no_hit_ratio: 0, 1,
+
+// native l1 cage = 4000 chars
+// native l2 cage = 32000 chars
+// native l3 cage = 768000
+
+cache effect: 10k
+    bacterielles genom: 10³, 10⁶, 10^9
+    k: 8, log4(text_länge) = 10mer, genom = 16, 28
+
+    dna4, 10er murphy
+
+bitfields: speiceher mehrere postitoine von k in einem bit, häng A = 0 dran damit
+
 std::vector<size_t> text_sizes = {50000, 100000, 250000, 500000, 1000000};
 std::vector<float> no_hit_ratios = {0, 0.25, 0.5, 0.75, 1};
 
