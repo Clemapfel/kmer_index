@@ -21,34 +21,8 @@
 
 namespace detail
 {
-// constexpr pow for longs
-constexpr unsigned long long pow_ul(unsigned int base, unsigned int exponent)
-{
-    unsigned long result = 1;
-    while (exponent > 0)
-    {
-        if (exponent & 1)
-            result = result * base;
-
-        exponent = exponent >> 1;
-        base = base * base;
-    }
-
-    return result;
-}
-
-// picks the smallest datatype that still fits n_bits
-template<uint64_t n_bits>
-using minimal_memory_t = std::conditional_t<(n_bits < UINT8_MAX), uint8_t,
-        std::conditional_t<(n_bits < UINT16_MAX), uint16_t,
-                std::conditional_t<(n_bits < UINT32_MAX), uint32_t,
-                        uint64_t
-                >
-        >
->;
-
 // represents a kmer index for a single k
-template<seqan3::alphabet alphabet_t, size_t k, typename position_t>
+template<seqan3::alphabet alphabet_t, size_t k, typename position_t, bool use_hashtable=true>
 class kmer_index_element
 {
     private:
@@ -65,7 +39,7 @@ class kmer_index_element
                     // c.f.: https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/#more-9623
                 }
 
-                size_t hash_query(std::vector<alphabet_t> query) const
+                static size_t hash_query(std::vector<alphabet_t> query)
                 {
                     assert(query.size() == k);
 
@@ -244,6 +218,8 @@ class kmer_index_element
         std::vector<position_t> search_query_length_k(std::vector<alphabet_t> query) const
         {
             assert(query.size() == k);
+
+
             return _data.at(query);
         }
 

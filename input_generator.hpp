@@ -63,27 +63,13 @@ class input_generator
         }
 
         // generate text that contains queries
-        static std::vector<alphabet_t> const generate_text(size_t length, std::vector<std::vector<alphabet_t>> queries, float missing_ratio = 0)
+        static std::vector<alphabet_t> const generate_text(size_t length, std::vector<std::vector<alphabet_t>> queries)
         {
             size_t max_length = 0;
             for (auto q : queries)
                 if (q.size() > max_length)
                     max_length = q.size();
 
-            // toss out percentage of queries
-            size_t n_tossed_out = missing_ratio * queries.size();
-
-            std::unordered_set<size_t> missing{};
-
-            for (size_t i = 0; i < n_tossed_out; ++i)
-            {
-                std::uniform_int_distribution<size_t> which_query(0, queries.size() - 1);
-                size_t which = which_query(_engine);
-                missing.insert(input_generator::hash(queries.at(which)));
-                queries.erase(queries.begin() + which);
-            }
-
-            // generate
             std::uniform_real_distribution<float> rng_chance(0.01, 0.1);
             auto query_insert_chance = rng_chance(_engine);
 

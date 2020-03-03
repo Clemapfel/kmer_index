@@ -24,18 +24,10 @@ struct benchmark_arguments
     const size_t _query_size;               // size of every query
     const size_t _n_queries;                // number of queries generated
     const size_t _text_size;                // length of text
-    const float _no_hit_queries_ratio;      // text containts ratio * n_queries of the queries, 0 hits for rest
 
     // ctor
-    benchmark_arguments(
-        size_t query_size,
-        size_t n_queries,
-        size_t text_size,
-        float no_hit_queries_ratio = 0)
-        : _query_size(query_size),
-          _n_queries(n_queries),
-          _text_size(text_size),
-          _no_hit_queries_ratio(no_hit_queries_ratio)
+    benchmark_arguments(size_t query_size, size_t n_queries, size_t text_size)
+        : _query_size(query_size), _n_queries(n_queries), _text_size(text_size)
     {
     }
 
@@ -67,7 +59,6 @@ struct benchmark_arguments
         state.counters["k"] = k;
         state.counters["query_size"] = _query_size;
         state.counters["n_queries"] = _n_queries;
-        state.counters["no_hit_query_ratio"] = _no_hit_queries_ratio;
         state.counters["used_da"] = use_da;
     }
 };
@@ -207,8 +198,7 @@ bool register_kmer_benchmarks(benchmark_arguments config)
 template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
 void register_all_benchmarks(
     std::map<size_t, std::vector<size_t>> query_sizes_per_k,
-    std::vector<size_t> text_sizes,
-    std::vector<float> no_hit_ratios)
+    std::vector<size_t> text_sizes)
 {
     std::map<size_t, std::vector<benchmark_arguments>> _configs;
 
@@ -317,12 +307,13 @@ cache effect: 10k
 
 bitfields: speiceher mehrere postitoine von k in einem bit, häng A = 0 dran damit
 
-std::vector<size_t> text_sizes = {50000, 100000, 250000, 500000, 1000000};
-std::vector<float> no_hit_ratios = {0, 0.25, 0.5, 0.75, 1};
+std::vector<size_t> text_sizes = {1000, 10000, 100000, 1000000, 1000000000);
 
 // main
 int main(int argc, char** argv)
 {
+
+
     /*
     std::map<size_t, std::vector<size_t>> query_sizes;
     query_sizes[20] = {19, 20};
