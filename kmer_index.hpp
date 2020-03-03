@@ -21,6 +21,18 @@
 
 namespace detail
 {
+template<seqan3::alphabet alphabet_t, size_t k>
+size_t hash_query(std::vector<alphabet_t> query)
+{
+    assert(query.size() == k);
+
+    size_t hash = 0;
+    for (size_t i = 0; i < k; ++i)
+        hash += seqan3::to_rank(query.at(i)) * pow(k, k-i-1);
+
+    return hash;
+}
+
 // represents a kmer index for a single k
 template<seqan3::alphabet alphabet_t, size_t k, typename position_t, bool use_hashtable=true>
 class kmer_index_element
@@ -37,15 +49,6 @@ class kmer_index_element
                 {
                     return (hash * 11400714819323198485llu) >> _shift_amount;
                     // c.f.: https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/#more-9623
-                }
-
-                static size_t hash_query(std::vector<alphabet_t> query)
-                {
-                    assert(query.size() == k);
-
-                    size_t hash = 0;
-                    for (size_t i = 0; i < k; ++i)
-                        hash += seqan3::to_rank(query.at(i)) * pow(k, k-i-1);
                 }
 
                 uint8_t _shift_amount = 0;
@@ -116,13 +119,15 @@ class kmer_index_element
                             i += 1;
                         }
                     }
+
+                    //seqan3::debug_stream << _data << "\n";
                 }
 
                 std::vector<position_t> at(std::vector<alphabet_t> query) const
                 {
                     assert(query.size() == k);
 
-                    auto hash = hash_query(query);
+                    auto hash = hash_query<alphabet_t, k>(query);
                     if (_use_direct_addressing)
                     {
                         if (hash < _min_hash or hash > _max_hash)
@@ -141,6 +146,8 @@ class kmer_index_element
         };
 
         kmer_hash_table _data;
+        std::unordered_map<uint64_t, std::vector<uint32_t>> _map_data;
+
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
 
     protected:
@@ -219,8 +226,16 @@ class kmer_index_element
         {
             assert(query.size() == k);
 
-
-            return _data.at(query);
+            if (use_hashtable)
+                return _data.at(query);
+            else
+            {
+                auto it = _map_data.find(hash_query<alphabet_t, k>(query));
+                if (it != _map_data.end())
+                    return it->second;
+                else
+                    return std::vector<position_t>();
+            }
         }
 
         // exact search for query.size() % k == 0
@@ -286,6 +301,8 @@ class kmer_index_element
                 confirmed_positions.push_back(0);
 
             auto all_kmer = get_all_kmer_with_suffix(query);
+            seqan3::debug_stream << "all kmer with suffix (" << query << ") " << all_kmer << "\n";
+
             position_t offset = k - query.size();
 
             for (auto kmer : all_kmer)
@@ -305,7 +322,29 @@ class kmer_index_element
         kmer_index_element(text_t &&text)
         {
             _first_kmer = std::vector<alphabet_t>(text.begin(), text.begin() + k);
-            _data = kmer_hash_table{text};
+
+            if (use_hashtable)
+            {
+                _data = kmer_hash_table{text};
+            }
+            else
+            {
+                auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
+
+                position_t i = 0;
+                for (auto h : hashes)
+                {
+                    if (_map_data.find(h) == _map_data.end())
+                    {
+                        _map_data.insert(std::make_pair(h, std::vector<position_t>({i})));
+                    }
+                    else
+                        _map_data[h].push_back(i);
+                    ++i;
+                }
+
+                //seqan3::debug_stream << _map_data << "\n";
+            }
         }
 
         // search any query
@@ -313,7 +352,7 @@ class kmer_index_element
         {
             std::vector<position_t> result;
 
-            if (k - query.size() % k >= 10)
+            if (query.size() % k >= 10)
                 seqan3::debug_stream << "[WARNING] searching query (length = " << query.size() << ") with kmer index for k = " << k << " may cause runtime or memory issues. Please choose a k and query combination so that query.size() % k is as high as possible.\n";
 
             if (query.size() == k)
@@ -365,13 +404,13 @@ class kmer_index_element
 };
 }
 
-template<seqan3::alphabet alphabet_t, typename position_t, size_t... ks>
+template<seqan3::alphabet alphabet_t, typename position_t, bool use_hashtable, size_t... ks>
 class kmer_index
-        : detail::kmer_index_element<alphabet_t, ks, position_t>...
+        : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>...
 {
     private:
         template<size_t k>
-        using index = detail::kmer_index_element<alphabet_t, k, position_t>;
+        using index = detail::kmer_index_element<alphabet_t, k, position_t, use_hashtable>;
         inline static auto _all_ks = std::vector<size_t>{ks...};
 
         // search query <= k with index element with optimal k
@@ -394,7 +433,7 @@ class kmer_index
         // ctor
         template<std::ranges::range text_t>
         kmer_index(text_t && text)
-            : detail::kmer_index_element<alphabet_t, ks, position_t>(text)...
+            : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>(text)...
         {
         }
 
@@ -456,16 +495,25 @@ class kmer_index
 
 // overload: only specify ks
 template<size_t... ks, std::ranges::range text_t>
-auto make_kmer_index(text_t text)
+auto make_fast_kmer_index(text_t text)
 {
     assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
 
-    // code copy pasted to prevent circular type deduction (not possible: make_kmer_index<ks..., false>(text))
     using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-    using hash_t = detail::minimal_memory_t<std::max({detail::pow_ul(seqan3::alphabet_size<alphabet_t>, ks)..., 0ull})>;
     using position_t = uint32_t;
 
-    return kmer_index<alphabet_t, position_t, ks...>{text};
+    return kmer_index<alphabet_t, position_t, true, ks...>{text};
+}
+
+template<size_t... ks, std::ranges::range text_t>
+auto make_slow_kmer_index(text_t text)
+{
+    assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
+
+    using alphabet_t = seqan3::innermost_value_type_t<text_t>;
+    using position_t = uint32_t;
+
+    return kmer_index<alphabet_t, position_t, false, ks...>{text};
 }
 
 

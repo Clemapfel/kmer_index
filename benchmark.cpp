@@ -18,50 +18,42 @@
 #include "input_generator.hpp"
 #include "kmer_index.hpp"
 
-// benchmark arguments struct for readability
-struct benchmark_arguments
+// ctor
+benchmark_arguments::benchmark_arguments(size_t query_size, size_t n_queries, size_t text_size)
+    : _query_size(query_size), _n_queries(n_queries), _text_size(text_size)
 {
-    const size_t _query_size;               // size of every query
-    const size_t _n_queries;                // number of queries generated
-    const size_t _text_size;                // length of text
+}
 
-    // ctor
-    benchmark_arguments(size_t query_size, size_t n_queries, size_t text_size)
-        : _query_size(query_size), _n_queries(n_queries), _text_size(text_size)
-    {
-    }
+// generate queries and text pseudo-randomly
+template<seqan3::alphabet alphabet_t>
+void benchmark_arguments::generate_queries_and_text(
+    std::vector<std::vector<alphabet_t>>* queries,  // out
+    std::vector<alphabet_t>* text,                  // out
+    bool reset_state = true)                        // if true, returns same queries and text each call
+{
+    if (reset_state)
+        input_generator<alphabet_t>::reset_state();
 
-    // generate queries and text pseudo-randomly
-    template<seqan3::alphabet alphabet_t>
-    void generate_queries_and_text(
-        std::vector<std::vector<alphabet_t>>* queries,  // out
-        std::vector<alphabet_t>* text,                  // out
-        bool reset_state = true)                        // if true, returns same queries and text each call
-    {
-        if (reset_state)
-            input_generator<alphabet_t>::reset_state();
+    queries->clear();
+    for (auto q : input_generator<alphabet_t>::generate_queries(_n_queries, _query_size))
+        queries->push_back(q);
 
-        queries->clear();
-        for (auto q : input_generator<alphabet_t>::generate_queries(_n_queries, _query_size))
-            queries->push_back(q);
+    text->clear();
+    for (auto c : input_generator<alphabet_t>::generate_text(_text_size, *queries))
+        text->push_back(c);
+}
 
-        text->clear();
-        for (auto c : input_generator<alphabet_t>::generate_text(_text_size, *queries))
-            text->push_back(c);
-    }
-
-    // add custom counters to keep track of benchmark arguments
-    template<seqan3::alphabet alphabet_t, bool use_da, int k>
-    void add_counters_to(benchmark::State& state) const
-    {
-        state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
-        state.counters["text_size"] = _text_size;
-        state.counters["k"] = k;
-        state.counters["query_size"] = _query_size;
-        state.counters["n_queries"] = _n_queries;
-        state.counters["used_da"] = use_da;
-    }
-};
+// add custom counters to keep track of benchmark arguments
+template<seqan3::alphabet alphabet_t, bool use_hashtable, int k>
+void benchmark_argumentsadd_counters_to(benchmark::State& state) const
+{
+    state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
+    state.counters["text_size"] = _text_size;
+    state.counters["k"] = k;
+    state.counters["query_size"] = _query_size;
+    state.counters["n_queries"] = _n_queries;
+    state.counters["used_hashtable"] = use_hashtable;
+}
 
 // #####################################################################################################################
 
@@ -181,24 +173,16 @@ static void fm_construction(benchmark::State& state, benchmark_arguments input)
 //#####################################################################################################################
 
 // function that can be expanded in fold expression
-template<seqan3::alphabet alphabet_t, bool use_da, size_t k>
-bool register_kmer_benchmarks(benchmark_arguments config)
+template<seqan3::alphabet alphabet_t, bool use_hashtable, size_t k>
+void register_kmer_benchmarks(benchmark_arguments config)
 {
-    // skip invalid config automatically
-    if (detail::pow_ul(seqan3::alphabet_size<alphabet_t>, k) < UINT64_MAX)
-        return false;
-
     benchmark::RegisterBenchmark("kmer_exact_search", &kmer_search<alphabet_t, use_da, k>, config);
-    benchmark::RegisterBenchmark("kmer_construction", &kmer_construction<alphabet_t, use_da, k>, config);
-
-    return true;
+    benchmark::RegisterBenchmark("kmer_construction", &kmer_construction<alphabet_t, use_da, k>, config);;
 }
 
 // wrapper that programmatically registers benchmarks for all permutations of template params and args
-template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
-void register_all_benchmarks(
-    std::map<size_t, std::vector<size_t>> query_sizes_per_k,
-    std::vector<size_t> text_sizes)
+template<seqan3::alphabet alphabet_t, bool use_hashtable, size_t... ks>
+void register_all_benchmarks(std::vector<size_t> text_sizes)
 {
     std::map<size_t, std::vector<benchmark_arguments>> _configs;
 
@@ -214,15 +198,12 @@ void register_all_benchmarks(
         {
             for (auto text_size : text_sizes)
             {
-                for (auto no_hit_ratio : no_hit_ratios)
-                {
-                    size_t n_queries = 0.1 * text_size > 100 ? 0.1 * text_size : 100;
+                size_t n_queries = 0.1 * text_size > 100 ? 0.1 * text_size : 100;
 
-                    if (_configs.find(k) == _configs.end())
-                        _configs.insert(std::make_pair(k, std::vector<benchmark_arguments>{}));
+                if (_configs.find(k) == _configs.end())
+                    _configs.insert(std::make_pair(k, std::vector<benchmark_arguments>{}));
 
-                    _configs[k].emplace_back(query_size, n_queries, text_size, no_hit_ratio);
-                }
+                _configs[k].emplace_back(query_size, n_queries, text_size);
             }
         }
     }
@@ -284,48 +265,3 @@ void cleanup_csv(std::string path)
     file_in.close();
     file_out.close();
 }
-
-// #####################################################################################################################
-
-// alphabets: dna4
-// ks: 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30
-// query_size_i = k_i -0.5*k, k_i, k+1 (-1 = average case, +1 = worst case);
-
-// text_sizes: 3e9 = human dna, 249e6 = biggest chromosome,
-
-// no_hit_ratio: 0, 1,
-
-// native l1 cage = 4000 chars
-// native l2 cage = 32000 chars
-// native l3 cage = 768000
-
-cache effect: 10k
-    bacterielles genom: 10³, 10⁶, 10^9
-    k: 8, log4(text_länge) = 10mer, genom = 16, 28
-
-    dna4, 10er murphy
-
-bitfields: speiceher mehrere postitoine von k in einem bit, häng A = 0 dran damit
-
-std::vector<size_t> text_sizes = {1000, 10000, 100000, 1000000, 1000000000);
-
-// main
-int main(int argc, char** argv)
-{
-
-
-    /*
-    std::map<size_t, std::vector<size_t>> query_sizes;
-    query_sizes[20] = {19, 20};
-    query_sizes[25] = {24, 25};
-
-    register_all_benchmarks<seqan3::dna4, false, 3, 4, 5, 6, 7>(query_sizes, text_sizes, no_hit_ratios);
-    register_all_benchmarks<seqan3::dna4, true,  3, 4, 5, 6, 7>(query_sizes, text_sizes, no_hit_ratios);
-
-    benchmark::Initialize(&argc, argv);
-    benchmark::RunSpecifiedBenchmarks();*/
-
-    cleanup_csv("../source/benchmark_out_raw.csv");
-}
-
-
