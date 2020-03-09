@@ -16,13 +16,14 @@ using namespace seqan3;
 
 int main()
 {
-    auto text = input_generator<dna4>::generate_text(100, {"ACGT"_dna4});
+    auto text = "ACGTACGTACGTACG"_dna4;
 
-    auto slow_index = make_slow_kmer_index<6>(text);
+    auto slow_index = make_slow_kmer_index<4>(text);
     auto fm = fm_index(text);
 
-    debug_stream << slow_index.search("ACGT"_dna4) << "\n";
-    debug_stream << search("ACGT"_dna4, fm) << "\n";
+    auto query = "C"_dna4;
+    debug_stream << slow_index.search(query) << "\n";
+    debug_stream << search(query, fm) << "\n";
 
     /*
     for (auto i : std::vector{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4})

@@ -26,11 +26,17 @@ size_t hash_query(std::vector<alphabet_t> query)
 {
     assert(query.size() == k);
 
+    auto hashes = query | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
+    return *(hashes.begin());
+
+    /*
+
     size_t hash = 0;
     for (size_t i = 0; i < k; ++i)
         hash += seqan3::to_rank(query.at(i)) * pow(k, k-i-1);
 
     return hash;
+     */
 }
 
 // represents a kmer index for a single k
@@ -301,7 +307,7 @@ class kmer_index_element
                 confirmed_positions.push_back(0);
 
             auto all_kmer = get_all_kmer_with_suffix(query);
-            seqan3::debug_stream << "all kmer with suffix (" << query << ") " << all_kmer << "\n";
+            //seqan3::debug_stream << "all kmer with suffix (" << query << ") " << all_kmer << "\n";
 
             position_t offset = k - query.size();
 
@@ -343,7 +349,7 @@ class kmer_index_element
                     ++i;
                 }
 
-                //seqan3::debug_stream << _map_data << "\n";
+                seqan3::debug_stream << _map_data << "\n";
             }
         }
 
