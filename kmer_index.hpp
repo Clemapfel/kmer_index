@@ -293,18 +293,23 @@ class kmer_index_element
             std::vector<position_t> confirmed_positions{};
 
             // edge case: query at the very beginning
-            bool not_equal = false;
             for (size_t i = 0; i < query.size(); ++i)
             {
-                if (query.at(i) != _first_kmer.at(i))
+                if (_first_kmer.at(i) == query.at(0))
                 {
-                    not_equal = true;
-                    break;
+                    bool equal = true;
+                    for (size_t j = 0; j < query.size(); ++j)
+                    {
+                        if (i + j >= _first_kmer.size() || _first_kmer.at(i+j) != query.at(j))
+                        {
+                            equal = false;
+                            break;
+                        }
+                    }
+                    if (equal)
+                        confirmed_positions.push_back(i);
                 }
             }
-
-            if (not not_equal)
-                confirmed_positions.push_back(0);
 
             auto all_kmer = get_all_kmer_with_suffix(query);
             //seqan3::debug_stream << "all kmer with suffix (" << query << ") " << all_kmer << "\n";
@@ -349,7 +354,7 @@ class kmer_index_element
                     ++i;
                 }
 
-                seqan3::debug_stream << _map_data << "\n";
+                //seqan3::debug_stream << _map_data << "\n";
             }
         }
 

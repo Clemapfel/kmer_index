@@ -16,14 +16,40 @@ using namespace seqan3;
 
 int main()
 {
-    auto text = "ACGTACGTACGTACG"_dna4;
+    auto query = "ACGT"_dna4;
 
-    auto slow_index = make_slow_kmer_index<4>(text);
-    auto fm = fm_index(text);
+    std::cout << "starting test...\n";
 
-    auto query = "C"_dna4;
-    debug_stream << slow_index.search(query) << "\n";
-    debug_stream << search(query, fm) << "\n";
+    for (size_t i = 0; i < 1000; ++i)
+    {
+        // state not reset so new text everytime
+        auto text = input_generator<dna4, 1234>::generate_sequence(1e3);
+
+        auto index = make_fast_kmer_index<3>(text);
+        auto fm = fm_index(text);
+
+        bool results_equal;
+        try
+        {
+             results_equal = (index.search(query).size() == search(query, fm).size());
+        }
+        catch (std::out_of_range)
+        {
+            results_equal = false;
+            std::cerr << "out of range exception\n";
+        }
+
+        if (not results_equal)
+        {
+            debug_stream << "results not equal for i = " << i << "\n";
+            debug_stream << text << "\n\n";
+            debug_stream << "fm  : " << search(query, fm) << "\n";
+            debug_stream << "kmer: " << index.search(query) << "\n";
+            return 1;
+        }
+    }
+
+    std::cout << "test passed succesfully.";
 
     /*
     for (auto i : std::vector{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4})
