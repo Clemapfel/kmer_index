@@ -63,11 +63,22 @@ class kmer_index_element
             protected:
                 void print_hashtable() const
                 {
-                    seqan3::debug_stream << "Hashtable uses direct Addressing: " << (_use_direct_addressing ? "true" : "false") << "\n";
+                    seqan3::debug_stream << "Printing Hashtable for k = " << k << ". Used direct Addressing: " << (_use_direct_addressing ? "true" : "false") << "\n";
+                    seqan3::debug_stream << "min hash: " << _min_hash << " , max hash: " << _max_hash << "\n";
 
-                    size_t i = _min_hash;
+                    if (_use_direct_addressing)
+                    {
+                        seqan3::debug_stream << "i" << "\t" << "kmer_hash" << "\t" << "pos" << "\n";
 
-
+                        size_t i = 0;
+                        size_t kmer_hash = _min_hash;
+                        for (auto vec : _data)
+                        {
+                            seqan3::debug_stream << i << "\t" << ": " << vec << "\n";
+                            i += 1;
+                            kmer_hash += 1;
+                        }
+                    }
                 }
 
             public:
@@ -124,7 +135,7 @@ class kmer_index_element
                         size_t n_hashes = different_hashes.size();
                         _data.reserve(n_hashes);
 
-                        _shift_amount = 64 - std::log2l(n_hashes);
+                        _shift_amount = 64 - std::log2l(n_hashes+1);
 
                         for (size_t i = 0; i <= n_hashes; ++i)
                             _data.emplace_back();
@@ -156,9 +167,15 @@ class kmer_index_element
                             return std::vector<position_t>{};
                         else
                         {
-                            seqan3::debug_stream << "result for " << query << " (" << hash << ") at " << hash_hash(hash) << " :"
-                                                     << _data.at(hash_hash(hash)) << "\n";
-
+                        try
+                        {
+                            seqan3::debug_stream << "result for " << query << " (" << hash << ") at " << hash_hash(hash)
+                                                 << " :"
+                                                 << _data.at(hash_hash(hash)) << "\n";
+                        } catch (std::out_of_range)
+                        {
+                            print_hashtable();
+                        }
                             return _data.at(hash_hash(hash));
                         }
                     }

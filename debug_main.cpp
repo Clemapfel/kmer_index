@@ -14,8 +14,41 @@
 
 using namespace seqan3;
 
+uint8_t _shift_amount;
+size_t hash_hash(size_t hash)
+{
+    return (hash * 11400714819323198485llu) >> _shift_amount;
+
+}
+
 int main()
 {
+    size_t _min_hash = 0, _max_hash = 1023;
+    _shift_amount = 64 - log2l(_max_hash - _min_hash);
+    seqan3::debug_stream << "shift amount: " << _shift_amount << "\n";
+
+    size_t min = std::numeric_limits<size_t>::max(), max = 0;
+    std::vector<size_t> hash_hashes;
+
+    for (size_t i = _min_hash; i < _max_hash; ++i)
+    {
+        auto h = hash_hash(i);
+        hash_hashes.push_back(h);
+
+        if (h < min)
+            min = h;
+
+        if (h > max)
+            max = h;
+    }
+
+    std::sort(hash_hashes.begin(), hash_hashes.end());
+    seqan3::debug_stream << hash_hashes;
+    seqan3::debug_stream << "\n_____________________ \n";
+    seqan3::debug_stream << "n: " << hash_hashes.begin() << " | min: " << min << " | max: " << max << "\n";
+
+
+    /*
     auto query = "ACGT"_dna4;
 
     std::cout << "starting test...\n";
