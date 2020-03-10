@@ -159,7 +159,7 @@ class kmer_index_element
                         size_t i = 0;
                         for (auto h : hashes)
                         {
-                            seqan3::debug_stream << h << " | " << hash_hash(h) << "\n";
+                            seqan3::debug_stream << sizeof(_data[hash_hash(h)]) / 1e6 << " ) " << h << " | " << hash_hash(h) << "\n";
                             _data[hash_hash(h)].push_back(i);
                             i += 1;
                         }
