@@ -60,6 +60,16 @@ class kmer_index_element
                 uint8_t _shift_amount = 0;
                 bool _use_direct_addressing = false;
 
+            protected:
+                void print_hashtable() const
+                {
+                    seqan3::debug_stream << "Hashtable uses direct Addressing: " << (_use_direct_addressing ? "true" : "false") << "\n";
+
+                    size_t i = _min_hash;
+
+
+                }
+
             public:
                 kmer_hash_table() = default;
 
@@ -88,6 +98,7 @@ class kmer_index_element
                     assert(not different_hashes.empty());
 
                     auto hash_range = _max_hash - _min_hash;
+                    seqan3::debug_stream << "hash_range = " << hash_range << " | n_hashes = " << different_hashes.size() << "\n";
 
                     // mode 01: direct addressing
                     if (different_hashes.size() >= 0.9 * hash_range)
@@ -125,8 +136,6 @@ class kmer_index_element
                             i += 1;
                         }
                     }
-
-                    //seqan3::debug_stream << _data << "\n";
                 }
 
                 std::vector<position_t> at(std::vector<alphabet_t> query) const
@@ -146,7 +155,12 @@ class kmer_index_element
                         if (hash < _min_hash or hash > _max_hash)
                             return std::vector<position_t>{};
                         else
+                        {
+                            seqan3::debug_stream << "result for " << query << " (" << hash << ") at " << hash_hash(hash) << " :"
+                                                     << _data.at(hash_hash(hash)) << "\n";
+
                             return _data.at(hash_hash(hash));
+                        }
                     }
                 }
         };
@@ -504,30 +518,20 @@ class kmer_index
         }
 };
 
-// overload: only specify ks
-template<size_t... ks, std::ranges::range text_t>
-auto make_fast_kmer_index(text_t text)
+template<auto first, auto... ks, std::ranges::range text_t>
+auto make_kmer_index(text_t text)
 {
     assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
 
     using alphabet_t = seqan3::innermost_value_type_t<text_t>;
     using position_t = uint32_t;
 
-    return kmer_index<alphabet_t, position_t, true, ks...>{text};
+  return std::conditional_t<
+    std::is_same_v<decltype(first), bool>,
+    kmer_index<alphabet_t, position_t, first, ks...>,
+    kmer_index<alphabet_t, position_t, true, first, ks...>
+  >{text};
 }
-
-template<size_t... ks, std::ranges::range text_t>
-auto make_slow_kmer_index(text_t text)
-{
-    assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
-
-    using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-    using position_t = uint32_t;
-
-    return kmer_index<alphabet_t, position_t, false, ks...>{text};
-}
-
-
 
 
 

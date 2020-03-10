@@ -20,12 +20,12 @@ int main()
 
     std::cout << "starting test...\n";
 
-    for (size_t i = 0; i < 1000; ++i)
+    for (size_t i = 0; i < 1; ++i)
     {
         // state not reset so new text everytime
-        auto text = input_generator<dna4, 1234>::generate_sequence(1e3);
+        auto text = input_generator<dna4, 1234>::generate_sequence(1000);
 
-        auto index = make_fast_kmer_index<3>(text);
+        auto index = make_kmer_index<true, 5>(text);
         auto fm = fm_index(text);
 
         bool results_equal;
