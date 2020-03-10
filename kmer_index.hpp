@@ -92,6 +92,8 @@ class kmer_index_element
 
                     seqan3::debug_stream << "Printing Hashtable for k = " << k << ". Used direct Addressing: " << (_use_direct_addressing ? "true" : "false") << "\n";
                     seqan3::debug_stream << "min hash: " << _min_hash << " , max hash: " << _max_hash <<  " , n: " << _data.size() << "\n";
+                    seqan3::debug_stream << "shift_amount: " << _shift_amount << " (range : " << pow(2, 64 - _shift_amount) << ")\n";
+                    seqan3::debug_stream << "______________________________________________\n";
                 }
 
             public:
@@ -149,6 +151,7 @@ class kmer_index_element
                         _data.reserve(n_hashes);
 
                         _shift_amount = 64 - std::log2l(n_hashes);
+                        _shift_amount -= 1;
 
                         for (size_t i = 0; i <= n_hashes; ++i)
                             _data.emplace_back();
@@ -156,9 +159,12 @@ class kmer_index_element
                         size_t i = 0;
                         for (auto h : hashes)
                         {
+                            seqan3::debug_stream << h << " | " << hash_hash(h) << "\n";
                             _data[hash_hash(h)].push_back(i);
                             i += 1;
                         }
+
+                        seqan3::debug_stream << "done building\n";
                     }
 
                     print_hashtable();
