@@ -50,10 +50,12 @@ class kmer_index_element
             private:
                 std::vector<std::vector<position_t>> _data;
                 size_t _min_hash, _max_hash;
+                size_t _n_different_hashes;
 
                 size_t hash_hash(size_t hash) const
                 {
-                    return (hash * 11400714819323198485llu) >> _shift_amount;
+                    return hash % (_n_different_hashes+1);
+                    //return (hash * 11400714819323198485llu) >> _shift_amount;
                     // c.f.: https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/#more-9623
                 }
 
@@ -122,6 +124,7 @@ class kmer_index_element
                     }
 
                     assert(not different_hashes.empty());
+                    _n_different_hashes = different_hashes.size();
 
                     auto hash_range = _max_hash - _min_hash;
                     //seqan3::debug_stream << "hash_range = " << hash_range << " | n_hashes = " << different_hashes.size() << "\n";
@@ -198,7 +201,6 @@ class kmer_index_element
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
 
     protected:
-
         // split query into parts of length k with rest at the end
         static std::vector<std::vector<alphabet_t>> split_query(std::vector<alphabet_t> query)
         {
