@@ -53,7 +53,7 @@ int main()
     for (size_t i = 0; i < 1; ++i)
     {
         // state not reset so new text everytime
-        auto text = input_generator<dna4, 1234>::generate_sequence(1e3);
+        auto text = input_generator<dna4, 1234>::generate_sequence(1e5);
 
         auto da_index = make_kmer_index<true, 5>(text);
         auto map_index = make_kmer_index<false, 5>(text);

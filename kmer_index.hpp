@@ -52,45 +52,31 @@ class kmer_index_element
             private:
                 std::vector<std::vector<position_t>> _data;
 
-                uint8_t _shift_amount = 0;
-                bool _use_direct_addressing = false;
+                size_t _text_length;
 
             protected:
                 void print_hashtable() const
                 {
-                    if (_use_direct_addressing)
-                    {
-                        seqan3::debug_stream << "i" << "\t" << "kmer_hash" << "\t" << "pos" << "\n";
+                    seqan3::debug_stream << "i" << "\t" << "kmer_hash" << "\t" << "pos" << "\n";
 
-                        size_t i = 0;
-                        size_t kmer_hash = _min_hash;
-                        for (auto vec : _data)
-                        {
-                            seqan3::debug_stream << i << "\t" << kmer_hash << "\t" << vec << "\n";
-                            i += 1;
-                            kmer_hash += 1;
-                        }
-                    }
-                    else
+                    size_t i = 0;
+                    size_t kmer_hash = _min_hash;
+                    for (auto vec : _data)
                     {
-                        seqan3::debug_stream << "i" << "\t" << "pos"
-                                             << "\n";
-                        size_t i = 0;
-                        size_t kmer_hash = _min_hash;
-                        for (auto vec : _data)
-                        {
-                            seqan3::debug_stream << i << "\t" << ": " << vec << "\n";
-                            i += 1;
-                            kmer_hash += 1;
-                        }
+                        seqan3::debug_stream << i << "\t" << kmer_hash << "\t" << vec << "\n";
+                        i += 1;
+                        kmer_hash += 1;
                     }
 
-                    seqan3::debug_stream << "Printing Hashtable for k = " << k << ". Used direct Addressing: "
-                                         << (_use_direct_addressing ? "true" : "false") << "\n";
-                    seqan3::debug_stream << "min hash: " << _min_hash << " , max hash: " << _max_hash << " , n: "
-                                         << _data.size() << "\n";
-                    seqan3::debug_stream << "shift_amount: " << _shift_amount << " (range : "
-                                         << pow(2, 64 - _shift_amount) << ")\n";
+                    size_t n_empty_slots = 0;
+                    for (auto row : _data)
+                        if (row.empty())
+                            n_empty_slots++;
+
+                    seqan3::debug_stream << "Printing DA Hashtable for k = " << k << ", text_length = " << _text_length << "." << "\n";
+                    seqan3::debug_stream << "min hash: " << _min_hash << " , max hash: " << _max_hash
+                                         << " (" << ((n_empty_slots / float(_data.size()))) * 100 << "% entries empty)\n";
+"\n";
                     seqan3::debug_stream << "______________________________________________\n";
                 }
 
@@ -127,6 +113,8 @@ class kmer_index_element
                 template<std::ranges::range text_t>
                 void construct(text_t text)
                 {
+                    _text_length = text.size();
+
                     auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
                     estimate_hash_range(text);
 
@@ -142,15 +130,11 @@ class kmer_index_element
                         if (h < _min_hash)
                         {
                             _data.insert(_data.begin(), std::labs(h - _min_hash), std::vector<position_t>{});
-                            seqan3::debug_stream << "resizing: front inserting " << (_min_hash - h) << ".\n"
-                             << "hash = " << h << " | min_hash = " << _min_hash << "\n";
                             _min_hash = h;
                         }
                         else if (h > _max_hash)
                         {
                             _data.insert(_data.end(), h - _max_hash, std::vector<position_t>{});
-                            seqan3::debug_stream << "resizing: back  inserting " << (h - _max_hash) << ".\n"
-                            << "hash = " << h << " | max_hash = " << _max_hash << "\n";
                             _max_hash = h;
                         }
 
