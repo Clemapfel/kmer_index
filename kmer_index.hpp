@@ -16,6 +16,7 @@
 #include <type_traits>
 #include <cstdint>
 #include <cassert>
+#include <cmath>
 #include <algorithm>
 #include <unordered_set>
 #include <limits>
@@ -106,6 +107,10 @@ class kmer_index_element
 
                     for (auto h : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}}))
                     {
+                        _min_hash = h;
+                        _max_hash = h;
+                        break;
+
                         if (h < _min_hash)
                             _min_hash = h;
                         if (h > _max_hash)
@@ -133,6 +138,22 @@ class kmer_index_element
                     position_t i = 0;
                     for (auto h : hashes)
                     {
+                        // resize if necessary
+                        if (h < _min_hash)
+                        {
+                            _data.insert(_data.begin(), std::labs(h - _min_hash), std::vector<position_t>{});
+                            seqan3::debug_stream << "resizing: front inserting " << (_min_hash - h) << ".\n"
+                             << "hash = " << h << " | min_hash = " << _min_hash << "\n";
+                            _min_hash = h;
+                        }
+                        else if (h > _max_hash)
+                        {
+                            _data.insert(_data.end(), h - _max_hash, std::vector<position_t>{});
+                            seqan3::debug_stream << "resizing: back  inserting " << (h - _max_hash) << ".\n"
+                            << "hash = " << h << " | max_hash = " << _max_hash << "\n";
+                            _max_hash = h;
+                        }
+
                         _data[h - _min_hash].push_back(i);
                         i += 1;
                     }
@@ -147,6 +168,8 @@ class kmer_index_element
                 {
                     estimate_hash_range(text);
                     construct(text);
+
+                    print_hashtable();
                 }
 
                 std::vector<position_t> at(std::vector<alphabet_t> query) const

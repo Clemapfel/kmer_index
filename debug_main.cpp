@@ -53,7 +53,7 @@ int main()
     for (size_t i = 0; i < 1; ++i)
     {
         // state not reset so new text everytime
-        auto text = input_generator<dna4, 1234>::generate_sequence(1e6);
+        auto text = input_generator<dna4, 1234>::generate_sequence(1e3);
 
         auto da_index = make_kmer_index<true, 5>(text);
         auto map_index = make_kmer_index<false, 5>(text);
@@ -85,15 +85,4 @@ int main()
     }
 
     std::cout << "test passed succesfully.";
-
-    /*
-    for (auto i : std::vector{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4})
-    {
-        auto query = input_generator<dna4>::generate_sequence(i);
-
-        debug_stream << "<" << i << ">\n";
-        debug_stream << slow_index.search(query) << "\n";
-        debug_stream << search(query, fm) << "\n\n";
-    }
-     */
 }
