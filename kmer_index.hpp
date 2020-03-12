@@ -8,8 +8,9 @@
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/hash.hpp>
 #include <seqan3/range/views/kmer_hash.hpp>
-#include <seqan3/core/type_traits/range.hpp>
+#include <seqan3/range/views/slice.hpp>
 #include <seqan3/search/configuration/max_error.hpp>
+#include <seqan3/core/type_traits/range.hpp>
 #include <seqan3/core/debug_stream.hpp>
 
 #include <type_traits>
@@ -44,20 +45,11 @@ template<seqan3::alphabet alphabet_t, size_t k, typename position_t, bool use_ha
 class kmer_index_element
 {
     private:
-        // custom hash table
+        // custom hash table for direct addressing
         class kmer_hash_table
         {
             private:
                 std::vector<std::vector<position_t>> _data;
-                size_t _min_hash, _max_hash;
-                size_t _n_different_hashes;
-
-                size_t hash_hash(size_t hash) const
-                {
-                    return hash % (_n_different_hashes+1);
-                    //return (hash * 11400714819323198485llu) >> _shift_amount;
-                    // c.f.: https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/#more-9623
-                }
 
                 uint8_t _shift_amount = 0;
                 bool _use_direct_addressing = false;
@@ -81,7 +73,7 @@ class kmer_index_element
                     else
                     {
                         seqan3::debug_stream << "i" << "\t" << "pos"
-<< "\n";
+                                             << "\n";
                         size_t i = 0;
                         size_t kmer_hash = _min_hash;
                         for (auto vec : _data)
@@ -92,10 +84,58 @@ class kmer_index_element
                         }
                     }
 
-                    seqan3::debug_stream << "Printing Hashtable for k = " << k << ". Used direct Addressing: " << (_use_direct_addressing ? "true" : "false") << "\n";
-                    seqan3::debug_stream << "min hash: " << _min_hash << " , max hash: " << _max_hash <<  " , n: " << _data.size() << "\n";
-                    seqan3::debug_stream << "shift_amount: " << _shift_amount << " (range : " << pow(2, 64 - _shift_amount) << ")\n";
+                    seqan3::debug_stream << "Printing Hashtable for k = " << k << ". Used direct Addressing: "
+                                         << (_use_direct_addressing ? "true" : "false") << "\n";
+                    seqan3::debug_stream << "min hash: " << _min_hash << " , max hash: " << _max_hash << " , n: "
+                                         << _data.size() << "\n";
+                    seqan3::debug_stream << "shift_amount: " << _shift_amount << " (range : "
+                                         << pow(2, 64 - _shift_amount) << ")\n";
                     seqan3::debug_stream << "______________________________________________\n";
+                }
+
+                size_t _min_hash, _max_hash;
+                size_t _n_different_hashes;
+
+                // run heuristic to size DA table
+                template<std::ranges::range text_t>
+                void estimate_hash_range(text_t text, float sample_coverage = 1)
+                {
+                    _min_hash = std::numeric_limits<size_t>::max();
+                    _max_hash = 0;
+                    std::unordered_set<size_t> hashes;
+
+                    for (auto h : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}}))
+                    {
+                        if (h < _min_hash)
+                            _min_hash = h;
+                        if (h > _max_hash)
+                            _max_hash = h;
+
+                        hashes.insert(h);
+                    }
+
+                    assert(hashes.size() >= 1);
+                    _n_different_hashes = hashes.size();
+                }
+
+                // construct hash table
+                template<std::ranges::range text_t>
+                void construct(text_t text)
+                {
+                    auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
+                    estimate_hash_range(text);
+
+                    _data.reserve(_max_hash - _min_hash);
+
+                    for (size_t i = 0; i <= (_max_hash - _min_hash); ++i)
+                        _data.emplace_back();
+
+                    position_t i = 0;
+                    for (auto h : hashes)
+                    {
+                        _data[h - _min_hash].push_back(i);
+                        i += 1;
+                    }
                 }
 
             public:
@@ -105,72 +145,8 @@ class kmer_index_element
                 template<std::ranges::range text_t>
                 kmer_hash_table(text_t text)
                 {
-                    auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
-
-                    _min_hash = std::numeric_limits<size_t>::max();
-                    _max_hash = 0;
-
-                    std::unordered_set<size_t> different_hashes;
-
-                    for (auto h : hashes)
-                    {
-                        if (h < _min_hash)
-                            _min_hash = h;
-
-                        if (h > _max_hash)
-                            _max_hash = h;
-
-                        different_hashes.insert(h);
-                    }
-
-                    assert(not different_hashes.empty());
-                    _n_different_hashes = different_hashes.size();
-
-                    auto hash_range = _max_hash - _min_hash;
-                    //seqan3::debug_stream << "hash_range = " << hash_range << " | n_hashes = " << different_hashes.size() << "\n";
-
-                    // mode 01: direct addressing
-                    if (different_hashes.size() >= 0.9 * hash_range)
-                    {
-                        _use_direct_addressing = true;
-                        _data.reserve(_max_hash - _min_hash);
-
-                        for (size_t i = 0; i <= hash_range; ++i)
-                            _data.emplace_back();
-
-                        position_t i = 0;
-                        for (auto h : hashes)
-                        {
-                            _data[h - _min_hash].push_back(i);
-                            i += 1;
-                        }
-                    }
-                    // mode 02: fibonacci hash table
-                    else
-                    {
-                        _use_direct_addressing = false;
-
-                        size_t n_hashes = different_hashes.size();
-                        _data.reserve(n_hashes);
-
-                        _shift_amount = 64 - std::log2l(n_hashes);
-                        _shift_amount -= 1;
-
-                        for (size_t i = 0; i <= n_hashes; ++i)
-                            _data.emplace_back();
-
-                        size_t i = 0;
-                        for (auto h : hashes)
-                        {
-                            seqan3::debug_stream << sizeof(_data[hash_hash(h)]) / 1e6 << " ) " << h << " | " << hash_hash(h) << "\n";
-                            _data[hash_hash(h)].push_back(i);
-                            i += 1;
-                        }
-
-                        seqan3::debug_stream << "done building\n";
-                    }
-
-                    print_hashtable();
+                    estimate_hash_range(text);
+                    construct(text);
                 }
 
                 std::vector<position_t> at(std::vector<alphabet_t> query) const
@@ -178,25 +154,16 @@ class kmer_index_element
                     assert(query.size() == k);
 
                     auto hash = hash_query<alphabet_t, k>(query);
-                    if (_use_direct_addressing)
-                    {
-                        if (hash < _min_hash or hash > _max_hash)
-                            return std::vector<position_t>{};
-                        else
-                            return _data.at(hash - _min_hash);
-                    }
-                    else
-                    {
-                        if (hash < _min_hash or hash > _max_hash)
-                            return std::vector<position_t>{};
 
-                        return _data.at(hash_hash(hash));
-                    }
-                }
+                    if (hash < _min_hash or hash > _max_hash)
+                        return std::vector<position_t>{};
+                    else
+                        return _data.at(hash - _min_hash);
+                };
         };
 
-        kmer_hash_table _data;
-        std::unordered_map<uint64_t, std::vector<uint32_t>> _map_data;
+        kmer_hash_table _da_data;
+        std::unordered_map<size_t, std::vector<position_t>> _map_data;
 
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
 
@@ -276,7 +243,7 @@ class kmer_index_element
             assert(query.size() == k);
 
             if (use_hashtable)
-                return _data.at(query);
+                return _da_data.at(query);
             else
             {
                 auto it = _map_data.find(hash_query<alphabet_t, k>(query));
@@ -343,7 +310,7 @@ class kmer_index_element
                     bool equal = true;
                     for (size_t j = 0; j < query.size(); ++j)
                     {
-                        if (i + j >= _first_kmer.size() || _first_kmer.at(i+j) != query.at(j))
+                        if (i + j >= _first_kmer.size() || _first_kmer.at(i + j) != query.at(j))
                         {
                             equal = false;
                             break;
@@ -368,6 +335,7 @@ class kmer_index_element
             return confirmed_positions;
         }
 
+
         // ctors
         kmer_index_element() = delete;
         ~kmer_index_element() = default;
@@ -379,7 +347,7 @@ class kmer_index_element
 
             if (use_hashtable)
             {
-                _data = kmer_hash_table{text};
+                _da_data = kmer_hash_table{text};
             }
             else
             {

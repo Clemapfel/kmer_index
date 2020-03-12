@@ -53,15 +53,18 @@ int main()
     for (size_t i = 0; i < 1; ++i)
     {
         // state not reset so new text everytime
-        auto text = input_generator<dna4, 1234>::generate_sequence(1000);
+        auto text = input_generator<dna4, 1234>::generate_sequence(1e6);
 
-        auto index = make_kmer_index<true, 5>(text);
+        auto da_index = make_kmer_index<true, 5>(text);
+        auto map_index = make_kmer_index<false, 5>(text);
         auto fm = fm_index(text);
 
         bool results_equal;
         try
         {
-             results_equal = (index.search(query).size() == search(query, fm).size());
+            auto fm_results = search(query, fm);
+            auto size = da_index.search(query).size() + map_index.search(query).size() + fm_results.size();
+             results_equal = (size - (fm_results.size() * 3)) == 0;
         }
         catch (std::out_of_range)
         {
@@ -74,7 +77,9 @@ int main()
             debug_stream << "results not equal for i = " << i << "\n";
             //debug_stream << text << "\n\n";
             debug_stream << "fm  : " << search(query, fm) << "\n";
-            debug_stream << "kmer: " << index.search(query) << "\n";
+            debug_stream << "da  : " << da_index.search(query) << "\n";
+            debug_stream << "map : " << map_index.search(query) << "\n";
+
             return 1;
         }
     }
