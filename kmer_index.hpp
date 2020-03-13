@@ -41,6 +41,8 @@ size_t hash_query(std::vector<alphabet_t> query)
      */
 }
 
+bool USE_DA_HEURISTIC = true;
+
 // represents a kmer index for a single k
 template<seqan3::alphabet alphabet_t, size_t k, typename position_t, bool use_hashtable=true>
 class kmer_index_element
@@ -73,7 +75,7 @@ class kmer_index_element
                         if (row.empty())
                             n_empty_slots++;
 
-                    seqan3::debug_stream << "Printing DA Hashtable for k = " << k << ", text_length = " << _text_length << "." << "\n";
+                    seqan3::debug_stream << "Printed DA Hashtable for k = " << k << ", text_length = " << _text_length << "." << "\n";
                     seqan3::debug_stream << "min hash: " << _min_hash << " , max hash: " << _max_hash
                                          << " (" << ((n_empty_slots / float(_data.size()))) * 100 << "% entries empty)\n";
 "\n";
@@ -87,16 +89,40 @@ class kmer_index_element
                 template<std::ranges::range text_t>
                 void estimate_hash_range(text_t text, float sample_coverage = 1)
                 {
+                    if (not USE_DA_HEURISTIC)
+                    {
+                        for (auto h : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}}))
+                        {
+                            _min_hash = h;
+                            _max_hash = h;
+                            break;
+                        }
+                        return;
+                    }
+
+                    /*
+                    double golden_ratio = 1.61803398875;
+                    size_t sample_length = 10*k;
+
+                    size_t n_chars_sampled = 0;
+                    size_t step = 0;
+                    while(n_chars_sampled < sample_coverage * text.size())
+                    {
+                        sample view::split
+                        step += (text.size() / golden_ratio) % text.size();
+                        n_chars_sampled += sample_length;
+
+                    }
+                    sample sequence of size 10*k;
+                    while (sample_coverage)
+                     */
+
                     _min_hash = std::numeric_limits<size_t>::max();
                     _max_hash = 0;
                     std::unordered_set<size_t> hashes;
 
                     for (auto h : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}}))
                     {
-                        _min_hash = h;
-                        _max_hash = h;
-                        break;
-
                         if (h < _min_hash)
                             _min_hash = h;
                         if (h > _max_hash)
@@ -153,7 +179,7 @@ class kmer_index_element
                     estimate_hash_range(text);
                     construct(text);
 
-                    print_hashtable();
+                    //print_hashtable();
                 }
 
                 std::vector<position_t> at(std::vector<alphabet_t> query) const
@@ -520,6 +546,7 @@ class kmer_index
                 // so k that's closest to query.size() should be chosen
             }
         }
+
 };
 
 template<auto first, auto... ks, std::ranges::range text_t>

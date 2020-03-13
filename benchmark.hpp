@@ -181,6 +181,7 @@ static void fm_construction(benchmark::State& state, benchmark_arguments input)
     state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
 }
 
+
 //#####################################################################################################################
 
 // function that can be expanded in fold expression

@@ -65,6 +65,9 @@ class input_generator
         // generate text that contains queries
         static std::vector<alphabet_t> const generate_text(size_t length, std::vector<std::vector<alphabet_t>> queries)
         {
+            if (queries.empty())
+                return generate_sequence(length);
+
             size_t max_length = 0;
             for (auto q : queries)
                 if (q.size() > max_length)
