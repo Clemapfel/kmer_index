@@ -377,7 +377,7 @@ class kmer_index_element
         kmer_index_element() = delete;
         ~kmer_index_element() = default;
 
-        <std::ranges::range text_t>
+        template<std::ranges::range text_t>
         void create(text_t && text)
         {
             _first_kmer = std::vector<alphabet_t>(text.begin(), text.begin() + k);
@@ -404,14 +404,16 @@ class kmer_index_element
 
                 //seqan3::debug_stream << _map_data << "\n";
             }
+
+            _mutex.unlock();
+
         }
 
         template<std::ranges::range text_t>
         kmer_index_element(text_t &&text)
         {
             _mutex.lock();
-            std::thread(&create, text);
-            _mutex.unlock();
+            std::thread thr(&detail::kmer_index_element<alphabet_t, k, position_t, use_hashtable>::create<text_t>, this, text);
         }
 
         // search any query
