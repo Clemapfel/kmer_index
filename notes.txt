@@ -1,3 +1,22 @@
+SSH:
+ssh clemenscords@andorra.imp.fu-berlin.de
+
+redwood	(mehr ram)
+lncrna (avx2)
+
+transfer files:
+
+[clem@birdnest] scp ./test.txt clemenscords@andorra.imp.fu-berlin.de:/home/mi/clemenscords/Transfer
+
+
+/srv/public
+/srv/hdd (redwood only)
+
+htop: check first
+
+login_agabi bescheid sagen
+
+
 Programming:
     set time stamp for each benchmark
     and record args for that time stamp in case gbenchmark doesn't

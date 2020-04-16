@@ -1,4 +1,4 @@
-data = read.csv("benchmark_out.csv")
+data = read.csv(paste(getwd(), "/source/benchmarks/csv_dumps/heuristics.csv", sep=""))
 heuristic = data[data$name== "heuristic",]
 no_heuristic = data[data$name=="no_heuristic",]
 plot(heuristic$k, heuristic$iterations, type="l", col="blue")

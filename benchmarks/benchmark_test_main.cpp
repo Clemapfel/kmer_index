@@ -3,7 +3,7 @@
 // Copyright (c) 2020 Clemens Cords. All rights reserved.
 //
 
-#include <benchmark.hpp>
+#include <benchmarks/benchmark.hpp>
 
 /* EXECUTABLE ARGUMENTS:
 --benchmark_format=console
@@ -26,6 +26,6 @@ int main(int argc, char** argv)
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
-    cleanup_csv("../source/benchmark_out_raw.csv");
+    //cleanup_csv();
 }
 

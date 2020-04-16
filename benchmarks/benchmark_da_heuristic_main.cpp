@@ -3,7 +3,7 @@
 // Copyright (c) 2020 Clemens Cords. All rights reserved.
 //
 
-#include <benchmark.hpp>
+#include <benchmarks/benchmark.hpp>
 
 // benchmark: kmer_index construction based on
 template<seqan3::alphabet alphabet_t, bool use_heuristic, size_t k>
@@ -23,8 +23,6 @@ static void kmer_construction_heuristic(benchmark::State& state, size_t text_siz
     state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
 }
 
-const std::string BENCHMARK_OUT_DIR = "../source/benchmarks/benchmark_out_raw.csv";
-
 template<size_t... ks>
 void register_all(size_t text_size)
 {
@@ -35,12 +33,14 @@ void register_all(size_t text_size)
 // main
 int main(int argc, char** argv)
 {
-    size_t text_size = size_t(1e3);
-    register_all<4, 5, 6, 7, 8, 9, 10, 11, 12>(text_size);
+    // --benchmark_format=console --benchmark_out=/srv/public/clemenscords/heuristic_out.csv --benchmark_out_format=csv --benchmark_repetitions=3 --benchmark_min_time=5
+
+    size_t text_size = size_t(1e5);
+    register_all<5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25>(text_size);
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
-    cleanup_csv(BENCHMARK_OUT_DIR);
+    std::cout << "finished running benchmarks.\n";
 }
 

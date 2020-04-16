@@ -26,7 +26,7 @@ int main(int argc, char** argv)
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
-    cleanup_csv("/srv/public/clemenscords/benchmark_out_raw.csv");
+    std::cout << "finished running benchmarks.\n";
 }
 
 /*
