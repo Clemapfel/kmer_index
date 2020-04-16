@@ -18,50 +18,50 @@
 
 using namespace seqan3;
 
-struct safe_print
+uint8_t _shift_amount;
+size_t hash_hash(size_t hash)
 {
-    static void print(std::string str)
-    {
-        _mutex.lock();
-        std::cout << str << "\n";
-        _mutex.unlock();
-    }
-
-    private:
-        static inline std::mutex _mutex{};
-};
-
-
-
-void thread_practice()
-{
-    auto text = input_generator<dna4>::generate_sequence(100000);
-
-
-    // create vector for operations
-    const size_t vec_size = 10000;
-    std::vector<int> vec;
-    vec.reserve(vec_size);
-
-    for (size_t i = 0; i < vec_size; ++i)
-    {
-        vec.emplace_back(rand());
-    }
-
-    std::vector<std::thread> _threads;
-    auto n_threads = std::thread::hardware_concurrency();
-    std::cout << n_threads << " threads supported\n\n";
-
-    for (size_t i = 0; i < n_threads; ++i)
-    {
-        _threads.emplace_back(&thread_print);
-        _names[_threads.back().get_id()] = "thread " + std::to_string(i);
-    }
-
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    return (hash * 11400714819323198485llu) >> _shift_amount;
 }
 
 int main()
 {
-    thread_practice();
+    auto query = "ACGT"_dna4;
+    std::cout << "starting test...\n";
+
+    for (size_t i = 0; i < 1; ++i)
+    {
+        // state not reset so new text everytime
+        auto text = input_generator<dna4, 1234>::generate_sequence(1e3);
+
+        auto da_index = make_kmer_index<true, 5, 6, 7>(text);
+        auto map_index = make_kmer_index<false, 5, 6, 7>(text);
+        auto fm = fm_index(text);
+
+        bool results_equal;
+        try
+        {
+            auto fm_results = search(query, fm);
+            auto size = da_index.search(query).size() + map_index.search(query).size() + fm_results.size();
+             results_equal = (size - (fm_results.size() * 3)) == 0;
+        }
+        catch (std::out_of_range)
+        {
+            results_equal = false;
+            std::cerr << "out of range exception\n";
+        }
+
+        if (not results_equal)
+        {
+            debug_stream << "results not equal for i = " << i << "\n";
+            //debug_stream << text << "\n\n";
+            debug_stream << "fm  : " << search(query, fm) << "\n";
+            debug_stream << "da  : " << da_index.search(query) << "\n";
+            debug_stream << "map : " << map_index.search(query) << "\n";
+
+            return 1;
+        }
+    }
+
+    std::cout << "test passed succesfully.";
 }

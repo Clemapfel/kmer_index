@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <unordered_set>
 #include <limits>
+#include <thread>
+#include <mutex>
 
 namespace detail
 {
@@ -167,6 +169,8 @@ class kmer_index_element
                         _data[h - _min_hash].push_back(i);
                         i += 1;
                     }
+
+                    seqan3::debug_stream << "kmer element for k = " << k << " finished construction.\n";
                 }
 
             public:
@@ -178,8 +182,6 @@ class kmer_index_element
                 {
                     estimate_hash_range(text);
                     construct(text);
-
-                    //print_hashtable();
                 }
 
                 std::vector<position_t> at(std::vector<alphabet_t> query) const
@@ -368,13 +370,15 @@ class kmer_index_element
             return confirmed_positions;
         }
 
+        // used to signal to multi kmer index during construction
+        std::mutex _mutex{};
 
         // ctors
         kmer_index_element() = delete;
         ~kmer_index_element() = default;
 
-        template<std::ranges::range text_t>
-        kmer_index_element(text_t &&text)
+        <std::ranges::range text_t>
+        void create(text_t && text)
         {
             _first_kmer = std::vector<alphabet_t>(text.begin(), text.begin() + k);
 
@@ -400,6 +404,14 @@ class kmer_index_element
 
                 //seqan3::debug_stream << _map_data << "\n";
             }
+        }
+
+        template<std::ranges::range text_t>
+        kmer_index_element(text_t &&text)
+        {
+            _mutex.lock();
+            std::thread(&create, text);
+            _mutex.unlock();
         }
 
         // search any query
@@ -490,6 +502,11 @@ class kmer_index
         kmer_index(text_t && text)
             : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>(text)...
         {
+            // wait for elements to finish
+            (index<ks>::_mutex.lock(), ...);
+            (index<ks>::_mutex.unlock(), ...);
+
+            seqan3::debug_stream << "kmer index finished construction.\n";
         }
 
         // exact search
