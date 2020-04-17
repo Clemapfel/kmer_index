@@ -374,8 +374,14 @@ class kmer_index_element
         std::mutex _mutex{};
 
         // ctors
-        kmer_index_element() = delete;
         ~kmer_index_element() = default;
+
+        // pauses until mutex is unlocked at the end of create
+        void wait_for_create_to_finish()
+        {
+            _mutex.lock();
+            _mutex.unlock();
+        }
 
         template<std::ranges::range text_t>
         void create(text_t && text)
@@ -409,12 +415,19 @@ class kmer_index_element
 
         }
 
-        template<std::ranges::range text_t>
-        kmer_index_element(text_t &&text)
+        kmer_index_element()
         {
             _mutex.lock();
-            std::thread thr(&detail::kmer_index_element<alphabet_t, k, position_t, use_hashtable>::create<text_t>, this, text);
         }
+
+        /*
+        // CTOR
+        template<std::ranges::range text_t>
+        kmer_index_element(text_t && text)
+        {
+            _mutex.lock();
+            auto thr = std::thread([&]{this->create(std::forward<text_t>(text));});
+        }*/
 
         // search any query
         std::vector<position_t> search(std::vector<alphabet_t> query) const
@@ -502,11 +515,15 @@ class kmer_index
         // ctor
         template<std::ranges::range text_t>
         kmer_index(text_t && text)
-            : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>(text)...
+            : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>()...
         {
-            // wait for elements to finish
-            (index<ks>::_mutex.lock(), ...);
-            (index<ks>::_mutex.unlock(), ...);
+            std::vector<std::thread> threads;
+
+            auto create_lambda = [&]<size_t k>(text_t t){index<k>::create(std::forward<text_t>(t));};
+            (threads.emplace_back(create_lambda(text)<ks>), ...);
+
+
+            (index<ks>::wait_for_create_to_finish(), ...);
 
             seqan3::debug_stream << "kmer index finished construction.\n";
         }
