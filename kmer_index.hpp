@@ -384,7 +384,7 @@ class kmer_index_element
         }
 
         template<std::ranges::range text_t>
-        void create(text_t && text)
+        void create(text_t & text)
         {
             _first_kmer = std::vector<alphabet_t>(text.begin(), text.begin() + k);
 
@@ -512,6 +512,7 @@ class kmer_index
         }
 
     public:
+
         // ctor
         template<std::ranges::range text_t>
         kmer_index(text_t && text)
@@ -519,10 +520,7 @@ class kmer_index
         {
             std::vector<std::thread> threads;
 
-            auto create_lambda = [&]<size_t k>(text_t t){index<k>::create(std::forward<text_t>(t));};
-            (threads.emplace_back(create_lambda(text)<ks>), ...);
-
-
+            (threads.emplace_back(&index<ks>::template create<text_t>, static_cast<index<ks>*>(this), std::ref(text)), ...);
             (index<ks>::wait_for_create_to_finish(), ...);
 
             seqan3::debug_stream << "kmer index finished construction.\n";
