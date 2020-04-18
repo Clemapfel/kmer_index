@@ -22,6 +22,7 @@
 #include <limits>
 #include <thread>
 #include <mutex>
+#include <unordered_map>
 
 namespace detail
 {
@@ -101,23 +102,6 @@ class kmer_index_element
                         }
                         return;
                     }
-
-                    /*
-                    double golden_ratio = 1.61803398875;
-                    size_t sample_length = 10*k;
-
-                    size_t n_chars_sampled = 0;
-                    size_t step = 0;
-                    while(n_chars_sampled < sample_coverage * text.size())
-                    {
-                        sample view::split
-                        step += (text.size() / golden_ratio) % text.size();
-                        n_chars_sampled += sample_length;
-
-                    }
-                    sample sequence of size 10*k;
-                    while (sample_coverage)
-                     */
 
                     _min_hash = std::numeric_limits<size_t>::max();
                     _max_hash = 0;
@@ -370,17 +354,14 @@ class kmer_index_element
             return confirmed_positions;
         }
 
-        // used to signal to multi kmer index during construction
-        std::mutex _mutex{};
-
         // ctors
         ~kmer_index_element() = default;
+        kmer_index_element() = default;
 
-        // pauses until mutex is unlocked at the end of create
-        void wait_for_create_to_finish()
+        template<std::ranges::range text_t>
+        kmer_index_element(text_t & text)
         {
-            _mutex.lock();
-            _mutex.unlock();
+            create(text);
         }
 
         template<std::ranges::range text_t>
@@ -392,15 +373,12 @@ class kmer_index_element
             {
                 _da_data = kmer_hash_table{text};
             }
-            else
-            {
+            else {
                 auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
 
                 position_t i = 0;
-                for (auto h : hashes)
-                {
-                    if (_map_data.find(h) == _map_data.end())
-                    {
+                for (auto h : hashes) {
+                    if (_map_data.find(h) == _map_data.end()) {
                         _map_data.insert(std::make_pair(h, std::vector<position_t>({i})));
                     }
                     else
@@ -410,24 +388,7 @@ class kmer_index_element
 
                 //seqan3::debug_stream << _map_data << "\n";
             }
-
-            _mutex.unlock();
-
         }
-
-        kmer_index_element()
-        {
-            _mutex.lock();
-        }
-
-        /*
-        // CTOR
-        template<std::ranges::range text_t>
-        kmer_index_element(text_t && text)
-        {
-            _mutex.lock();
-            auto thr = std::thread([&]{this->create(std::forward<text_t>(text));});
-        }*/
 
         // search any query
         std::vector<position_t> search(std::vector<alphabet_t> query) const
@@ -518,16 +479,20 @@ class kmer_index
         kmer_index(text_t && text)
             : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>()...
         {
+            // run each kmer_index_element create in paralell
             std::vector<std::thread> threads;
 
             (threads.emplace_back(&index<ks>::template create<text_t>, static_cast<index<ks>*>(this), std::ref(text)), ...);
-            (index<ks>::wait_for_create_to_finish(), ...);
+
+            // wait for creates to finish
+            for (auto& thr : threads)
+                thr.join();
 
             seqan3::debug_stream << "kmer index finished construction.\n";
         }
 
         // exact search
-        std::vector<position_t> search(std::vector<alphabet_t> query) const
+        std::vector<position_t> search_seq(std::vector<alphabet_t> query) const
         {
             if (_all_ks.size() == 1)
                 return (index<ks>::search(query), ...); // expands to single call
@@ -579,6 +544,33 @@ class kmer_index
                 // the bigger is the set of kmers that have to be searched as possiblities
                 // so k that's closest to query.size() should be chosen
             }
+        }
+
+        // serach multiple queries in paralell
+        std::vector<std::vector<position_t>> search_par(std::vector<std::vector<alphabet_t>> queries) const
+        {
+            std::vector<std::vector<position_t>> results;
+            results.reserve(queries.size());
+            results.assign(queries.size(), std::vector<position_t>());
+
+            seqan3::debug_stream << "setup\n";
+
+            std::vector<std::thread> threads;
+
+            size_t i = 0;
+            for (auto q : queries)
+            {
+                seqan3::debug_stream << "starting serach " << std::to_string(i) << "\n";
+                threads.emplace_back([&](){ results[i] = search_seq(q); });
+                i++;
+            }
+
+            for (auto& thr : threads)
+                thr.join();
+
+            seqan3::debug_stream << "search done\n";
+
+            return results;
         }
 
 };

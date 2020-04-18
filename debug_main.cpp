@@ -18,16 +18,10 @@
 
 using namespace seqan3;
 
-uint8_t _shift_amount;
-size_t hash_hash(size_t hash)
-{
-    return (hash * 11400714819323198485llu) >> _shift_amount;
-}
-
 int main()
 {
-    auto query = "ACGT"_dna4;
-    std::cout << "starting test...\n";
+    std::vector<std::vector<dna4>> queries = input_generator<dna4, 1234>::generate_queries(100, 6);
+    debug_stream << "starting test...\n";
 
     for (size_t i = 0; i < 1; ++i)
     {
@@ -35,14 +29,35 @@ int main()
         auto text = input_generator<dna4, 1234>::generate_sequence(1e3);
 
         auto da_index = make_kmer_index<true, 5, 6, 7>(text);
-        auto map_index = make_kmer_index<false, 5, 6, 7>(text);
-        auto fm = fm_index(text);
+        //auto map_index = make_kmer_index<false, 5, 6, 7>(text);
+        //auto fm = fm_index(text);
 
+        // search in paralell
+        auto paralell_results = da_index.search_par(queries);
+
+        debug_stream << "paralell done.\n";
+
+        // search in sequence
+        std::vector<std::vector<unsigned int>> sequence_results;
+        size_t in = 0;
+        for (auto& q : queries) {
+            debug_stream << "starting serach " << std::to_string(in++) << "\n";
+            da_index.search_seq(q);
+
+            TODO: why does it work in paralell but not in sequence?
+
+        }
+
+        debug_stream << "seq done.\n";
+
+        std::cout << (paralell_results == sequence_results ? "test passed" : "test failed");
+
+        /*
         bool results_equal;
         try
         {
-            auto fm_results = search(query, fm);
-            auto size = da_index.search(query).size() + map_index.search(query).size() + fm_results.size();
+            //auto fm_results = search(query, fm);
+             auto size = da_index.search(query).size() + map_index.search(query).size() + fm_results.size();
              results_equal = (size - (fm_results.size() * 3)) == 0;
         }
         catch (std::out_of_range)
@@ -61,7 +76,8 @@ int main()
 
             return 1;
         }
+         */
     }
 
-    std::cout << "test passed succesfully.";
+    debug_stream << "test passed succesfully.";
 }
