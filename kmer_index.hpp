@@ -449,7 +449,7 @@ class kmer_index_element
 
 template<seqan3::alphabet alphabet_t, typename position_t, bool use_hashtable, size_t... ks>
 class kmer_index
-        : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>...
+        : protected detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>...
 {
     private:
         template<size_t k>
@@ -492,7 +492,7 @@ class kmer_index
         }
 
         // exact search
-        std::vector<position_t> search_seq(std::vector<alphabet_t> query) const
+        std::vector<position_t> search(std::vector<alphabet_t> query) const
         {
             if (_all_ks.size() == 1)
                 return (index<ks>::search(query), ...); // expands to single call
@@ -547,28 +547,29 @@ class kmer_index
         }
 
         // serach multiple queries in paralell
-        std::vector<std::vector<position_t>> search_par(std::vector<std::vector<alphabet_t>> queries) const
+        std::vector<std::vector<position_t>> search(std::vector<std::vector<alphabet_t>> queries) const
         {
+            using namespace seqan3;
+
             std::vector<std::vector<position_t>> results;
             results.reserve(queries.size());
             results.assign(queries.size(), std::vector<position_t>());
-
-            seqan3::debug_stream << "setup\n";
 
             std::vector<std::thread> threads;
 
             size_t i = 0;
             for (auto q : queries)
             {
-                seqan3::debug_stream << "starting serach " << std::to_string(i) << "\n";
-                threads.emplace_back([&](){ results[i] = search_seq(q); });
+                auto& current = results[i];
+                threads.emplace_back([&]()
+                    {
+                        current = search(q);
+                    });
                 i++;
             }
 
             for (auto& thr : threads)
                 thr.join();
-
-            seqan3::debug_stream << "search done\n";
 
             return results;
         }
