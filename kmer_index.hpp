@@ -561,7 +561,7 @@ class kmer_index
             for (auto q : queries)
             {
                 auto& current = results[i];
-                threads.emplace_back([&]()
+                threads.emplace_back([this, q, &current]()
                     {
                         current = search(q);
                     });
