@@ -18,28 +18,28 @@ void thread_pool::setup_threads(size_t n_threads)
             {
                 while (true)
                 {
-                  std::unique_lock<std::mutex> queue_lock{_task_queue.get_mutex()};
+                    std::unique_lock<std::mutex> lock{_pool_mutex};
 
-                  _task_cv.wait(queue_lock, [&]() -> bool {
+                    _task_cv.wait(lock, [&]() -> bool {
                       return !_task_queue.empty() || _currently_aborting;
-                  });
+                    });
 
-                  // shutdown by DTOR
-                  if (_currently_aborting and _task_queue.empty())
+                    // shutdown by DTOR
+                    if (_currently_aborting and _task_queue.empty())
                       return;
 
-                  // grab task and execute
-                  auto task = _task_queue.pop_front();
-                  queue_lock.unlock();
-                  queue_lock.release();
+                    // grab task and execute
+                    auto task = _task_queue.pop_front();
+                    lock.unlock();
+                    lock.release();
 
-                  if (task)   // queue returns optional
+                    if (task)   // queue returns optional
                       task.value()->operator()();
-
-                  else continue;
                 }
             });
     }
+
+    sync_print("finished setting up.");
 
 }
 
@@ -83,6 +83,5 @@ void thread_pool::resize(size_t n_threads)
 
 void thread_pool::wait_to_finish()
 {
-    for (auto& thr : _threads)
-        thr.join();
+    // wait until queue is empty
 }
