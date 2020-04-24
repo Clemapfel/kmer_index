@@ -10,37 +10,39 @@ void thread_pool::setup_threads(size_t n_threads)
 {
     assert(_threads.empty());
 
-    std::lock_guard<std::mutex> lock{_task_queue.get_mutex()};  // redundancy < safety
-
     for (size_t i = 0; i < n_threads; ++i)
     {
         _threads.emplace_back([&]()
             {
+                std::unique_lock<std::mutex> lock{_task_mutex, std::defer_lock};
+
                 while (true)
                 {
-                    std::unique_lock<std::mutex> lock{_pool_mutex};
-
+                    lock.lock();
+                    sync_print("waiting for task cv...");
                     _task_cv.wait(lock, [&]() -> bool {
                       return !_task_queue.empty() || _currently_aborting;
                     });
+
+                    sync_print("finished waiting");
 
                     // shutdown by DTOR
                     if (_currently_aborting and _task_queue.empty())
                       return;
 
                     // grab task and execute
-                    auto task = _task_queue.pop_front();
-                    lock.unlock();
-                    lock.release();
+                    auto task = std::move(_task_queue.front()); // transfers ownership
+                    _task_queue.pop();
 
-                    if (task)   // queue returns optional
-                      task.value()->operator()();
+                    lock.unlock();
+
+                    task->operator()();
+                    sync_print("done executing task");
                 }
             });
     }
 
     sync_print("finished setting up.");
-
 }
 
 thread_pool::thread_pool(size_t n_threads)
@@ -57,14 +59,12 @@ thread_pool::~thread_pool()
 
     for (auto& thr : _threads)
         thr.join();
-
-    _task_queue.abort();
 }
 
 // halt execution, reinit threads, then resume with leftover queue
 void thread_pool::resize(size_t n_threads)
 {
-    std::unique_lock<std::mutex> lock{_task_queue.get_mutex()};
+    std::unique_lock<std::mutex> lock{_task_mutex, std::defer_lock};
     lock.lock();
 
     _currently_aborting = true;
@@ -83,5 +83,5 @@ void thread_pool::resize(size_t n_threads)
 
 void thread_pool::wait_to_finish()
 {
-    // wait until queue is empty
+
 }

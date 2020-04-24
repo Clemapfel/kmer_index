@@ -9,6 +9,7 @@
 #include <chrono>
 #include <memory>
 #include <future>
+#include <queue>
 
 #include "thread_safe_queue.hpp"
 #include "syncstream.hpp"
@@ -36,6 +37,7 @@ struct thread_pool
                 virtual void operator()() override
                 {
                     _function();
+                    sync_print("called operator()");
                 }
 
             private:
@@ -52,13 +54,12 @@ struct thread_pool
         // ###########################
 
         // queue for storing tasks (tasks = wrapper std::packaged_task)
-        thread_safe_queue<std::unique_ptr<_task_wrapper_base>> _task_queue;
+        std::queue<std::unique_ptr<_task_wrapper_base>> _task_queue;
 
         std::condition_variable _task_cv;
         std::mutex _task_mutex;
 
         std::vector<std::thread> _threads;
-        std::mutex _pool_mutex;
 
         bool _currently_aborting = false;
 
@@ -76,15 +77,18 @@ struct thread_pool
             std::packaged_task<std::invoke_result_t<function_t, args_t...>()> to_wrap(std::bind(f, args...));
 
             auto future = to_wrap.get_future();
-            _task_queue.emplace_back(wrap([task(std::move(to_wrap))]() mutable {task();}));
+
+            std::unique_lock<std::mutex> lock(_task_mutex, std::defer_lock);
+            lock.lock();
+
+            _task_queue.emplace(wrap([task(std::move(to_wrap))]() mutable {task();}));
             // move into lambda scope, wrap and store in queue
             // lambda needs to be mutable to modify task even though it's captured by value (moved)
-
+            lock.unlock();
 
             sync_print("pushed new task. queue: " + std::to_string(_task_queue.size()));
 
             _task_cv.notify_one();
-
             return std::move(future);
         }
 

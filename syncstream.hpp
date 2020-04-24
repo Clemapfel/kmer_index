@@ -8,10 +8,13 @@
 #include <thread>
 
 inline std::map<std::thread::id, size_t> _thread_ids;
+inline std::mutex _stream_mutex;
 
 template<typename T>
 void sync_print(T t)
 {
+    std::lock_guard<std::mutex> lock(_stream_mutex);
+
     auto id = std::this_thread::get_id();
 
     if (_thread_ids.find(id) == _thread_ids.end())

@@ -27,8 +27,10 @@ int main()
 {
     thread_pool pool{8};
 
+    std::vector<std::future<void>> futures;
     for (size_t i = 0; i < 64; ++i)
-        auto fut = pool.execute(sync_print<std::string>, "success #" + std::to_string(i));
+        futures.emplace_back(pool.execute(sync_print<std::string>, "success #" + std::to_string(i)));
 
-    pool.wait_to_finish();
+    while(true)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
