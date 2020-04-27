@@ -28,8 +28,12 @@ int main()
     thread_pool pool{8};
 
     std::vector<std::future<void>> futures;
-    for (size_t i = 0; i < 64; ++i)
+    for (size_t i = 0; i < 6000; ++i)
         futures.emplace_back(pool.execute(sync_print<std::string>, "success #" + std::to_string(i)));
+
+    std::this_thread::sleep_for(std::chrono::microseconds(1));
+
+    //pool.resize(16);
 
     for (auto& f : futures)
         f.get();

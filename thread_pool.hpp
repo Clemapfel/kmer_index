@@ -56,16 +56,12 @@ struct thread_pool
         std::queue<std::unique_ptr<_task_wrapper_base>> _task_queue;
 
         std::condition_variable _task_cv;
-        std::mutex _task_mutex;
         std::mutex _queue_mutex;
-
-        std::condition_variable _wait_to_finish_cv;
-
-
 
         std::vector<std::thread> _threads;
 
         bool _currently_aborting = false;
+        bool _currently_paused = false;
 
         void setup_threads(size_t);
 
@@ -76,13 +72,13 @@ struct thread_pool
         void resize(size_t n_threads);
 
         template<typename function_t, typename... args_t>
-        auto execute(function_t&& f, args_t... args) -> std::future<std::invoke_result_t<function_t, args_t...>>&&
+        auto execute(function_t&& f, args_t... args)// -> std::future<std::invoke_result_t<function_t, args_t...>>&&
         {
             std::packaged_task<std::invoke_result_t<function_t, args_t...>()> to_wrap(std::bind(f, args...));
 
             auto future = to_wrap.get_future();
 
-            std::unique_lock<std::mutex> lock(_task_mutex, std::defer_lock);
+            std::unique_lock<std::mutex> lock(_queue_mutex, std::defer_lock);
             lock.lock();
 
             _task_queue.emplace(wrap([task(std::move(to_wrap))]() mutable {task();}));
