@@ -35,10 +35,16 @@ int main()
 
     pool.resize(16);
 
-    for (size_t i = 0; i < 6000; ++i)
-        futures.emplace_back(pool.execute(sync_print<std::string>, "success #" + std::to_string(i)));
+    std::vector<std::future<int>> futures_2;
+    for (size_t i = 0; i < 300; ++i)
+        futures_2.emplace_back(pool.execute([]() -> int {return rand();}));
 
     for (auto& f : futures)
         f.get();
-    //pool.wait_to_finish();
+
+    int sum = 0;
+    for (auto& f : futures_2)
+        sum += f.get();
+
+    sync_print(sum);
 }

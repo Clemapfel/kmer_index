@@ -12,20 +12,6 @@ inline std::mutex _stream_mutex;
 
 inline size_t n_messages = 0;
 
-inline void sync_print(std::string s)
-{
-    std::lock_guard<std::mutex> lock(_stream_mutex);
-
-    auto id = std::this_thread::get_id();
-
-    if (_thread_ids.find(id) == _thread_ids.end())
-        _thread_ids.insert(std::make_pair(id, _thread_ids.size()));
-
-    auto out = "[" + std::to_string(_thread_ids.at(id)) + "] " + s + "\n";
-
-    std::cout << out;
-}
-
 template<typename T>
 void sync_print(T t)
 {
