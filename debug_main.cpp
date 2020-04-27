@@ -31,6 +31,7 @@ int main()
     for (size_t i = 0; i < 64; ++i)
         futures.emplace_back(pool.execute(sync_print<std::string>, "success #" + std::to_string(i)));
 
-    while(true)
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    for (auto& f : futures)
+        f.get();
+    //pool.wait_to_finish();
 }

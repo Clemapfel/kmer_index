@@ -16,6 +16,8 @@
 
 struct thread_pool
 {
+    // reference used: https://codereview.stackexchange.com/questions/221626/c17-thread-pool
+
     private:
         // callable wrapper for storing functions in thread pool queue
         // abstract class so unique_ptr can hold wrapper with type erasure
@@ -37,7 +39,6 @@ struct thread_pool
                 virtual void operator()() override
                 {
                     _function();
-                    sync_print("called operator()");
                 }
 
             private:
@@ -51,13 +52,16 @@ struct thread_pool
             return std::unique_ptr<_task_wrapper_base>(new _task_wrapper<function_t>(std::forward<function_t>(function)));
         }
 
-        // ###########################
-
-        // queue for storing tasks (tasks = wrapper std::packaged_task)
+        // queue for storing tasks
         std::queue<std::unique_ptr<_task_wrapper_base>> _task_queue;
 
         std::condition_variable _task_cv;
         std::mutex _task_mutex;
+        std::mutex _queue_mutex;
+
+        std::condition_variable _wait_to_finish_cv;
+
+
 
         std::vector<std::thread> _threads;
 
@@ -86,8 +90,6 @@ struct thread_pool
             // lambda needs to be mutable to modify task even though it's captured by value (moved)
             lock.unlock();
 
-            sync_print("pushed new task. queue: " + std::to_string(_task_queue.size()));
-
             _task_cv.notify_one();
             return std::move(future);
         }
@@ -97,6 +99,5 @@ struct thread_pool
 };
 
 // references:
-// https://codereview.stackexchange.com/questions/221626/c17-thread-pool
 // https://github.com/vit-vit/ctpl
 // https://livebook.manning.com/book/c-plus-plus-concurrency-in-action/chapter-9/17

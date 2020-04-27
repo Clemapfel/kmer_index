@@ -32,7 +32,7 @@ struct thread_safe_queue
         }
 
         template<typename... args_t>
-        void emplace_back(args_t... args)
+        void emplace(args_t... args)
         {
             if (_currently_aborting)
                 return;
@@ -42,7 +42,7 @@ struct thread_safe_queue
             }
         }
 
-        std::optional<T> pop_front()
+        std::optional<T> pop()
         {
             std::lock_guard<std::mutex> lock(_insert_mutex);
 
