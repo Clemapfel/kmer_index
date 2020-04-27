@@ -33,7 +33,10 @@ int main()
 
     std::this_thread::sleep_for(std::chrono::microseconds(1));
 
-    //pool.resize(16);
+    pool.resize(16);
+
+    for (size_t i = 0; i < 6000; ++i)
+        futures.emplace_back(pool.execute(sync_print<std::string>, "success #" + std::to_string(i)));
 
     for (auto& f : futures)
         f.get();

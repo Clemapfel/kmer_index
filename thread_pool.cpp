@@ -10,23 +10,28 @@ void thread_pool::setup_threads(size_t n_threads)
 {
     assert(_threads.empty());
 
-    // lock during setup so threads start at the same time (waiting in line c.f. just below)
-    std::lock_guard<std::mutex> lock(_queue_mutex);
+    sync_print("starting setup");
 
+    // lock during setup so threads start at the same time (waiting in line c.f. just below)
     for (size_t i = 0; i < n_threads; ++i)
     {
         _threads.emplace_back([&]()
             {
-                std::unique_lock<std::mutex> queue_lock{_queue_mutex, std::defer_lock}; // c.f. here
+                std::unique_lock<std::mutex> queue_lock{_queue_mutex, std::defer_lock};
 
                 while (true)
                 {
                     queue_lock.lock();
 
-                    std::unique_lock<std::mutex> cv_lock(_queue_mutex, std::defer_lock);
-                    _task_cv.wait(cv_lock, [&]() -> bool {
-                      return !_task_queue.empty() || _currently_aborting;
+                    _task_cv.wait(queue_lock, [&]() -> bool {
+                      return _skip_to_return || !_task_queue.empty() || _currently_aborting;
                     });
+
+                    if (_skip_to_return)
+                    {
+                        sync_print("shutting down");
+                        return;
+                    }
 
                     // shutdown by DTOR
                     if (_currently_aborting and _task_queue.empty())
@@ -70,6 +75,21 @@ thread_pool::~thread_pool()
 // halt execution, reinit threads, then resume with leftover queue
 void thread_pool::resize(size_t n_threads)
 {
+    sync_print("starting resize");
+
+    _skip_to_return = true;
+    _task_cv.notify_all();
+
+    for (auto& thr : _threads)
+        thr.join();
+
+    sync_print("all_joined");
+
+    _skip_to_return = false;
+
+    _threads.clear();
+    setup_threads(n_threads);
+
     /*
     std::unique_lock<std::mutex> lock{_task_mutex, std::defer_lock};
     lock.lock();

@@ -58,10 +58,12 @@ struct thread_pool
         std::condition_variable _task_cv;
         std::mutex _queue_mutex;
 
+        std::condition_variable _pause_cv;
+
         std::vector<std::thread> _threads;
 
         bool _currently_aborting = false;
-        bool _currently_paused = false;
+        bool _skip_to_return = false;
 
         void setup_threads(size_t);
 
