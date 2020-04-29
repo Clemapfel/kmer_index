@@ -23,6 +23,7 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
+#include "thread_pool.hpp"
 
 namespace detail
 {
@@ -472,23 +473,33 @@ class kmer_index
             return result;
         }
 
+        static size_t _n_threads;
+
     public:
+
+        // set number of concurrent threads used for search and construction.
+        // Defaults to std::thread::hardware_concurrency
+        static void set_thread_count(size_t n_threads)
+        {
+            assert(n_threads > 0);
+            _n_threads = n_threads;
+        }
 
         // ctor
         template<std::ranges::range text_t>
         kmer_index(text_t && text)
             : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>()...
         {
-            // run each kmer_index_element create in paralell
-            std::vector<std::thread> threads;
+            auto pool = thread_pool{std::thread::hardware_concurrency()};
 
-            (threads.emplace_back(&index<ks>::template create<text_t>, static_cast<index<ks>*>(this), std::ref(text)), ...);
+            std::vector<std::future<void>> futures;
 
-            // wait for creates to finish
-            for (auto& thr : threads)
-                thr.join();
+            // use multiple threads to build index elements
+            (futures.emplace_back(pool.execute(&index<ks>::template create<text_t>, static_cast<index<ks>*>(this), std::ref(text))), ...);
 
-            seqan3::debug_stream << "kmer index finished construction.\n";
+            // wait to finish
+            for (auto& f : futures)
+                f.get();
         }
 
         // exact search
@@ -551,6 +562,21 @@ class kmer_index
         {
             using namespace seqan3;
 
+            auto pool = thread_pool{std::thread::hardware_concurrency()};
+            std::vector<std::future<std::vector<position_t>>> futures;
+
+            for (auto& q : queries)
+                futures.emplace_back(pool.execute(this->search, q));
+
+            // wait to finish
+            std::vector<std::vector<position_t>> output;
+            for (auto& f : futures)
+                output.emplace_back(f.get());
+
+            return output;
+
+            /*
+
             std::vector<std::vector<position_t>> results;
             results.reserve(queries.size());
             results.assign(queries.size(), std::vector<position_t>());
@@ -572,6 +598,7 @@ class kmer_index
                 thr.join();
 
             return results;
+             */
         }
 
 };

@@ -10,9 +10,6 @@ void thread_pool::setup_threads(size_t n_threads)
 {
     assert(_threads.empty());
 
-    //sync_print("starting setup");
-
-    // lock during setup so threads start at the same time (waiting in line c.f. just below)
     for (size_t i = 0; i < n_threads; ++i)
     {
         _threads.emplace_back([&]()
@@ -24,10 +21,11 @@ void thread_pool::setup_threads(size_t n_threads)
                     queue_lock.lock();
 
                     _task_cv.wait(queue_lock, [&]() -> bool {
-                      return _skip_to_return || !_task_queue.empty() || _currently_aborting;
+                      return _paused_for_resizing || !_task_queue.empty() || _currently_aborting;
                     });
 
-                    if (_skip_to_return)
+                    // shutdown by resize()
+                    if (_paused_for_resizing)
                     {
                         //sync_print("shutting down");
                         return;
@@ -41,11 +39,11 @@ void thread_pool::setup_threads(size_t n_threads)
                     }
 
                     // grab task and execute
-                    auto task = std::move(_task_queue.front()); // transfers ownership
-
+                    auto task = std::move(_task_queue.front());
                     _task_queue.pop();
 
                     queue_lock.unlock();
+
                     task->operator()();
                 }
             });
@@ -54,15 +52,17 @@ void thread_pool::setup_threads(size_t n_threads)
 
 thread_pool::thread_pool(size_t n_threads)
 {
+    assert(n_threads > 0);
+
     _threads.reserve(n_threads);
     setup_threads(n_threads);
 }
 
-// block new executes, work through queue
 thread_pool::~thread_pool()
 {
     //sync_print("starting dtor");
 
+    // work through current queue until empty, then abort
     _currently_aborting = true;
     _task_cv.notify_all();
 
@@ -77,7 +77,7 @@ void thread_pool::resize(size_t n_threads)
 {
     //sync_print("starting resize");
 
-    _skip_to_return = true;
+    _paused_for_resizing = true;
     _task_cv.notify_all();
 
     for (auto& thr : _threads)
@@ -85,7 +85,7 @@ void thread_pool::resize(size_t n_threads)
 
     //sync_print("all_joined");
 
-    _skip_to_return = false;
+    _paused_for_resizing = false;
 
     _threads.clear();
     setup_threads(n_threads);

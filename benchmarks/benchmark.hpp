@@ -14,7 +14,7 @@
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/aminoacid/all.hpp>
 #include <seqan3/alphabet/nucleotide/all.hpp>
-#include <seqan3/search/algorithm/search.hpp>
+#include <seqan3/search/search.hpp>
 #include <seqan3/search/fm_index/fm_index.hpp>
 #include <seqan3/std/type_traits>
 
@@ -150,7 +150,6 @@ static void kmer_construction(benchmark::State& state, benchmark_arguments input
     state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
 }
 
-/*
 // benchmark: multi_kmer construction
 template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
 static void multi_kmer_search(benchmark::State& state, benchmark_arguments input)
@@ -160,9 +159,8 @@ static void multi_kmer_search(benchmark::State& state, benchmark_arguments input
     input.generate_queries_and_text(&queries, &text, true);
 
     for (auto _ : state)
-        benchmark::DoNotOptimize(multi_kmer_index<alphabet_t, k, uint64_t, uint32_t, use_da, ks...> index{text});
+        benchmark::DoNotOptimize(make_kmer_index<use_da, k>(text));
 }
- */
 
 // benchmark: fm_index construction
 template<seqan3::alphabet alphabet_t>

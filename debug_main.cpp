@@ -10,6 +10,7 @@
 #include <seqan3/alphabet/all.hpp>
 #include <seqan3/alphabet/cigar/all.hpp>
 #include <seqan3/search/fm_index/fm_index.hpp>
+#include <seqan3/search/search.hpp>
 
 #include <thread>
 #include <chrono>
@@ -21,30 +22,58 @@
 
 #include <syncstream.hpp>
 
-using namespace seqan3;
+    using namespace seqan3;
 
-int main()
-{
-    thread_pool pool{8};
 
-    std::vector<std::future<void>> futures;
-    for (size_t i = 0; i < 6000; ++i)
-        futures.emplace_back(pool.execute(sync_print<std::string>, "success #" + std::to_string(i)));
+    int main()
+    {
+        auto query = "ACGT"_dna4;
+        std::vector<std::vector<dna4>> queries = input_generator<dna4, 1234>::generate_queries(100, 6);
+        debug_stream << "starting test...\n";
 
-    std::this_thread::sleep_for(std::chrono::microseconds(1));
+        for (size_t i = 0; i < 1; ++i)
+        {
+            // state not reset so new text everytime
+            auto text = input_generator<dna4, 1234>::generate_sequence(1e3);
 
-    pool.resize(16);
+            auto da_index = make_kmer_index<true, 5, 6, 7>(text);
+            auto map_index = make_kmer_index<false, 5, 6, 7>(text);
+            auto fm = fm_index(text);
 
-    std::vector<std::future<int>> futures_2;
-    for (size_t i = 0; i < 300; ++i)
-        futures_2.emplace_back(pool.execute([]() -> int {return rand();}));
+            bool results_equal;
+            try
+            {
+                auto fm_results = search(query, fm);
+                size_t fm_size = 0;
+                for (auto f : fm_results)
+                    fm_size++;
 
-    for (auto& f : futures)
-        f.get();
+                auto size = da_index.search(query).size() + map_index.search(query).size() + fm_size;
+                //auto fm_results = search(query, fm);
+                size = da_index.search(query).size() + map_index.search(query).size() + fm_size;
+                results_equal = (size - (fm_size * 3)) == 0;
+            }
+            catch (std::out_of_range)
+            {
+                results_equal = false;
+                std::cerr << "out of range exception\n";
+            }
 
-    int sum = 0;
-    for (auto& f : futures_2)
-        sum += f.get();
+            if (not results_equal)
+            {
+                debug_stream << "results not equal for i = " << i << "\n";
+                //debug_stream << text << "\n\n";
+                debug_stream << "fm  : " << search(query, fm) << "\n";
+                debug_stream << "da  : " << da_index.search(query) << "\n";
+                debug_stream << "map : " << map_index.search(query) << "\n";
 
-    sync_print(sum);
-}
+                return 1;
+            }
+
+        }
+
+        debug_stream << "test passed succesfully.";
+    }
+
+
+
