@@ -155,7 +155,7 @@ class kmer_index_element
                         i += 1;
                     }
 
-                    seqan3::debug_stream << "kmer element for k = " << k << " finished construction.\n";
+                    //seqan3::debug_stream << "kmer element for k = " << k << " finished construction.\n";
                 }
 
             public:
@@ -473,7 +473,7 @@ class kmer_index
             return result;
         }
 
-        static size_t _n_threads;
+        inline static size_t _n_threads = 1;
 
     public:
 
@@ -487,18 +487,20 @@ class kmer_index
 
         // ctor
         template<std::ranges::range text_t>
-        kmer_index(text_t && text)
+        kmer_index(text_t && text, size_t n_threads = std::thread::hardware_concurrency())
             : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>()...
         {
-            auto pool = thread_pool{std::thread::hardware_concurrency()};
+
+            auto pool = thread_pool{n_threads};
 
             std::vector<std::future<void>> futures;
 
             // use multiple threads to build index elements
-            (futures.emplace_back(pool.execute(&index<ks>::template create<text_t>, static_cast<index<ks>*>(this), std::ref(text))), ...);
+            (futures.emplace_back(pool.execute(&index<ks>::template create<text_t>, static_cast<index<ks> *>(this),
+                                               std::ref(text))), ...);
 
             // wait to finish
-            for (auto& f : futures)
+            for (auto &f : futures)
                 f.get();
         }
 
@@ -562,7 +564,7 @@ class kmer_index
         {
             using namespace seqan3;
 
-            auto pool = thread_pool{std::thread::hardware_concurrency()};
+            auto pool = thread_pool{_n_threads};
             std::vector<std::future<std::vector<position_t>>> futures;
 
             for (auto& q : queries)
@@ -616,6 +618,21 @@ auto make_kmer_index(text_t text)
     kmer_index<alphabet_t, position_t, first, ks...>,
     kmer_index<alphabet_t, position_t, true, first, ks...>
   >{text};
+}
+
+template<auto first, auto... ks, std::ranges::range text_t>
+auto make_kmer_index(text_t text, size_t n_threads)
+{
+assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
+
+using alphabet_t = seqan3::innermost_value_type_t<text_t>;
+using position_t = uint32_t;
+
+return std::conditional_t<
+        std::is_same_v<decltype(first), bool>,
+        kmer_index<alphabet_t, position_t, first, ks...>,
+        kmer_index<alphabet_t, position_t, true, first, ks...>
+>{text, n_threads};
 }
 
 

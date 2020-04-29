@@ -152,14 +152,14 @@ static void kmer_construction(benchmark::State& state, benchmark_arguments input
 
 // benchmark: multi_kmer construction
 template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
-static void multi_kmer_search(benchmark::State& state, benchmark_arguments input)
+static void multi_kmer_construction(benchmark::State& state, benchmark_arguments input, size_t n_threads)
 {
     std::vector<std::vector<alphabet_t>> queries;
-    std::vector<alphabet_t> text;-
+    std::vector<alphabet_t> text;
     input.generate_queries_and_text(&queries, &text, true);
 
     for (auto _ : state)
-        benchmark::DoNotOptimize(make_kmer_index<use_da, k>(text));
+        benchmark::DoNotOptimize(make_kmer_index<use_da, ks...>(text, n_threads));
 }
 
 // benchmark: fm_index construction

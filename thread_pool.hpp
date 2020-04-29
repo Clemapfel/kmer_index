@@ -10,12 +10,15 @@
 #include <memory>
 #include <future>
 #include <queue>
-
-#include "thread_safe_queue.hpp"
-#include "syncstream.hpp"
+#include <functional>
+#include <map>
+#include <iostream>
 
 // thread pool of variable size, accepts tasks and puts them in a not lock-free queue,
 // worker threads work through them as they free up.
+
+template<typename T>
+void sync_print(T); // synchronized console stream for debugging
 
 struct thread_pool
 {
@@ -109,3 +112,25 @@ struct thread_pool
 // references:
 // https://github.com/vit-vit/ctpl
 // https://livebook.manning.com/book/c-plus-plus-concurrency-in-action/chapter-9/17
+
+// only used for debugging:
+inline std::map<std::thread::id, size_t> _thread_ids;
+inline std::mutex _stream_mutex;
+
+inline size_t n_messages = 0;
+
+template<typename T>
+void sync_print(T t)
+{
+    std::lock_guard<std::mutex> lock(_stream_mutex);
+
+    auto id = std::this_thread::get_id();
+
+    if (_thread_ids.find(id) == _thread_ids.end())
+        _thread_ids.insert(std::make_pair(id, _thread_ids.size()));
+
+    auto out = "[" + std::to_string(_thread_ids.at(id)) + "] " + std::string(t) + "\n";
+
+    // single string prints are atomic on windows and unix systems
+    std::cout << out;
+}
