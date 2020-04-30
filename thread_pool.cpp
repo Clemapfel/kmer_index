@@ -90,8 +90,3 @@ void thread_pool::resize(size_t n_threads)
     _threads.clear();
     setup_threads(n_threads);
 }
-
-void thread_pool::wait_to_finish()
-{
-
-}

@@ -103,10 +103,6 @@ struct thread_pool
             _task_cv.notify_one();
             return std::move(future);
         }
-
-        // TODO
-        void wait_to_finish();
-
 };
 
 // references:
