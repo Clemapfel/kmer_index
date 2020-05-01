@@ -36,7 +36,6 @@ size_t hash_query(std::vector<alphabet_t> query)
     return *(hashes.begin());
 
     /*
-
     size_t hash = 0;
     for (size_t i = 0; i < k; ++i)
         hash += seqan3::to_rank(query.at(i)) * pow(k, k-i-1);
@@ -435,41 +434,45 @@ class kmer_index_element
 };
 }
 
+// "multi" kmer index, specifying more than one k depending on output can drastically increase performance [1]
 template<seqan3::alphabet alphabet_t, typename position_t, bool use_hashtable, size_t... ks>
 class kmer_index
         : protected detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>...
 {
     private:
+        // shorthand typedef for readability
         template<size_t k>
-        using index = detail::kmer_index_element<alphabet_t, k, position_t, use_hashtable>;
-        inline static auto _all_ks = std::vector<size_t>{ks...};
+        using index_element = detail::kmer_index_element<alphabet_t, k, position_t, use_hashtable>;
 
-        // search query <= k done index element with optimal k
+        // all k used in template, used to determine which element to invoke during query searching
+        inline static auto _all_ks = std::vector<size_t>{ks...};
+        inline static auto _max_k = std::max_element(_all_ks.first(), _all_ks.end());
+
+        // search query <= k with index element with optimal k
         std::vector<position_t> search_query_length_subk_or_k(std::vector<alphabet_t> query) const
         {
             assert(query.size() > 0);
 
             size_t optimal_k = 0;
             for (auto k : _all_ks)
-                if (std::labs(k - query.size()) < std::labs(k - optimal_k)) // [1]
+                if (std::labs(k - query.size()) < std::labs(k - optimal_k)) // [2]
                     optimal_k = k;
 
             std::vector<position_t> result;
 
             // use boolean fold expression to short-circuit execution and save a few search calls
-            (... || index<ks>::search_if(ks == optimal_k, query, result));
+            (... || index_element<ks>::search_if(ks == optimal_k, query, result));
 
             return result;
         }
 
     public:
-
         // ctor
         template<std::ranges::range text_t>
         kmer_index(text_t && text, size_t n_threads = std::thread::hardware_concurrency())
             : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>()...
         {
-            // catch hardware_concurrency failing to compute
+            // catch std::hardware_concurrency failing to compute
             if (n_threads == 0)
                 n_threads = 1;
 
@@ -477,8 +480,8 @@ class kmer_index
 
             std::vector<std::future<void>> futures;
 
-            // use multiple threads to build index elements
-            (futures.emplace_back(pool.execute(&index<ks>::template create<text_t>, static_cast<index<ks> *>(this),
+            // use multiple threads to build index elements at the same time
+            (futures.emplace_back(pool.execute(&index_element<ks>::template create<text_t>, static_cast<index_element<ks> *>(this),
                                                std::ref(text))), ...);
 
             // wait to finish
@@ -489,23 +492,20 @@ class kmer_index
         // exact search
         std::vector<position_t> search(std::vector<alphabet_t> query) const
         {
+            // if there's only one element, skip choosing which to use
             if (_all_ks.size() == 1)
-                return (index<ks>::search(query), ...); // expands to single call
+                return (index_element<ks>::search(query), ...); // expands to single call
 
-            size_t max_k = 0;
-            for (auto k : _all_ks)
-                if (k > max_k)
-                    max_k = k;
-
-            if (query.size() <= max_k)
-            {
+            //  if search can be done with exactly one search call
+            if (query.size() <= _max_k)
                 return search_query_length_subk_or_k(query);
-            }
-            else
+
+            // else, split query and search each part with corresponding optimal index element
+            else if
             {
                 // if one kmer_index has a way to call search_nk
                 std::vector<position_t> result;
-                bool possible = (... || index<ks>::search_if(query.size() % ks == 0, query, result));
+                bool possible = (... || index_element<ks>::search_if(query.size() % ks == 0, query, result));
 
                 if (possible)
                     return result;
@@ -521,7 +521,7 @@ class kmer_index
                 std::vector<alphabet_t> part_subk{query.begin() + query.size() - rest, query.end()};
 
                 std::vector<position_t> nk_results{};
-                (... || index<ks>::search_if(ks == optimal_k, part_nk, nk_results));
+                (... || index_element<ks>::search_if(ks == optimal_k, part_nk, nk_results));
 
                 std::vector<position_t> subk_results = search_query_length_subk_or_k(part_subk);
 

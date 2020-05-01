@@ -21,20 +21,20 @@ void thread_pool::setup_threads(size_t n_threads)
                     queue_lock.lock();
 
                     _task_cv.wait(queue_lock, [&]() -> bool {
-                      return _paused_for_resizing || !_task_queue.empty() || _currently_aborting;
+                      return _shutdown_asap || !_task_queue.empty() || _currently_aborting;
                     });
 
-                    // shutdown by resize()
-                    if (_paused_for_resizing)
+                    // shutdown : return asap
+                    if (_shutdown_asap)
                     {
-                        //sync_print("shutting down");
+                        //debug::sync_print("shutting down");
                         return;
                     }
 
-                    // shutdown by DTOR
+                    // shutdown by DTOR: finish task queue first
                     if (_currently_aborting and _task_queue.empty())
                     {
-                        //sync_print("shutting down");
+                        //debug::sync_print("shutting down");
                         return;
                     }
 
@@ -60,7 +60,7 @@ thread_pool::thread_pool(size_t n_threads)
 
 thread_pool::~thread_pool()
 {
-    //sync_print("starting dtor");
+    //debug::sync_print("starting dtor");
 
     // work through current queue until empty, then abort
     _currently_aborting = true;
@@ -69,24 +69,43 @@ thread_pool::~thread_pool()
     for (auto& thr : _threads)
         thr.join();
 
-    //sync_print("finished dtor");
+    //debug::sync_print("finished dtor");
 }
 
 // halt execution, reinit threads, then resume with leftover queue
 void thread_pool::resize(size_t n_threads)
 {
-    //sync_print("starting resize");
+    //debug::sync_print("starting resize");
 
-    _paused_for_resizing = true;
+    _shutdown_asap = true;
     _task_cv.notify_all();
 
     for (auto& thr : _threads)
         thr.join();
 
-    //sync_print("all_joined");
+    //debug::sync_print("all_joined");
 
-    _paused_for_resizing = false;
+    _shutdown_asap = false;
 
     _threads.clear();
     setup_threads(n_threads);
+}
+
+// safely abort all threads
+void thread_pool::abort()
+{
+    //debug::sync_print("starting abort");
+
+    _shutdown_asap = true;
+    _task_cv.notify_all();
+
+    for (auto& thr : _threads)
+        thr.join();
+
+    while (not _task_queue.empty())
+        _task_queue.pop();
+
+    _shutdown_asap = false;
+
+
 }

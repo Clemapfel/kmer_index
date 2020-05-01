@@ -16,15 +16,16 @@
 
 // thread pool of variable size, accepts tasks and puts them in a not lock-free queue,
 // worker threads work through them as they free up
-// supports resizing at any time
+// supports resizing and aborting at any time
 
-template<typename T>
-void sync_print(T); // synchronized console stream for debugging
+namespace debug
+{
+    template<typename T>
+    void sync_print(T); // synchronized console stream for debugging
+}
 
 struct thread_pool
 {
-    // reference used: https://codereview.stackexchange.com/questions/221626/c17-thread-pool
-
     private:
         // callable wrapper for storing functions in thread pool queue
         // abstract class so unique_ptr can hold wrapper which means function of all signatures can be held
@@ -70,7 +71,7 @@ struct thread_pool
         std::vector<std::thread> _threads;
 
         bool _currently_aborting = false;
-        bool _paused_for_resizing = false;
+        bool _shutdown_asap = false;
 
         // fill empty _threads with threads
         void setup_threads(size_t);
@@ -79,9 +80,11 @@ struct thread_pool
         ~thread_pool();
         thread_pool(size_t n_threads = std::thread::hardware_concurrency());
 
-        // let all threads finisht their current task, then join.
-        // Clear all threads then reallocated new n_threads that pickup leftover queue
+        // pause execution, reallocate threads and restart to work through leftover queue
         void resize(size_t n_threads);
+
+        // abort all threads as soon as their current execute call is done and clear queue
+        void abort();
 
         // add function call to task queue
         template<typename function_t, typename... args_t>
@@ -106,28 +109,35 @@ struct thread_pool
         }
 };
 
-// references:
+// references used:
+// https://codereview.stackexchange.com/questions/221626/c17-thread-pool
 // https://github.com/vit-vit/ctpl
 // https://livebook.manning.com/book/c-plus-plus-concurrency-in-action/chapter-9/17
 
-// only used for debugging:
-inline std::map<std::thread::id, size_t> _thread_ids;
-inline std::mutex _stream_mutex;
+// #####################################################################################################################
 
-inline size_t n_messages = 0;
-
-template<typename T>
-void sync_print(T t)
+namespace debug
 {
-    std::lock_guard<std::mutex> lock(_stream_mutex);
+    // synchronized console print that preserves order of invokation
+    inline std::map<std::thread::id, size_t> _thread_ids;
+    inline std::mutex _stream_mutex;
 
-    auto id = std::this_thread::get_id();
+    inline size_t n_messages = 0;
 
-    if (_thread_ids.find(id) == _thread_ids.end())
-        _thread_ids.insert(std::make_pair(id, _thread_ids.size()));
+    template<typename T>
+    void sync_print(T t)
+    {
+        std::lock_guard<std::mutex> lock(_stream_mutex);
 
-    auto out = "[" + std::to_string(_thread_ids.at(id)) + "] " + std::string(t) + "\n";
+        auto id = std::this_thread::get_id();
 
-    // single string prints are atomic on windows and unix systems
-    std::cout << out;
-}
+        if (_thread_ids.find(id) == _thread_ids.end())
+            _thread_ids.insert(std::make_pair(id, _thread_ids.size()));
+
+        auto out = "[" + std::to_string(_thread_ids.at(id)) + "] " + std::string(t) + "\n";
+
+        // single string cout::operator<< are atomic on windows and unix systems
+        std::cout << out;
+    }
+
+} // namespace debug
