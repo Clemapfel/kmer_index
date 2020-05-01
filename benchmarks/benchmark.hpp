@@ -1,7 +1,4 @@
-//
-// Created by Clemens Cords on 3/3/20.
 // Copyright (c) 2020 Clemens Cords. All rights reserved.
-//
 
 #pragma once
 
@@ -21,57 +18,93 @@
 #include "input_generator.hpp"
 #include "kmer_index.hpp"
 
-
 // benchmark arguments struct for readability
+template<seqan3::alphabet alphabet_t>
 struct benchmark_arguments
 {
-    const size_t _query_size;               // size of every query
-    const size_t _n_queries;                // number of queries generated
-    const size_t _text_size;                // length of text
+    private:
+        input_generator<alphabet_t> _generator;
 
-    // ctor
-    benchmark_arguments(size_t query_size, size_t n_queries, size_t text_size)
-        : _query_size(query_size), _n_queries(n_queries), _text_size(text_size)
-    {
-    }
+        const size_t _query_size;               // size of every query
+        const size_t _n_queries;                // number of queries generated
+        const size_t _text_size;                // length of text
 
-    // generate queries and text pseudo-randomly
-    template<seqan3::alphabet alphabet_t>
-    void generate_queries_and_text(
-        std::vector<std::vector<alphabet_t>>* queries,  // out
-        std::vector<alphabet_t>* text,                  // out
-        bool reset_state = true)                       // if true, returns same queries and text each call
-    {
-        if (reset_state)
-            input_generator<alphabet_t>::reset_state();
+    public:
+        // ctor
+        benchmark_arguments(size_t query_size, size_t n_queries, size_t text_size)
+                : _query_size(query_size), _n_queries(n_queries), _text_size(text_size)
+        {
+        }
 
-        queries->clear();
-        for (auto q : input_generator<alphabet_t>::generate_queries(_n_queries, _query_size))
-            queries->push_back(q);
+        // generate queries and text pseudo-randomly
+        void generate_queries_and_text(
+                std::vector<std::vector<alphabet_t>>* queries,  // out
+                std::vector<alphabet_t>* text,                  // out
+                bool reset_state = true)                       // if true, returns same queries and text each call
+        {
+            if (reset_state)
+                _generator.reset_state();
 
-        text->clear();
-        for (auto c : input_generator<alphabet_t>::generate_text(_text_size, *queries))
-            text->push_back(c);
-    }
+            queries->clear();
+            for (auto q :_generator.generate_queries(_n_queries, _query_size))
+                queries->push_back(q);
 
-    // add custom counters to keep track of benchmark arguments
-    template<seqan3::alphabet alphabet_t, bool use_hashtable, int k>
-    void add_counters_to(benchmark::State& state) const
-    {
-        state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
-        state.counters["text_size"] = _text_size;
-        state.counters["k"] = k;
-        state.counters["query_size"] = _query_size;
-        state.counters["n_queries"] = _n_queries;
-        state.counters["used_hashtable"] = use_hashtable;
-    }
+            text->clear();
+            for (auto c : _generator.generate_text(_text_size, *queries))
+                text->push_back(c);
+        }
+
+        // add custom counters to keep track of benchmark arguments
+        void add_counters_to(benchmark::State& state, size_t k, bool used_hashtable) const
+        {
+            state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
+            state.counters["text_size"] = _text_size;
+            state.counters["k"] = k;
+            state.counters["query_size"] = _query_size;
+            state.counters["n_queries"] = _n_queries;
+            state.counters["used_hashtable"] = used_hashtable;
+        }
 };
 
 // #####################################################################################################################
 
-// benchmark: kmer index exact search
+// [SEQ] kmer construction
 template<seqan3::alphabet alphabet_t, bool use_da, size_t k>
-static void kmer_search(benchmark::State& state, benchmark_arguments input)
+static void kmer_construction(benchmark::State& state, benchmark_arguments<alphabet_t> input)
+{
+    std::vector<std::vector<alphabet_t>> queries;
+    std::vector<alphabet_t> text;
+    input.generate_queries_and_text(&queries, &text, true);
+
+    for (auto _ : state)
+        benchmark::DoNotOptimize(make_kmer_index<use_da, k>(text));
+
+    // log memory used
+    auto index = make_kmer_index<use_da, k>(text);
+    state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
+
+    input.add_counters_to(state, k, use_da);
+}
+
+// [PAR] multi kmer construction
+template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
+static void multi_kmer_construction(benchmark::State& state, benchmark_arguments<alphabet_t> input, size_t n_threads)
+{
+    std::vector<std::vector<alphabet_t>> queries;
+    std::vector<alphabet_t> text;
+    input.generate_queries_and_text(&queries, &text, true);
+
+    for (auto _ : state)
+        benchmark::DoNotOptimize(make_kmer_index<use_da, ks...>(text, n_threads));
+
+    // log memory used
+    auto index = make_kmer_index<use_da, ks...>(text, n_threads);
+    state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
+}
+
+// [SEQ] kmer exact search
+template<seqan3::alphabet alphabet_t, bool use_da, size_t k>
+static void kmer_search(benchmark::State& state, benchmark_arguments<alphabet_t> input)
 {
     // generate text and queries
     std::vector<std::vector<alphabet_t>> queries;
@@ -80,10 +113,6 @@ static void kmer_search(benchmark::State& state, benchmark_arguments input)
 
     auto index = make_kmer_index<use_da, k>(text);
 
-    // add custom vars to output
-    input.add_counters_to<alphabet_t, use_da, k>(state);
-    state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
-
     // cycle through queries
     unsigned long long i = 0;
     for (auto _ : state)
@@ -91,135 +120,7 @@ static void kmer_search(benchmark::State& state, benchmark_arguments input)
         benchmark::DoNotOptimize(index.search(queries.at(i)));
         i = i < queries.size()-1 ? i + 1 : 0;
     }
-}
 
-/*
-// benchmark:: multi kmer index exact search
-template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
-static void multi_kmer_search(benchmark::State& state, benchmark_arguments input)
-{
-    std::vector<std::vector<alphabet_t>> queries;
-    std::vector<alphabet_t> text;
-    input.generate_queries_and_text(&queries, &text, true);
-
-    multi_kmer_index<alphabet_t, k, uint64_t, uint32_t, use_da, ks...> index{text};
-
-    unsigned long long i = 0;
-    for (auto _ : state)
-    {
-        benchmark::DoNotOptimize(index.search(queries.at(i)));
-        i = i < queries.size()-1 ? i + 1 : 0;
-    }
-}
-*/
-
-// benchmark: fm index exact search
-template<seqan3::alphabet alphabet_t>
-static void fm_search(benchmark::State& state, benchmark_arguments input)
-{
-    std::vector<std::vector<alphabet_t>> queries;
-    std::vector<alphabet_t> text;
-    input.generate_queries_and_text(&queries, &text, true);
-
-    seqan3::fm_index index{text};
-
-    input.add_counters_to<alphabet_t, false, -1>(state);
+    input.add_counters_to(state, k, use_da);
     state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
-
-    unsigned long long i = 0;
-    for (auto _ : state)
-    {
-        benchmark::DoNotOptimize(search(queries.at(i), index));
-        i = i < queries.size()-1 ? i + 1 : 0;
-    }
-}
-
-// benchmark: kmer_index construction
-template<seqan3::alphabet alphabet_t, bool use_da, size_t k>
-static void kmer_construction(benchmark::State& state, benchmark_arguments input)
-{
-    std::vector<std::vector<alphabet_t>> queries;
-    std::vector<alphabet_t> text;
-    input.generate_queries_and_text<seqan3::dna4>(&queries, &text, true);
-
-    for (auto _ : state)
-        benchmark::DoNotOptimize(make_kmer_index<use_da, k>(text));
-
-    // log memory used
-    auto index = make_kmer_index<use_da, k>(text);
-    state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
-}
-
-// benchmark: multi_kmer construction
-template<seqan3::alphabet alphabet_t, bool use_da, size_t... ks>
-static void multi_kmer_construction(benchmark::State& state, benchmark_arguments input, size_t n_threads)
-{
-    std::vector<std::vector<alphabet_t>> queries;
-    std::vector<alphabet_t> text;
-    input.generate_queries_and_text(&queries, &text, true);
-
-    for (auto _ : state)
-        benchmark::DoNotOptimize(make_kmer_index<use_da, ks...>(text, n_threads));
-}
-
-// benchmark: fm_index construction
-template<seqan3::alphabet alphabet_t>
-static void fm_construction(benchmark::State& state, benchmark_arguments input)
-{
-    std::vector<std::vector<alphabet_t>> queries;
-    std::vector<alphabet_t> text;
-    input.generate_queries_and_text<seqan3::dna4>(&queries, &text, true);
-
-    for (auto _ : state)
-        benchmark::DoNotOptimize(seqan3::fm_index{text});
-
-    // log memory used
-    seqan3::fm_index index{text};
-    input.add_counters_to<alphabet_t, false, -1>(state);
-    state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
-}
-
-
-//#####################################################################################################################
-
-// function that can be expanded in fold expression
-template<seqan3::alphabet alphabet_t, bool use_da, size_t k>
-void register_kmer_benchmarks(benchmark_arguments config)
-{
-    benchmark::RegisterBenchmark("kmer_exact_search", &kmer_search<alphabet_t, use_da, k>, config);
-    benchmark::RegisterBenchmark("kmer_construction", &kmer_construction<alphabet_t, use_da, k>, config);;
-}
-
-// wrapper that programmatically registers benchmarks for all permutations of template params and args
-template<seqan3::alphabet alphabet_t, bool use_hashtable, size_t... ks>
-void register_all_benchmarks(std::vector<size_t> text_sizes, int query_size_offset = 0)
-{
-    assert(k - query_size > 0);
-
-    std::map<size_t, std::vector<benchmark_arguments>> _configs;
-
-    for (auto k : std::vector{ks...})
-    {
-        size_t query_size = k + query_size_offset;
-
-        for (auto text_size : text_sizes)
-        {
-            size_t n_queries = 0.1 * text_size > 100 ? 0.1 * text_size : 100;
-
-            if (_configs.find(k) == _configs.end())
-                _configs.insert(std::make_pair(k, std::vector<benchmark_arguments>{}));
-
-            _configs[k].emplace_back(query_size, n_queries, text_size);
-        }
-    }
-
-    for (auto pair : _configs)
-    {
-        for (auto& config : pair.second)
-        {
-            (register_kmer_benchmarks<alphabet_t, use_hashtable, ks>(config), ...);
-            benchmark::RegisterBenchmark("fm_search", &fm_search<alphabet_t>, config);
-            benchmark::RegisterBenchmark("fm_construction", &fm_construction<alphabet_t>, config);
-        }
-    }
 }

@@ -15,7 +15,8 @@
 #include <iostream>
 
 // thread pool of variable size, accepts tasks and puts them in a not lock-free queue,
-// worker threads work through them as they free up.
+// worker threads work through them as they free up
+// supports resizing at any time
 
 template<typename T>
 void sync_print(T); // synchronized console stream for debugging

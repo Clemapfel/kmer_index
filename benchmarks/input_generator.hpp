@@ -18,7 +18,7 @@ class input_generator
 {
     private:
         // all function calls use this engine and advance it's state
-        inline static std::mt19937 _engine{seed};
+        std::mt19937 _engine{seed};
 
         static uint64_t hash(std::vector<alphabet_t> query)
         {
@@ -32,13 +32,13 @@ class input_generator
     public:
         // resets rng state
         // can be used before generation call to get the same results as when the class was first used
-        static void reset_state()
+        void reset_state()
         {
             _engine.seed(seed);
         }
 
         // generate sequence
-        static std::vector<alphabet_t> generate_sequence(size_t length)
+        std::vector<alphabet_t> generate_sequence(size_t length)
         {
             std::uniform_int_distribution<uint8_t> dist(0, seqan3::alphabet_size<alphabet_t> -1);
             std::vector <alphabet_t> sequence;
@@ -52,7 +52,7 @@ class input_generator
         }
 
         // overload: generate a total of n queries of size length
-        static std::vector<std::vector<alphabet_t>> generate_queries(size_t n_queries, size_t length)
+        std::vector<std::vector<alphabet_t>> generate_queries(size_t n_queries, size_t length)
         {
             std::vector<std::vector<alphabet_t>> queries;
 
@@ -63,7 +63,7 @@ class input_generator
         }
 
         // generate text that contains queries
-        static std::vector<alphabet_t> const generate_text(size_t length, std::vector<std::vector<alphabet_t>> queries)
+        std::vector<alphabet_t> const generate_text(size_t length, std::vector<std::vector<alphabet_t>> queries)
         {
             if (queries.empty())
                 return generate_sequence(length);
