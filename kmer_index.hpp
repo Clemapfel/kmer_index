@@ -13,6 +13,8 @@
 #include <seqan3/core/type_traits/range.hpp>
 #include <seqan3/core/debug_stream.hpp>
 
+#include <robin_hood.h>
+
 #include <type_traits>
 #include <cstdint>
 #include <cassert>
@@ -59,9 +61,9 @@ hash_range_estimate estimate_hash_range(text_t& text, float sample_coverage = 1)
 
     for (auto h : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}}))
     {
-        if (h < _min_hash)
+        if (h < min_hash)
             min_hash = h;
-        if (h > _max_hash)
+        if (h > max_hash)
             max_hash = h;
 
         hashes.insert(h);
@@ -70,8 +72,6 @@ hash_range_estimate estimate_hash_range(text_t& text, float sample_coverage = 1)
     assert(hashes.size() >= 1);
     return hash_range_estimate{min_hash, max_hash, hashes.size()};
 }
-
-
 
 // represents a kmer index for a single k
 template<seqan3::alphabet alphabet_t, size_t k, typename position_t>
@@ -185,7 +185,7 @@ class kmer_index_element
         bool _use_hashtable;
 
         kmer_hash_table _da_data;
-        std::unordered_map<size_t, std::vector<position_t>> _map_data;
+        robin_hood::unordered_map<size_t, std::vector<position_t>> _map_data;
 
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
 
@@ -283,6 +283,7 @@ class kmer_index_element
 
             auto query_parts = split_query(query);
 
+            // get pos for each section
             std::vector<std::vector<position_t>> positions{};
             for (auto &part : query_parts)
             {
@@ -292,6 +293,7 @@ class kmer_index_element
                     return std::vector<position_t>{}; // if one segment is missing, no match
             }
 
+            // find out if pos for sections match
             std::vector<position_t> confirmed_positions{};
             for (auto &start_pos : positions.at(0))
             {
@@ -467,7 +469,7 @@ class kmer_index
 
         // all k used in template, used to determine which element to invoke during query searching
         inline static auto _all_ks = std::vector<size_t>{ks...};
-        inline static auto _max_k = std::max_element(_all_ks.first(), _all_ks.end());
+        inline static auto _max_k = *(std::max_element(_all_ks.begin(), _all_ks.end()));
 
         // search query <= k with index element with optimal k
         std::vector<position_t> search_query_length_subk_or_k(std::vector<alphabet_t> query) const
@@ -585,7 +587,6 @@ class kmer_index
         }
 };
 
-
 // convenient make function that picks template params for you
 template<size_t... ks, std::ranges::range text_t>
 auto make_kmer_index(text_t&& text)
@@ -601,17 +602,34 @@ auto make_kmer_index(text_t&& text)
         size++;
 
     // determine if hashtable should be used over map
-    bool use_hashtable = TODO:: use estimate function ;
+    bool use_hashtable = false; //text < 10000 or not k > 10; //TODO:: use estimate function ;
 
     return kmer_index<alphabet_t, position_t, ks...>{
             std::forward<text_t>(text),
             std::thread::hardware_concurrency(),
             use_hashtable};
+}
 
+namespace debug
+{
+    template<size_t... ks, std::ranges::range text_t>
+    auto make_kmer_index(text_t&& text, bool use_hashtable)
+    {
+        assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
 
-    // [2]
-    // big k -> more kmers -> high chance to have too much empty space
-    //
+        using alphabet_t = seqan3::innermost_value_type_t<text_t>;
+        using position_t = uint32_t;
+
+        // generic size since not all ranges support .size()
+        size_t size = 0;
+        for (const auto _ : text)
+        size++;
+
+        return kmer_index<alphabet_t, position_t, ks...>{
+        std::forward<text_t>(text),
+                std::thread::hardware_concurrency(),
+                use_hashtable};
+    }
 }
 
 
@@ -630,8 +648,8 @@ return std::conditional_t<
         kmer_index<alphabet_t, position_t, first, ks...>,
         kmer_index<alphabet_t, position_t, true, first, ks...>
 >{text, n_threads};
-}*
- /
+}
+ */
 
 
 

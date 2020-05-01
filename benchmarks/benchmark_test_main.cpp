@@ -21,7 +21,7 @@ int main(int argc, char** argv)
     std::vector<size_t> text_sizes = {1000};//, 10000};
 
     //register_all_benchmarks<seqan3::dna4, false, 5>(text_sizes, 0);
-    register_all_benchmarks<seqan3::dna4, true, 5>(text_sizes, 0);
+    //register_all_benchmarks<seqan3::dna4, true, 5>(text_sizes, 0);
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
