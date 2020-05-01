@@ -500,8 +500,8 @@ class kmer_index
             if (query.size() <= _max_k)
                 return search_query_length_subk_or_k(query);
 
-            // else, split query and search each part with corresponding optimal index element
-            else if
+            // else, split query and search each part with corresponding optimal index element [1]
+            else
             {
                 // if one kmer_index has a way to call search_nk
                 std::vector<position_t> result;
@@ -510,8 +510,9 @@ class kmer_index
                 if (possible)
                     return result;
 
-                // find k so that rest at the end is as close to that k as possible [1]
+                // find k so that has optimal conditions to search [1]
                 size_t optimal_k = query.size();
+
                 for (auto k : _all_ks)
                     if (std::labs(query.size() % k - k) < std::labs(query.size() % optimal_k - optimal_k))
                         optimal_k = k;
@@ -525,8 +526,8 @@ class kmer_index
 
                 std::vector<position_t> subk_results = search_query_length_subk_or_k(part_subk);
 
+                // merge results for first n*k parts and <k rest
                 std::vector<position_t> confirmed_positions{};
-
                 for (auto& pos : nk_results)
                 {
                     if (std::find(subk_results.begin(), subk_results.end(), pos + query.size() - rest) != subk_results.end())
@@ -535,9 +536,7 @@ class kmer_index
 
                 return confirmed_positions;
 
-                // [1] : kmer runtime is inversely proprotional to abs(query.size() - k) bc the bigger the difference,
-                // the bigger is the set of kmers that have to be searched as possiblities
-                // so k that's closest to query.size() should be chosen
+                // [1] search runtime is inversely proportional to r = abs(query.size() - k) c.f. index_element::search
             }
         }
 
@@ -563,10 +562,32 @@ class kmer_index
 
             return output;
         }
-
 };
 
-// convenient make function
+// convenient make function that picks template params for you
+template<size_t... ks, std::ranges::range text_t>
+auto make_kmer_index(text_t&& text)
+{
+    assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
+
+    using alphabet_t = seqan3::innermost_value_type_t<text_t>;
+    using position_t = uint32_t;
+
+    // generic size since not all ranges support .size()
+    size_t size = 0;
+    for (const auto _ : text)
+        size++;
+
+    size_t cutoff = 10000;
+
+    if (size < cutoff)
+        return kmer_index<alphabet_t, position_t, true, ks...>{std::forward<text_t>(text), std::thread::hardware_concurrency()};
+    else
+        return kmer_index<alphabet_t, position_t, false, ks...>{std::forward<text_t>(text), std::thread::hardware_concurrency()};
+}
+
+
+/*
 template<auto first, auto... ks, std::ranges::range text_t>
 auto make_kmer_index(text_t text, size_t n_threads = 1)
 {
@@ -581,7 +602,8 @@ return std::conditional_t<
         kmer_index<alphabet_t, position_t, first, ks...>,
         kmer_index<alphabet_t, position_t, true, first, ks...>
 >{text, n_threads};
-}
+}*
+ /
 
 
 
