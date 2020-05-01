@@ -44,8 +44,37 @@ size_t hash_query(std::vector<alphabet_t> query)
      */
 }
 
+struct hash_range_estimate
+{
+    size_t min_hash, max_hash, n_hashes;
+};
+
+// heuristic to analyze text
+template<size_t k, std::ranges::range text_t>
+hash_range_estimate estimate_hash_range(text_t& text, float sample_coverage = 1)
+{
+    size_t min_hash = std::numeric_limits<size_t>::max();
+    size_t max_hash = 0;
+    std::unordered_set<size_t> hashes;
+
+    for (auto h : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}}))
+    {
+        if (h < _min_hash)
+            min_hash = h;
+        if (h > _max_hash)
+            max_hash = h;
+
+        hashes.insert(h);
+    }
+
+    assert(hashes.size() >= 1);
+    return hash_range_estimate{min_hash, max_hash, hashes.size()};
+}
+
+
+
 // represents a kmer index for a single k
-template<seqan3::alphabet alphabet_t, size_t k, typename position_t, bool use_hashtable = true>
+template<seqan3::alphabet alphabet_t, size_t k, typename position_t>
 class kmer_index_element
 {
     private:
@@ -86,41 +115,25 @@ class kmer_index_element
                 size_t _min_hash, _max_hash;
                 size_t _n_different_hashes;
 
-                // heuristic to preallocate direct adressing table
-                template<std::ranges::range text_t>
-                void estimate_hash_range(text_t& text, float sample_coverage = 1)
-                {
-                    _min_hash = std::numeric_limits<size_t>::max();
-                    _max_hash = 0;
-                    std::unordered_set<size_t> hashes;
-
-                    for (auto h : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}}))
-                    {
-                        if (h < _min_hash)
-                            _min_hash = h;
-                        if (h > _max_hash)
-                            _max_hash = h;
-
-                        hashes.insert(h);
-                    }
-
-                    assert(hashes.size() >= 1);
-                    _n_different_hashes = hashes.size();
-                }
-
                 // construct hash table
                 template<std::ranges::range text_t>
                 void construct(text_t& text)
                 {
                     _text_length = text.size();
 
-                    auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
-                    estimate_hash_range(text);
+                    auto estimate = estimate_hash_range<k>(text);
+                    _min_hash = estimate.min_hash;
+                    _max_hash = estimate.max_hash;
+                    _n_different_hashes = estimate.n_hashes;
 
+                    // preallocate based on heuristic
                     _data.reserve(_max_hash - _min_hash);
 
                     for (size_t i = 0; i <= (_max_hash - _min_hash); ++i)
                         _data.emplace_back();
+
+                    // construct
+                    auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
 
                     position_t i = 0;
                     for (auto h : hashes)
@@ -167,6 +180,9 @@ class kmer_index_element
                         return _data.at(hash - _min_hash);
                 };
         };
+
+        // wether to use direct addressing or map, specified in ctor
+        bool _use_hashtable;
 
         kmer_hash_table _da_data;
         std::unordered_map<size_t, std::vector<position_t>> _map_data;
@@ -248,7 +264,7 @@ class kmer_index_element
         {
             assert(query.size() == k);
 
-            if (use_hashtable)
+            if (_use_hashtable)
                 return _da_data.at(query);
             else
             {
@@ -343,11 +359,16 @@ class kmer_index_element
 
         // ctors
         ~kmer_index_element() = default;
-        kmer_index_element() = default;
+
+        kmer_index_element(bool use_hashtable = true)
+        {
+            _use_hashtable = use_hashtable;
+        }
 
         template<std::ranges::range text_t>
-        kmer_index_element(text_t & text)
+        kmer_index_element(text_t & text, bool use_hashtable = true)
         {
+            _use_hashtable = use_hashtable;
             create(text);
         }
 
@@ -356,7 +377,7 @@ class kmer_index_element
         {
             _first_kmer = std::vector<alphabet_t>(text.begin(), text.begin() + k);
 
-            if (use_hashtable)
+            if (_use_hashtable)
             {
                 _da_data = kmer_hash_table{text};
             }
@@ -435,14 +456,14 @@ class kmer_index_element
 }
 
 // "multi" kmer index, specifying more than one k depending on output can drastically increase performance [1]
-template<seqan3::alphabet alphabet_t, typename position_t, bool use_hashtable, size_t... ks>
+template<seqan3::alphabet alphabet_t, typename position_t, size_t... ks>
 class kmer_index
-        : protected detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>...
+        : protected detail::kmer_index_element<alphabet_t, ks, position_t>...
 {
     private:
         // shorthand typedef for readability
         template<size_t k>
-        using index_element = detail::kmer_index_element<alphabet_t, k, position_t, use_hashtable>;
+        using index_element = detail::kmer_index_element<alphabet_t, k, position_t>;
 
         // all k used in template, used to determine which element to invoke during query searching
         inline static auto _all_ks = std::vector<size_t>{ks...};
@@ -469,8 +490,8 @@ class kmer_index
     public:
         // ctor
         template<std::ranges::range text_t>
-        kmer_index(text_t && text, size_t n_threads = std::thread::hardware_concurrency())
-            : detail::kmer_index_element<alphabet_t, ks, position_t, use_hashtable>()...
+        kmer_index(text_t && text, size_t n_threads = std::thread::hardware_concurrency(), bool use_hashtable = true)
+            : detail::kmer_index_element<alphabet_t, ks, position_t>(use_hashtable)...
         {
             // catch std::hardware_concurrency failing to compute
             if (n_threads == 0)
@@ -564,6 +585,7 @@ class kmer_index
         }
 };
 
+
 // convenient make function that picks template params for you
 template<size_t... ks, std::ranges::range text_t>
 auto make_kmer_index(text_t&& text)
@@ -578,12 +600,18 @@ auto make_kmer_index(text_t&& text)
     for (const auto _ : text)
         size++;
 
-    size_t cutoff = 10000;
+    // determine if hashtable should be used over map
+    bool use_hashtable = TODO:: use estimate function ;
 
-    if (size < cutoff)
-        return kmer_index<alphabet_t, position_t, true, ks...>{std::forward<text_t>(text), std::thread::hardware_concurrency()};
-    else
-        return kmer_index<alphabet_t, position_t, false, ks...>{std::forward<text_t>(text), std::thread::hardware_concurrency()};
+    return kmer_index<alphabet_t, position_t, ks...>{
+            std::forward<text_t>(text),
+            std::thread::hardware_concurrency(),
+            use_hashtable};
+
+
+    // [2]
+    // big k -> more kmers -> high chance to have too much empty space
+    //
 }
 
 
