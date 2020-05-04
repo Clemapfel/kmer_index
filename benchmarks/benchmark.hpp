@@ -55,7 +55,7 @@ struct benchmark_arguments
         }
 
         // add custom counters to keep track of benchmark arguments
-        void add_counters_to(benchmark::State& state, size_t k, bool used_hashtable) const
+        void add_counters_to(benchmark::State& state, size_t k, bool used_hashtable, size_t n_threads = 1) const
         {
             state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
             state.counters["text_size"] = _text_size;
@@ -63,6 +63,7 @@ struct benchmark_arguments
             state.counters["query_size"] = _query_size;
             state.counters["n_queries"] = _n_queries;
             state.counters["used_hashtable"] = used_hashtable;
+            state.counters["paralell"] = n_threads;
         }
 };
 
@@ -77,10 +78,10 @@ static void kmer_construction(benchmark::State& state, benchmark_arguments<alpha
     input.generate_queries_and_text(&queries, &text, true);
 
     for (auto _ : state)
-        benchmark::DoNotOptimize(make_kmer_index<use_da, k>(text));
+        benchmark::DoNotOptimize(make_kmer_index<k>(text, use_da, 1));
 
     // log memory used
-    auto index = make_kmer_index<use_da, k>(text);
+    auto index = make_kmer_index<k>(text, use_da, 1);
     state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
 
     input.add_counters_to(state, k, use_da);

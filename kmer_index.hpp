@@ -613,7 +613,7 @@ auto make_kmer_index(text_t&& text)
 namespace debug
 {
     template<size_t... ks, std::ranges::range text_t>
-    auto make_kmer_index(text_t&& text, bool use_hashtable)
+    auto make_kmer_index(text_t&& text, bool use_hashtable, size_t n_threads)
     {
         assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
 
@@ -623,12 +623,9 @@ namespace debug
         // generic size since not all ranges support .size()
         size_t size = 0;
         for (const auto _ : text)
-        size++;
+            size++;
 
-        return kmer_index<alphabet_t, position_t, ks...>{
-        std::forward<text_t>(text),
-                std::thread::hardware_concurrency(),
-                use_hashtable};
+        return kmer_index<alphabet_t, position_t, ks...>{std::forward<text_t>(text), n_threads, use_hashtable};
     }
 }
 
