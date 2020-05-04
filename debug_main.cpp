@@ -4,7 +4,7 @@
 //
 
 #include <kmer_index.hpp>
-#include <input_generator.hpp>
+#include <benchmarks/input_generator.hpp>
 
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/alphabet/all.hpp>
@@ -18,9 +18,6 @@
 #include <future>
 #include <functional>
 #include <thread_pool.hpp>
-#include <thread_pool_test.hpp>
-
-#include <syncstream.hpp>
 
     using namespace seqan3;
 
@@ -28,14 +25,14 @@
     int main()
     {
         auto query = "ACGT"_dna4;
-        std::vector<std::vector<dna4>> queries = input_generator<dna4, 1234>::generate_queries(100, 6);
+        auto input = input_generator<dna4>(1235);
+        std::vector<std::vector<dna4>> queries = input.generate_queries(100, 6);
         debug_stream << "starting test...\n";
 
         for (size_t i = 0; i < 1; ++i)
         {
             // state not reset so new text everytime
-            auto text = input_generator<dna4, 1234>::generate_sequence(1e3);
-
+            auto text = input.generate_sequence(1e3);
             auto da_index = make_kmer_index<true, 5, 6, 7>(text);
             auto map_index = make_kmer_index<false, 5, 6, 7>(text);
             auto fm = fm_index(text);

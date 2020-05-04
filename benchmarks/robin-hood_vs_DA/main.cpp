@@ -7,22 +7,38 @@
 
 // test runtime for DA vs robin-hood map
 
-template<seqan3::alphabet alphabet_t, size_t... ks>
-void register_all()
+template<seqan3::alphabet alphabet_t, size_t k>
+void register_benchmarks()
 {
-    
+    // setup configs
+    std::vector<benchmark_arguments<alphabet_t>> configs;
+
+    for (size_t text_size : {10000, 100000, 1000000})
+    {
+        for (size_t query_size : {k, 10 * k})
+        {
+            configs.push_back(benchmark_arguments<alphabet_t>(query_size, 100000, text_size));
+        }
+    }
+
+    // register benchmarks
+    for (auto config : configs)
+    {
+        benchmark::RegisterBenchmark("robin_Hood", &kmer_construction<alphabet_t, false, k>, config);
+        benchmark::RegisterBenchmark("DA", &kmer_construction<alphabet_t, true, k>, config);
+    }
+}
+
+template<size_t... ks>
+void register_all(int argc, char** argv)
+{
+    (register_benchmarks<seqan3::dna4, ks>(), ...);
+
+    benchmark::Initialize(&argc, argv);
+    benchmark::RunSpecifiedBenchmarks();
 }
 
 int main(int argc, char** argv)
 {
-    benchmark::RegisterBenchmark("robin_hood", &kmer_construction<seqan3::dna4, false, 5>, config);
-    benchmark::RegisterBenchmark("da", &kmer_construction<seqan3::dna4, true, 5>, config);
-
-    auto config = benchmark_arguments<seqan3::dna4>(100, 6000, 10000);
-
-    benchmark::RegisterBenchmark("multi_par", &multi_kmer_construction<seqan3::dna4, true, 3, 4, 5, 6, 7, 8, 9, 10>, config, 8)->UseRealTime();
-    benchmark::RegisterBenchmark("multi_seq", &multi_kmer_construction<seqan3::dna4, true, 3, 4, 5, 6, 7, 8, 9, 10>, config, 1)->UseRealTime();
-
-    benchmark::Initialize(&argc, argv);
-    benchmark::RunSpecifiedBenchmarks();
+    register_all<5, 6, 7, 8, 9, 10>(argc, argv);
 }

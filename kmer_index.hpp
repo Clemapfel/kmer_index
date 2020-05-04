@@ -164,7 +164,6 @@ class kmer_index_element
                 template<std::ranges::range text_t>
                 kmer_hash_table(text_t& text)
                 {
-                    estimate_hash_range(text);
                     construct(text);
                 }
 
@@ -389,7 +388,8 @@ class kmer_index_element
                 position_t i = 0;
                 for (auto h : hashes) {
                     if (_map_data.find(h) == _map_data.end()) {
-                        _map_data.insert(std::make_pair(h, std::vector<position_t>({i})));
+                        _map_data[h] = std::vector<position_t>({i});
+                        //_map_data.insert(std::make_pair(h, std::vector<position_t>({i})));
                     }
                     else
                         _map_data[h].push_back(i);

@@ -13,12 +13,13 @@
 #include <seqan3/range/views/kmer_hash.hpp>
 
 // input generator providing high quality pseudo-random sequences
-template<seqan3::alphabet alphabet_t, size_t seed = 1234>
+template<seqan3::alphabet alphabet_t>
 class input_generator
 {
     private:
         // all function calls use this engine and advance it's state
-        std::mt19937 _engine{seed};
+        std::mt19937 _engine;
+        size_t _starting_seed;
 
         static uint64_t hash(std::vector<alphabet_t> query)
         {
@@ -30,11 +31,16 @@ class input_generator
         }
 
     public:
+        explicit input_generator(size_t seed)
+            : _engine(seed), _starting_seed(seed)
+        {
+        }
+
         // resets rng state
         // can be used before generation call to get the same results as when the class was first used
         void reset_state()
         {
-            _engine.seed(seed);
+            _engine.seed(_starting_seed);
         }
 
         // generate sequence

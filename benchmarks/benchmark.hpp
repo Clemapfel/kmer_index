@@ -78,10 +78,10 @@ static void kmer_construction(benchmark::State& state, benchmark_arguments<alpha
     input.generate_queries_and_text(&queries, &text, true);
 
     for (auto _ : state)
-        benchmark::DoNotOptimize(make_kmer_index<k>(text, use_da, 1));
+        benchmark::DoNotOptimize(debug::make_kmer_index<k>(text, use_da, 1));
 
     // log memory used
-    auto index = make_kmer_index<k>(text, use_da, 1);
+    auto index = debug::make_kmer_index<k>(text, use_da, 1);
     state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
 
     input.add_counters_to(state, k, use_da);
