@@ -31,7 +31,7 @@ class input_generator
         }
 
     public:
-        explicit input_generator(size_t seed)
+        explicit input_generator(size_t seed = 1234)
             : _engine(seed), _starting_seed(seed)
         {
         }

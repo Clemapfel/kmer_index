@@ -27,6 +27,14 @@
         auto query = "ACGT"_dna4;
         auto input = input_generator<dna4>(1235);
         std::vector<std::vector<dna4>> queries = input.generate_queries(100, 6);
+
+        auto text = input.generate_sequence(1e3);
+        auto map_index = make_kmer_index<5, 6, 7>(text);
+        //debug_stream << map_index.search(query).size();
+        return 0;
+
+
+        /*
         debug_stream << "starting test...\n";
 
         for (size_t i = 0; i < 1; ++i)
@@ -70,7 +78,9 @@
         }
 
         debug_stream << "test passed succesfully.";
+         */
     }
+
 
 
 

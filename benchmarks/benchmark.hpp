@@ -112,7 +112,7 @@ static void kmer_search(benchmark::State& state, benchmark_arguments<alphabet_t>
     std::vector<alphabet_t> text;
     input.generate_queries_and_text(&queries, &text, true);
 
-    auto index = make_kmer_index<use_da, k>(text);
+    auto index = debug::make_kmer_index<k>(text, use_da, 1);
 
     // cycle through queries
     unsigned long long i = 0;

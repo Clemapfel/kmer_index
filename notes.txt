@@ -21,7 +21,7 @@ lncrna (avx2)
 transfer files:
 
 [clem@birdnest] scp ./test.txt clemenscords@andorra.imp.fu-berlin.de:/home/mi/clemenscords/Transfer
-
+[clem@andorra] scp ./test.txt clemenscords@lncrna:/srv/public/clemenscords
 
 /srv/public
 /srv/hdd (redwood only)

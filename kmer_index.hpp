@@ -27,6 +27,12 @@
 #include <unordered_map>
 #include "thread_pool.hpp"
 
+
+namespace debug
+{
+    bool USE_DA_HEURISTIC = true;
+}
+
 namespace detail
 {
 template<seqan3::alphabet alphabet_t, size_t k>
@@ -59,6 +65,9 @@ hash_range_estimate estimate_hash_range(text_t& text, float sample_coverage = 1)
     size_t max_hash = 0;
     std::unordered_set<size_t> hashes;
 
+    if (debug::USE_DA_HEURISTIC)
+    {
+
     for (auto h : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}}))
     {
         if (h < min_hash)
@@ -67,6 +76,7 @@ hash_range_estimate estimate_hash_range(text_t& text, float sample_coverage = 1)
             max_hash = h;
 
         hashes.insert(h);
+    }
     }
 
     assert(hashes.size() >= 1);
@@ -77,6 +87,8 @@ hash_range_estimate estimate_hash_range(text_t& text, float sample_coverage = 1)
 template<seqan3::alphabet alphabet_t, size_t k, typename position_t>
 class kmer_index_element
 {
+    static_assert(k > 1, "please specify a valid k");
+
     private:
         // custom hash table for direct addressing
         class kmer_hash_table
@@ -176,7 +188,7 @@ class kmer_index_element
                     if (hash < _min_hash or hash > _max_hash)
                         return std::vector<position_t>{};
                     else
-                        return _data.at(hash - _min_hash);
+                        return _data.data()[hash - _min_hash];
                 };
         };
 
@@ -382,14 +394,16 @@ class kmer_index_element
             {
                 _da_data = kmer_hash_table{text};
             }
-            else {
+            else
+            {
                 auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
 
                 position_t i = 0;
                 for (auto h : hashes) {
-                    if (_map_data.find(h) == _map_data.end()) {
-                        _map_data[h] = std::vector<position_t>({i});
-                        //_map_data.insert(std::make_pair(h, std::vector<position_t>({i})));
+                    if (_map_data.find(h) == _map_data.end())
+                    {
+                        // (std::make_pair(h, std::vector<position_t>({i})));
+                        _map_data.emplace(h, std::vector<position_t>({i}));
                     }
                     else
                         _map_data[h].push_back(i);
