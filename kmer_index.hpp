@@ -52,32 +52,6 @@ size_t hash_query(std::vector<alphabet_t> query)
      */
 }
 
-struct hash_range_estimate
-{
-    size_t min_hash, max_hash, n_hashes;
-};
-
-// heuristic to analyze text
-template<size_t k, std::ranges::range text_t>
-hash_range_estimate estimate_hash_range(text_t& text, float sample_coverage = 1)
-{
-    size_t min_hash = std::numeric_limits<size_t>::max();
-    size_t max_hash = 0;
-    std::unordered_set<size_t> hashes;
-
-    for (auto h : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}}))
-    {
-        if (h < min_hash)
-            min_hash = h;
-        if (h > max_hash)
-            max_hash = h;
-
-        hashes.insert(h);
-    }
-
-    return hash_range_estimate{min_hash, max_hash, hashes.size()};
-}
-
 // represents a kmer index for a single k
 template<seqan3::alphabet alphabet_t, size_t k, typename position_t>
 class kmer_index_element
@@ -130,6 +104,7 @@ class kmer_index_element
 
                     auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
 
+                    /*
                     if (debug::USE_DA_HEURISTIC)
                     {
                         auto estimate = estimate_hash_range<k>(text);
@@ -147,7 +122,11 @@ class kmer_index_element
                         _min_hash = *hashes.begin();
                         _max_hash = *hashes.begin();
                         _data.emplace_back();
-                    }
+                    }*/
+
+                    _min_hash = *hashes.begin();
+                    _max_hash = *hashes.begin();
+                    _data.emplace_back();
 
                     position_t i = 0;
                     for (auto h : hashes)
@@ -155,12 +134,12 @@ class kmer_index_element
                         // resize if necessary
                         if (h < _min_hash)
                         {
-                            _data.insert(_data.begin(), std::labs(h - _min_hash), std::vector<position_t>{});
+                            _data.insert(_data.begin(), std::labs(_min_hash - h), std::vector<position_t>{});
                             _min_hash = h;
                         }
                         else if (h > _max_hash)
                         {
-                            _data.insert(_data.end(), h - _max_hash, std::vector<position_t>{});
+                            _data.insert(_data.end(), std::labs(h - _max_hash), std::vector<position_t>{});
                             _max_hash = h;
                         }
 
