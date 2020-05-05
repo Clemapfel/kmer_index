@@ -65,9 +65,6 @@ hash_range_estimate estimate_hash_range(text_t& text, float sample_coverage = 1)
     size_t max_hash = 0;
     std::unordered_set<size_t> hashes;
 
-    if (debug::USE_DA_HEURISTIC)
-    {
-
     for (auto h : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}}))
     {
         if (h < min_hash)
@@ -77,9 +74,7 @@ hash_range_estimate estimate_hash_range(text_t& text, float sample_coverage = 1)
 
         hashes.insert(h);
     }
-    }
 
-    assert(hashes.size() >= 1);
     return hash_range_estimate{min_hash, max_hash, hashes.size()};
 }
 
@@ -133,19 +128,26 @@ class kmer_index_element
                 {
                     _text_length = text.size();
 
-                    auto estimate = estimate_hash_range<k>(text);
-                    _min_hash = estimate.min_hash;
-                    _max_hash = estimate.max_hash;
-                    _n_different_hashes = estimate.n_hashes;
-
-                    // preallocate based on heuristic
-                    _data.reserve(_max_hash - _min_hash);
-
-                    for (size_t i = 0; i <= (_max_hash - _min_hash); ++i)
-                        _data.emplace_back();
-
-                    // construct
                     auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
+
+                    if (debug::USE_DA_HEURISTIC)
+                    {
+                        auto estimate = estimate_hash_range<k>(text);
+                        _min_hash = estimate.min_hash;
+                        _max_hash = estimate.max_hash;
+                        _n_different_hashes = estimate.n_hashes;
+
+                        _data.reserve(_max_hash - _min_hash);
+
+                        for (size_t i = 0; i <= (_max_hash - _min_hash); ++i)
+                            _data.emplace_back();
+                    }
+                    else
+                    {
+                        _min_hash = *hashes.begin();
+                        _max_hash = *hashes.begin();
+                        _data.emplace_back();
+                    }
 
                     position_t i = 0;
                     for (auto h : hashes)
