@@ -27,12 +27,6 @@
 #include <unordered_map>
 #include "thread_pool.hpp"
 
-
-namespace debug
-{
-    bool USE_DA_HEURISTIC = true;
-}
-
 namespace detail
 {
 template<seqan3::alphabet alphabet_t, size_t k>
@@ -104,50 +98,58 @@ class kmer_index_element
 
                     auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
 
-                    /*
-                    if (debug::USE_DA_HEURISTIC)
-                    {
-                        auto estimate = estimate_hash_range<k>(text);
-                        _min_hash = estimate.min_hash;
-                        _max_hash = estimate.max_hash;
-                        _n_different_hashes = estimate.n_hashes;
+                    bool preallocate = k > 9;
 
-                        _data.reserve(_max_hash - _min_hash);
-
-                        for (size_t i = 0; i <= (_max_hash - _min_hash); ++i)
-                            _data.emplace_back();
-                    }
-                    else
+                    // no preallocation, resize as necessary
+                    if (not preallocate)
                     {
                         _min_hash = *hashes.begin();
                         _max_hash = *hashes.begin();
                         _data.emplace_back();
-                    }*/
 
-                    _min_hash = *hashes.begin();
-                    _max_hash = *hashes.begin();
-                    _data.emplace_back();
-
-                    position_t i = 0;
-                    for (auto h : hashes)
-                    {
-                        // resize if necessary
-                        if (h < _min_hash)
+                        position_t i = 0;
+                        for (auto h : hashes)
                         {
-                            _data.insert(_data.begin(), std::labs(_min_hash - h), std::vector<position_t>{});
-                            _min_hash = h;
-                        }
-                        else if (h > _max_hash)
-                        {
-                            _data.insert(_data.end(), std::labs(h - _max_hash), std::vector<position_t>{});
-                            _max_hash = h;
-                        }
+                            // resize if necessary
+                            if (h < _min_hash) {
+                                _data.insert(_data.begin(), std::labs(_min_hash - h), std::vector<position_t>{});
+                                _min_hash = h;
+                            }
+                            else if (h > _max_hash) {
+                                _data.insert(_data.end(), std::labs(h - _max_hash), std::vector<position_t>{});
+                                _max_hash = h;
+                            }
 
-                        _data[h - _min_hash].push_back(i);
-                        i += 1;
+                            _data[h - _min_hash].push_back(i);
+                            ++i;
+                        }
                     }
+                    // preallocation but have to scan first
+                    else
+                    {
+                        _min_hash = std::numeric_limits<size_t>::max();
+                        _max_hash = 0;
 
-                    //seqan3::debug_stream << "kmer element for k = " << k << " finished construction.\n";
+                        for (auto h : hashes)
+                        {
+                            if (h < _min_hash)
+                                _min_hash = h;
+
+                            if (h > _max_hash)
+                                _max_hash = h;
+                        }
+
+                        _data.reserve(_max_hash - _min_hash);
+                        for (size_t i = 0; i <= (_max_hash - _min_hash); ++i)
+                            _data.emplace_back();
+
+                        position_t i = 0;
+                        for (auto h : hashes)
+                        {
+                            _data[h - _min_hash].push_back(i);
+                            ++i;
+                        }
+                    }
                 }
 
             public:
@@ -642,6 +644,7 @@ return std::conditional_t<
 >{text, n_threads};
 }
  */
+
 
 
 

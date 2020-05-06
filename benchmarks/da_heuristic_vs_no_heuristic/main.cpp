@@ -62,5 +62,6 @@ void register_all(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    register_all<3, 4, 5, 6, 7, 8, 9>(argc, argv);
+    register_all<10, 11, 12, 13, 15>(argc, argv);
+    //cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/da_heuristic_vs_no_heuristic/raw.csv");
 }
