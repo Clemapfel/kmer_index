@@ -13,7 +13,7 @@ void register_benchmarks()
     size_t text_size = 500000;
 
     int int_k = int(k);
-    for (int offset = -10; offset <= 3*int_k; offset++)
+    for (int offset = -10; offset <= 10*int_k; offset++)
     {
         if (int_k + offset < 3)
             continue;
@@ -43,6 +43,6 @@ void register_all(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    register_all<5, 6, 7, 8, 9, 10>(argc, argv);
-    cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/robin-hood_vs_DA/raw.csv");
+    register_all<3, 4, 5, 6, 7>(argc, argv);
+    cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/exact_search_per_k/raw.csv");
 }
