@@ -11,12 +11,12 @@ inline std::atomic<size_t> N_BENCHMARKS = 0;
 template<seqan3::alphabet alphabet_t, size_t k>
 void register_benchmarks()
 {
-    size_t text_size = 1000000;
+    size_t text_size = 500000;
 
     int int_k = int(k);
-    for (int offset = -10; offset <= 10*int_k; offset++)
+    for (int offset = -10; offset <= 3*int_k; offset++)
     {
-        if (int_k + offset < 3 or int_k > 200)
+        if (int_k + offset < k-2 or int_k > 200)
             continue;
 
         auto config = benchmark_arguments<alphabet_t>(int_k + offset, 100000, text_size);
@@ -54,6 +54,6 @@ void register_all(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20>(argc, argv);
+    register_all<13, 14, 15, 16, 17, 18, 19, 20>(argc, argv);
     //cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/exact_search_per_k/raw.csv");
 }
