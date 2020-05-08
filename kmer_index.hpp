@@ -178,6 +178,8 @@ class kmer_index_element
         // wether to use direct addressing or map, specified in ctor
         bool _use_hashtable;
 
+        unsigned long long _current_size = 0;
+
         kmer_hash_table _da_data;
         robin_hood::unordered_map<size_t, std::vector<position_t>> _map_data;
 
@@ -385,7 +387,6 @@ class kmer_index_element
                 for (auto h : hashes) {
                     if (_map_data.find(h) == _map_data.end())
                     {
-                        // (std::make_pair(h, std::vector<position_t>({i})));
                         _map_data.emplace(h, std::vector<position_t>({i}));
                     }
                     else
@@ -507,6 +508,17 @@ class kmer_index
             // wait to finish
             for (auto &f : futures)
                 f.get();
+        }
+
+        // caluclate size (for debugging)
+        unsigned long long calculate_size() const
+        {
+            unsigned long long size = 0;
+
+            size += (index_element<ks>::calculate_size() + ...);
+            size += sizeof(_all_ks);
+
+            return size;
         }
 
         // exact search

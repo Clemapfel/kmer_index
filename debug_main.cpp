@@ -28,8 +28,10 @@
         auto input = input_generator<dna4>(1235);
         std::vector<std::vector<dna4>> queries = input.generate_queries(100, 6);
 
-        auto text = input.generate_sequence(1e3);
+        auto text = input.generate_sequence(1e6);
         auto map_index = make_kmer_index<5, 6, 7>(text);
+
+        debug_stream << map_index.calculate_size();
         //debug_stream << map_index.search(query).size();
         return 0;
 
