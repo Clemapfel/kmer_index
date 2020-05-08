@@ -266,7 +266,7 @@ class kmer_index_element
                 if (it != _map_data.end())
                     return it->second;
                 else
-                    return std::vector<position_t>();
+                    return std::vector<position_t>{};
             }
         }
 

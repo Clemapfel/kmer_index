@@ -6,21 +6,29 @@
 #include <benchmarks/cleanup_csv.hpp>
 #include "../benchmark.hpp"
 
+inline std::atomic<size_t> N_BENCHMARKS = 0;
 
 template<seqan3::alphabet alphabet_t, size_t k>
 void register_benchmarks()
 {
-    size_t text_size = 500000;
+    size_t text_size = 1000000;
 
     int int_k = int(k);
     for (int offset = -10; offset <= 10*int_k; offset++)
     {
-        if (int_k + offset < 3)
+        if (int_k + offset < 3 or int_k > 200)
             continue;
 
         auto config = benchmark_arguments<alphabet_t>(int_k + offset, 100000, text_size);
-        benchmark::RegisterBenchmark("search", &kmer_search<alphabet_t, false, k>, config);
+
+        benchmark::RegisterBenchmark("kmer_search_map", &kmer_search<alphabet_t, false, k>, config);
+        if (k <= 10)
+            benchmark::RegisterBenchmark("kmer_search_da", &kmer_search<alphabet_t, true, k>, config);
+        benchmark::RegisterBenchmark("fm_search", &fm_search<alphabet_t>, config);
+        N_BENCHMARKS++;
     }
+
+    seqan3::debug_stream << std::to_string(N_BENCHMARKS) + " benchmarks currently registered\n";
 }
 
 template<size_t... ks>
@@ -33,9 +41,12 @@ void register_all(int argc, char** argv)
 }
 
 /* EXECUTABLE ARGUMENTS:
+ * --benchmark_out=/home/clem/Documents/Workspace/kmer_index/source/benchmarks/exact_search_per_k/raw.csv
+
+ *
 --benchmark_format=console
 --benchmark_counters_tabular=true
---benchmark_out=/home/clem/Documents/Workspace/kmer_index/source/benchmarks/exact_search_per_k/raw.csv
+--benchmark_out=/srv/public/clemenscords/exact_search_per_k/raw.csv
 --benchmark_out_format=csv
 --benchmark_repetitions=10
 --benchmark_report_aggregates_only=true
@@ -43,6 +54,6 @@ void register_all(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    register_all<3, 4, 5, 6, 7>(argc, argv);
-    cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/exact_search_per_k/raw.csv");
+    register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20>(argc, argv);
+    //cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/exact_search_per_k/raw.csv");
 }

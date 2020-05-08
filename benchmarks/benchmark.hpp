@@ -55,7 +55,7 @@ struct benchmark_arguments
         }
 
         // add custom counters to keep track of benchmark arguments
-        void add_counters_to(benchmark::State& state, size_t k, bool used_hashtable, size_t n_threads = 1) const
+        void add_kmer_counters_to(benchmark::State& state, size_t k, bool used_hashtable, size_t n_threads = 1) const
         {
             state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
             state.counters["text_size"] = _text_size;
@@ -64,6 +64,14 @@ struct benchmark_arguments
             state.counters["n_queries"] = _n_queries;
             state.counters["used_hashtable"] = used_hashtable;
             state.counters["paralell"] = n_threads;
+        }
+
+        void add_fm_counters_to(benchmark::State& state)
+        {
+            state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
+            state.counters["text_size"] = _text_size;
+            state.counters["query_size"] = _query_size;
+            state.counters["n_queries"] = _n_queries;
         }
 };
 
@@ -122,6 +130,27 @@ static void kmer_search(benchmark::State& state, benchmark_arguments<alphabet_t>
         i = i < queries.size()-1 ? i + 1 : 0;
     }
 
-    input.add_counters_to(state, k, use_da);
-    state.counters["memory_used(mb)"] = sizeof(index) / 1e6;
+    input.add_kmer_counters_to(state, k, use_da);
+    state.counters["memory_used"] = sizeof(index);
+}
+
+// [SEQ] fm exact search
+template<seqan3::alphabet alphabet_t>
+static void fm_search(benchmark::State& state, benchmark_arguments<alphabet_t> input)
+{
+    std::vector<std::vector<alphabet_t>> queries;
+    std::vector<alphabet_t> text;
+    input.generate_queries_and_text(&queries, &text, true);
+
+    seqan3::fm_index index{text};
+
+    unsigned long long i = 0;
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(search(queries.at(i), index));
+        i = i < queries.size()-1 ? i + 1 : 0;
+    }
+
+    input.add_fm_counters_to(state);
+    state.counters["memory_used"] = sizeof(index);
 }

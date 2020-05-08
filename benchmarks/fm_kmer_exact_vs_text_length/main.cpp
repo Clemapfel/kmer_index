@@ -98,8 +98,8 @@ static void fm_search_vs_text_size(benchmark::State& state, size_t text_size)
 
 void register_all(int argc, char** argv)
 {
-    size_t base_size = 10000;
-    for (size_t i = 1; i < 200; i++)
+    size_t base_size = 100000;
+    for (size_t i = 1; i < 20; i++)
     {
         benchmark::RegisterBenchmark("multi_10_11_12_kmer_search", &kmer_search_vs_text_size<seqan3::dna4, 10>, i*base_size);
         benchmark::RegisterBenchmark("fm_search", &fm_search_vs_text_size<seqan3::dna4>, i*base_size);
