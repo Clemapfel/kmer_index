@@ -21,7 +21,7 @@ namespace detail
 }
 
 template<seqan3::alphabet alphabet_t, size_t k>
-class minimum_kmer_index
+class kmer_index
 {
     static_assert(k > 1, "please specify a valid k");
 
@@ -29,6 +29,8 @@ class minimum_kmer_index
 
     private:
         robin_hood::unordered_map<size_t, std::vector<position_t>> _data;
+
+        inline static uint8_t _sigma = seqan3::alphabet_size<alphabet_t>;
 
         // needed for edge case in sub_k
         std::vector<alphabet_t> _first_kmer;
@@ -60,13 +62,12 @@ class minimum_kmer_index
             size_t hash = 0;
             for (size_t i = 0; i < k; ++i)
             {
-                hash += seqan3::to_rank(*(query_it)) * fast_pow(k, k - i - 1);
+                hash += seqan3::to_rank(*(query_it)) * fast_pow(_sigma, k - i - 1);
                 query_it++;
             }
 
             return hash;
         }
-
 
         // find position of all kmer with query as suffix
         template<typename iterator_t>
@@ -74,61 +75,52 @@ class minimum_kmer_index
         {
             iterator_t backup_start_it = query_begin;   // deep copy for later
 
-            // find latter component of hash
-            size_t suffix_hash = 0;
-            for (size_t i = k - size; i < size; ++i) {
-                hash += seqan3::to_rank(*(query_it)) * fast_pow(k, k - i - 1);
-                query_begin++;
-            }
-
-            constexpr size_t sigma = seqan3::alphabet_size<alphabet_t>;
-
             // generate hashes for all kmers that have query as suffix
-            std::vector<std::array<int8_t, k>> rank_summands;
-            rank_summands.reserve(pow(sigma, k - size));
+            std::vector<std::array<int8_t, k>> rank_sums;
+            rank_sums.reserve(fast_pow(_sigma, k - size));
 
-            std::array<int8_t, k> starter;
+            std::array<int8_t, k> primer;
             for (size_t i = 0; i < size; ++i)
             {
                 if (i >= k - size)
-                    starter[i] = seqan3::to_rank(*query_it);
+                    primer[i] = seqan3::to_rank(*query_it);
                 else
-                    starter[i] = -1;
+                    primer[i] = -1;
 
                 query_it++;
             }
-            rank_summands.push_back(starter);
+            rank_sums.push_back(primer);
 
-            std::array<int8_t, sigma> current_n_appended;
+            std::array<int8_t, sigma> current_n_appended{};
 
             // generate array that holds ranks of chars of generated kmer
             for (int8_t i = k - size - 1; i >= 0; --i)
             {
                 // duplicate for next level
-                for (auto& h : rank_summands)
+                for (auto& sum : rank_sums)
                 {
                     for (size_t j = 0; j < sigma - 1; ++j)
                     {
-                        rank_summands.push_back(h);
+                        rank_sums.push_back(sum);
                     }
                 }
 
                 current_n_appended.fill(0);
                 // append in front
-                for (auto& h : rank_summands)
+                for (auto& sum : rank_sums)
                 {
-                    h[i] = current_n_appended[h.at(i+1)];
-                    current_n_appended[h.at(i+1)] += 1;
+                    sum[i] = current_n_appended[sum.at(i + 1)];
+                    current_n_appended[sum.at(i + 1)] += 1;
                 }
             }
 
             // get positions for every kmer with suffix
             std::vector<const std::vector<position_t>*> output;
-            for (auto& h : rank_summands)
+            for (auto& h : rank_sums)
             {
                 size_t current_hash = 0;
                 for (size_t i = 0; i < h.size(); ++i)
-                    current_hash += h[i] * fast_pow(k, k - i - 1);
+                    current_hash += h[i] * fast_pow(sigma, k - i - 1);
 
                 output.emplace_back(_data.find(current_hash));
             }
@@ -165,7 +157,6 @@ class minimum_kmer_index
         }
 
     public:
-
         template<std::ranges::range text_t>
         minimum_kmer_index(text_t&& text)
         {
@@ -184,7 +175,8 @@ class minimum_kmer_index
                 else
                     return it->second;
             }
-            else if (query.size() > k) {
+            else if (query.size() > k)
+            {
                 // search first n*k parts
                 size_t rest_n = query.size() % k;
                 std::vector<std::vector<position_t>*> positions{};
@@ -204,8 +196,10 @@ class minimum_kmer_index
                 for (auto start_pos : *positions.at(0)) {
                     position_t previous_pos = start_pos;
 
-                    for (size_t i = 1; i <= positions.size(); ++i) {
-                        if (i == positions.size()) {
+                    for (size_t i = 1; i <= positions.size(); ++i)
+                    {
+                        if (i == positions.size())
+                        {
                             confirmed_positions.push_back(start_pos);
                             break;
                         }

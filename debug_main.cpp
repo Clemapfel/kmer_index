@@ -18,6 +18,7 @@
 #include <future>
 #include <functional>
 #include <thread_pool.hpp>
+#include <kmer_index_result.hpp>
 
 using namespace seqan3;
 
