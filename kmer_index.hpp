@@ -29,7 +29,10 @@ class minimum_kmer_index
 
     private:
         robin_hood::unordered_map<size_t, std::vector<position_t>> _data;
+
+        // needed for edge case in sub_k
         std::vector<alphabet_t> _first_kmer;
+        const std::vector<position_t> _zero = {0};
 
         // optimized pow used for hashing
         size_t fast_pow(size_t base, size_t exp)
@@ -46,6 +49,8 @@ class minimum_kmer_index
             }
 
             return result;
+
+            // reference: https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
         }
 
         // hash a kmer
@@ -62,13 +67,16 @@ class minimum_kmer_index
             return hash;
         }
 
+
         // find position of all kmer with query as suffix
         template<typename iterator_t>
-        auto search_subk(iterator_t& query_begin, iterator_t& query_end, size_t size)
+        std::vector<const std::vector<position_t>*> search_subk(iterator_t query_begin, size_t size)
         {
+            iterator_t backup_start_it = query_begin;   // deep copy for later
+
             // find latter component of hash
             size_t suffix_hash = 0;
-            for (size_t i = k - size; i < sizeK; ++i) {
+            for (size_t i = k - size; i < size; ++i) {
                 hash += seqan3::to_rank(*(query_it)) * fast_pow(k, k - i - 1);
                 query_begin++;
             }
@@ -76,10 +84,10 @@ class minimum_kmer_index
             constexpr size_t sigma = seqan3::alphabet_size<alphabet_t>;
 
             // generate hashes for all kmers that have query as suffix
-            std::vector<std::array<int, k>> rank_summands;
+            std::vector<std::array<int8_t, k>> rank_summands;
             rank_summands.reserve(pow(sigma, k - size));
 
-            std::array<int, k> starter;
+            std::array<int8_t, k> starter;
             for (size_t i = 0; i < size; ++i)
             {
                 if (i >= k - size)
@@ -91,10 +99,10 @@ class minimum_kmer_index
             }
             rank_summands.push_back(starter);
 
-            std::array<size_t, sigma> current_n_appended;
+            std::array<int8_t, sigma> current_n_appended;
 
             // generate array that holds ranks of chars of generated kmer
-            for (size_t i = k - size - 1; i >= 0; --i)
+            for (int8_t i = k - size - 1; i >= 0; --i)
             {
                 // duplicate for next level
                 for (auto& h : rank_summands)
@@ -115,20 +123,25 @@ class minimum_kmer_index
             }
 
             // get positions for every kmer with suffix
-            std::vector<position_t> output;
+            std::vector<const std::vector<position_t>*> output;
             for (auto& h : rank_summands)
             {
                 size_t current_hash = 0;
                 for (size_t i = 0; i < h.size(); ++i)
                     current_hash += h[i] * fast_pow(k, k - i - 1);
 
-                output.push_back()
-
+                output.emplace_back(_data.find(current_hash));
             }
 
+            // check if query is at the very beginning
+            for (size_t i = 0; i < size; ++i)
+                if (*backup_start_it != _first_kmer.at(i))
+                    return output;
 
+            output.push_back(&_zero);
+            return output;
         }
-&
+
     protected:
         template<std::ranges::range text_t>
         void create(text_t && text)
@@ -172,17 +185,21 @@ class minimum_kmer_index
                     return it->second;
             }
             else if (query.size() > k) {
-                // search first n
+                // search first n*k parts
                 size_t rest_n = query.size() % k;
                 std::vector<std::vector<position_t>*> positions{};
+                positions.reserve(query.size() / k + 1);
 
                 for (auto it = query.begin(); it + k != query.end() - rest_n; it += k)
                     positions.push_back(&_data.find(hash(it))->second);
 
-                // search last m < k
-                search_sub_k(query.end() - rest_n, rest_n, positions);
+                // search last m < k part
+                if (rest_n != 0)
+                    for (auto* r : search_subk(query.end() - rest_n, rest_n))
+                        positions.push_back(r);
 
                 std::vector<position_t> confirmed_positions{};
+                confirmed_positions.reserve(positions.at(0)->size());
 
                 for (auto start_pos : *positions.at(0)) {
                     position_t previous_pos = start_pos;
@@ -200,6 +217,8 @@ class minimum_kmer_index
                             break;
                     }
                 }
+
+                return std::move(confirmed_positions);
             }
             else
             {
