@@ -27,6 +27,20 @@ using namespace seqan3;
 constexpr size_t k = 7;
 int main()
 {
+    const auto results = std::vector<uint32_t>{4, 5, 123, 123, 154, 167, 132};
+
+    auto not_flat = std::vector<const std::vector<uint32_t>*>{&results, &results, &results};
+
+    kmer_index_results<dna4, k> results_flat{&results};
+    kmer_index_results<dna4, k> results_not_flat{not_flat};
+
+    debug_stream << results_flat.to_vector() << "\n";
+    debug_stream << results_not_flat.to_vector() << "\n";
+
+
+
+
+    /*
     input_generator<seqan3::dna4> input;
     auto text = input.generate_sequence(100000);
 
@@ -53,6 +67,7 @@ int main()
     }
 
     return 0;
+     */
 }
 
 
