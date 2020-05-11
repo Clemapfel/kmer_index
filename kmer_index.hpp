@@ -12,57 +12,53 @@
 
 #include <robin_hood.h>
 
+
 #include <iterator>
 
 namespace detail
 {
-    // fast pow
+    // optimized pow
+    size_t fast_pow(size_t base, size_t exp)
+    {
+        int result = 1;
+        for (;;)
+        {
+            if (exp & 1)
+                result *= base;
+            exp >>= 1;
+            if (!exp)
+                break;
+            base *= base;
+        }
 
+        return result;
+
+        // reference: https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
+    }
 }
 
-template<seqan3::alphabet alphabet_t, size_t k>
+template<seqan3::alphabet alphabet_t, size_t k, typename position_t = uint32_t>
 class kmer_index
 {
     static_assert(k > 1, "please specify a valid k");
 
-    using position_t = uint32_t;
-
     private:
         robin_hood::unordered_map<size_t, std::vector<position_t>> _data;
 
-        inline static uint8_t _sigma = seqan3::alphabet_size<alphabet_t>;
+        constexpr static uint8_t _sigma = seqan3::alphabet_size<alphabet_t>;
 
         // needed for edge case in sub_k
         std::vector<alphabet_t> _first_kmer;
         const std::vector<position_t> _zero = {0};
 
-        // optimized pow used for hashing
-        size_t fast_pow(size_t base, size_t exp)
-        {
-            int result = 1;
-            for (;;)
-            {
-                if (exp & 1)
-                    result *= base;
-                exp >>= 1;
-                if (!exp)
-                    break;
-                base *= base;
-            }
-
-            return result;
-
-            // reference: https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
-        }
-
         // hash a kmer
         template<typename iterator_t>
-        size_t hash(iterator_t& query_it)
+        size_t hash(iterator_t query_it)
         {
             size_t hash = 0;
             for (size_t i = 0; i < k; ++i)
             {
-                hash += seqan3::to_rank(*(query_it)) * fast_pow(_sigma, k - i - 1);
+                hash += seqan3::to_rank(*(query_it)) * detail::fast_pow(_sigma, k - i - 1);
                 query_it++;
             }
 
@@ -73,25 +69,24 @@ class kmer_index
         template<typename iterator_t>
         std::vector<const std::vector<position_t>*> search_subk(iterator_t query_begin, size_t size)
         {
-            iterator_t backup_start_it = query_begin;   // deep copy for later
-
             // generate hashes for all kmers that have query as suffix
             std::vector<std::array<int8_t, k>> rank_sums;
-            rank_sums.reserve(fast_pow(_sigma, k - size));
+            rank_sums.reserve(detail::fast_pow(_sigma, k - size));
 
             std::array<int8_t, k> primer;
+            auto it = query_begin;
             for (size_t i = 0; i < size; ++i)
             {
                 if (i >= k - size)
-                    primer[i] = seqan3::to_rank(*query_it);
+                    primer[i] = seqan3::to_rank(*it);
                 else
                     primer[i] = -1;
 
-                query_it++;
+                it++;
             }
             rank_sums.push_back(primer);
 
-            std::array<int8_t, sigma> current_n_appended{};
+            std::array<int8_t, _sigma> current_n_appended{};
 
             // generate array that holds ranks of chars of generated kmer
             for (int8_t i = k - size - 1; i >= 0; --i)
@@ -99,7 +94,7 @@ class kmer_index
                 // duplicate for next level
                 for (auto& sum : rank_sums)
                 {
-                    for (size_t j = 0; j < sigma - 1; ++j)
+                    for (size_t j = 0; j < _sigma - 1; ++j)
                     {
                         rank_sums.push_back(sum);
                     }
@@ -120,14 +115,15 @@ class kmer_index
             {
                 size_t current_hash = 0;
                 for (size_t i = 0; i < h.size(); ++i)
-                    current_hash += h[i] * fast_pow(sigma, k - i - 1);
+                    current_hash += h[i] * detail::fast_pow(_sigma, k - i - 1);
 
                 output.emplace_back(_data.find(current_hash));
             }
 
             // check if query is at the very beginning
+            it = query_begin;
             for (size_t i = 0; i < size; ++i)
-                if (*backup_start_it != _first_kmer.at(i))
+                if (*it != _first_kmer.at(i))
                     return output;
 
             output.push_back(&_zero);
@@ -158,20 +154,22 @@ class kmer_index
 
     public:
         template<std::ranges::range text_t>
-        minimum_kmer_index(text_t&& text)
+        kmer_index(text_t&& text)
         {
             create(std::forward<text_t>(text));
         }
 
-        const std::vector<position_t>& search(std::vector<alphabet_t>& query)
+        std::vector<position_t> search(std::vector<alphabet_t>& query)
         {
+            std::vector<position_t> result{};
+
             // search length k directly
             if (query.size() == k)
             {
-                const auto& it = _data.find(hash(query.begin()));
+                auto it = _data.find(hash(query.begin()));
 
                 if (it == _data.end())
-                    return std::move(std::vector<position_t>{});
+                    return result;
                 else
                     return it->second;
             }
@@ -179,7 +177,7 @@ class kmer_index
             {
                 // search first n*k parts
                 size_t rest_n = query.size() % k;
-                std::vector<std::vector<position_t>*> positions{};
+                std::vector<const std::vector<position_t>*> positions{};
                 positions.reserve(query.size() / k + 1);
 
                 for (auto it = query.begin(); it + k != query.end() - rest_n; it += k)
@@ -187,7 +185,7 @@ class kmer_index
 
                 // search last m < k part
                 if (rest_n != 0)
-                    for (auto* r : search_subk(query.end() - rest_n, rest_n))
+                    for (const std::vector<position_t>* r : search_subk(query.end() - rest_n, rest_n))
                         positions.push_back(r);
 
                 std::vector<position_t> confirmed_positions{};
@@ -212,12 +210,15 @@ class kmer_index
                     }
                 }
 
-                return std::move(confirmed_positions);
+                for (auto p : confirmed_positions)
+                    result.push_back(p);
+
+                return result;
             }
-            else
+            /*else
             {
-                return search_sub_k(query.begin(), query.size());
-            }
+                return std::move(search_subk(query.begin(), query.size()));
+            }*/
 
         }
 
