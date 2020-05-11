@@ -21,9 +21,6 @@
 #include <thread_pool.hpp>
 #include <kmer_index_result.hpp>
 
-using namespace seqan3;
-
-
 constexpr size_t k = 7;
 int main()
 {
@@ -31,14 +28,18 @@ int main()
 
     auto not_flat = std::vector<const std::vector<uint32_t>*>{&results, &results, &results};
 
-    kmer_index_results<dna4, k> results_flat{&results};
-    kmer_index_results<dna4, k> results_not_flat{not_flat};
+    kmer_index_result<seqan3::dna4, k> results_flat{&results};
+    kmer_index_result<seqan3::dna4, k> results_not_flat{not_flat};
 
-    debug_stream << results_flat.to_vector() << "\n";
-    debug_stream << results_not_flat.to_vector() << "\n";
+    for (size_t i = 0; i < results.size(); ++i)
+        if (i % 2 == 0)
+        {
+            results_flat.set_should_use(i);
+            results_not_flat.set_should_use(i);
+        }
 
-
-
+    seqan3::debug_stream << results_flat.to_vector() << "\n";
+    seqan3::debug_stream << results_not_flat.to_vector() << "\n";
 
     /*
     input_generator<seqan3::dna4> input;

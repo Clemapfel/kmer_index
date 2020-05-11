@@ -10,10 +10,11 @@
 #include <seqan3/core/type_traits/range.hpp>
 #include <seqan3/core/debug_stream.hpp>
 
+#include <iterator>
+
 #include <robin_hood.h>
 
-
-#include <iterator>
+#include <kmer_index_result.hpp>
 
 namespace detail
 {
@@ -159,19 +160,20 @@ class kmer_index
             create(std::forward<text_t>(text));
         }
 
-        std::vector<position_t> search(std::vector<alphabet_t>& query)
-        {
-            std::vector<position_t> result{};
+        using result_t = kmer_index_result<alphabet_t, k, position_t>;
 
+        // search any query. c.f. [1] for why result proxy is used
+        result_t&& search(std::vector<alphabet_t>& query)       // TODO: & or &&?
+        {
             // search length k directly
             if (query.size() == k)
             {
                 auto it = _data.find(hash(query.begin()));
 
                 if (it == _data.end())
-                    return result;
+                    return std::move(result_t{});
                 else
-                    return it->second;
+                    return std::move(result_t{it->second});
             }
             else if (query.size() > k)
             {
@@ -188,21 +190,22 @@ class kmer_index
                     for (const std::vector<position_t>* r : search_subk(query.end() - rest_n, rest_n))
                         positions.push_back(r);
 
-                std::vector<position_t> confirmed_positions{};
-                confirmed_positions.reserve(positions.at(0)->size());
+                auto result = result_t{positions};
 
-                for (auto start_pos : *positions.at(0)) {
+                size_t i = 0;
+                for (auto start_pos : *positions.at(0))
+                {
                     position_t previous_pos = start_pos;
 
-                    for (size_t i = 1; i <= positions.size(); ++i)
+                    for (size_t j = 1; j <= positions.size(); ++j, ++i)
                     {
-                        if (i == positions.size())
+                        if (j == positions.size())
                         {
-                            confirmed_positions.push_back(start_pos);
+                            result.set_1(i);    // mark position as confirmed
                             break;
                         }
 
-                        auto* current = positions.at(i);
+                        auto* current = positions.at(j);
                         if (std::find(current->begin(), current->end(), previous_pos + k) != current->end())
                             previous_pos += k;
                         else
@@ -210,16 +213,12 @@ class kmer_index
                     }
                 }
 
-                for (auto p : confirmed_positions)
-                    result.push_back(p);
-
-                return result;
+                return std::move(result);
             }
-            /*else
+            else
             {
-                return std::move(search_subk(query.begin(), query.size()));
-            }*/
-
+                return std::move(result_t{search_subk(query.begin(), query.size())});
+            }
         }
 
 
