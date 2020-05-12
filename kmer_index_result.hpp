@@ -34,7 +34,7 @@ namespace detail {
                 assert(i < n_bits);
 
                 size_t n = i & _and_v;
-                _bits.data()[i >> _rshift_v] |= _zero << n;
+                _bits.data()[i >> _rshift_v] &= ~(_one << n);
             }
 
             // set ith bit to 1

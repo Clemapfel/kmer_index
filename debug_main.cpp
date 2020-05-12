@@ -61,7 +61,6 @@ int main()
 
         seqan3::debug_stream << "query : " << q << "\n"
                             << "kmer : " << kmer_results.to_vector() << "\n"
-                            << kmer_results.get_raw() << "\n"
                             << "fm : " << seqan3::search(q, fm) << "\n";
         i++;
     }
