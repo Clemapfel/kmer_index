@@ -193,6 +193,10 @@ class kmer_index
                         positions.push_back(&(it->second));
                 }
 
+                std::vector<const std::vector<position_t>*> subk_results;
+                if (rest_n > 0)
+                    subk_results = search_subk(query.end() - rest_n, rest_n);   //TODO
+
                 // init result with reference to first segment hit
                 auto result = result_t(positions.at(0));
 
@@ -207,7 +211,15 @@ class kmer_index
                     for (size_t j = 1; j <= positions.size(); ++j)
                     {
                         if (j == positions.size())
+                        {
+                            // check rest part
+                            if (rest_n > 0)
+                                for (const std::vector<position_t>* current : subk_results)
+                                    if (std::find(current->begin(), current->end(), previous_pos + k) == current->end())
+                                        result.should_not_use(i);   // not hit
+
                             break;  // hit: keep as "should use"
+                        }
 
                         const std::vector<position_t>* current = positions.at(j);
 

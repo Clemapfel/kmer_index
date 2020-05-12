@@ -93,6 +93,7 @@ class kmer_index;
                         if (_bitmask.at(i))
                             output.push_back(vec->at(j));
 
+                std::sort(output.begin(), output.end());
                 return output;
             }
 

@@ -24,14 +24,13 @@
 using namespace seqan3;
 constexpr size_t k = 7;
 
-int main()
-{
-    /*
-    input_generator<seqan3::dna4> input{0001};
+int main() {
 
-    std::vector<seqan3::dna4> q = input.generate_sequence(2 * k);
+    input_generator<seqan3::dna4> input{493};
 
-    auto text = input.generate_text(1000000, {q});
+    std::vector<seqan3::dna4> q = input.generate_sequence(k - 2);
+
+    auto text = input.generate_text(30, {q});
     auto kmer = kmer_index<seqan3::dna4, k>{text};
     auto fm = seqan3::fm_index{text};
 
@@ -41,20 +40,22 @@ int main()
                          << "kmer : " << kmer_results.to_vector() << "\n"
                          << "fm : " << seqan3::search(q, fm) << "\n";
 
-    return 0;*/
 
-    input_generator<seqan3::dna4> input;
+    return 0;
+}
+
+/*    input_generator<seqan3::dna4> input;
 
     std::vector<std::vector<seqan3::dna4>> k_queries = input.generate_queries(1000, k);
     auto subk_queries = input.generate_queries(1000, k-2);
     auto nk_queries = input.generate_queries(1000, 4*k);
 
-    auto text = input.generate_text(100000, nk_queries);
+    auto text = input.generate_text(100000, subk_queries);
     auto kmer = kmer_index<seqan3::dna4, k>{text};
     auto fm = seqan3::fm_index{text};
 
     size_t i = 0;
-    for (auto q : nk_queries)
+    for (auto q : subk_queries)
     {
         seqan3::debug_stream << i << "\n";
         auto kmer_results = kmer.search(q);
@@ -69,7 +70,6 @@ int main()
     return 0;
 }
 
-/*
  // search first n*k parts
                 size_t rest_n = query.size() % k;
                 std::vector<const std::vector<position_t>*> positions{};
