@@ -215,6 +215,7 @@ class kmer_index
                             previous_pos += k;
                         else
                         {
+                            seqan3::debug_stream << "shouldn_t use " << i << " (" << possible_results->size() << ")\n";
                             result.should_not_use(i);
                             break;  // no hit
                         }

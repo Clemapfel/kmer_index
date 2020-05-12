@@ -26,11 +26,12 @@ constexpr size_t k = 7;
 
 int main()
 {
+    /*
     input_generator<seqan3::dna4> input{0001};
 
     std::vector<seqan3::dna4> q = input.generate_sequence(2 * k);
 
-    auto text = input.generate_text(100, {q});
+    auto text = input.generate_text(1000000, {q});
     auto kmer = kmer_index<seqan3::dna4, k>{text};
     auto fm = seqan3::fm_index{text};
 
@@ -40,13 +41,8 @@ int main()
                          << "kmer : " << kmer_results.to_vector() << "\n"
                          << "fm : " << seqan3::search(q, fm) << "\n";
 
-    return 0;
-}
+    return 0;*/
 
-
-
-
-    /*
     input_generator<seqan3::dna4> input;
 
     std::vector<std::vector<seqan3::dna4>> k_queries = input.generate_queries(1000, k);
@@ -65,6 +61,7 @@ int main()
 
         seqan3::debug_stream << "query : " << q << "\n"
                             << "kmer : " << kmer_results.to_vector() << "\n"
+                            << kmer_results.get_raw() << "\n"
                             << "fm : " << seqan3::search(q, fm) << "\n";
         i++;
     }

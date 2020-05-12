@@ -83,7 +83,8 @@ class kmer_index;
         friend class kmer_index<alphabet_t, k, position_t>;
 
         public:
-            std::vector<position_t> to_vector() const {
+            std::vector<position_t> to_vector() const
+            {
                 std::vector<position_t> output;
 
                 size_t i = 0;
