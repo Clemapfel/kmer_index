@@ -118,7 +118,7 @@ class kmer_index
                 for (size_t i = 0; i < h.size(); ++i)
                     current_hash += h[i] * detail::fast_pow(_sigma, k - i - 1);
 
-                output.emplace_back(_data.find(current_hash));
+                output.emplace_back(&(_data.find(current_hash)->second));
             }
 
             // check if query is at the very beginning
@@ -163,7 +163,7 @@ class kmer_index
         using result_t = kmer_index_result<alphabet_t, k, position_t>;
 
         // search any query. c.f. [1] for why result proxy is used
-        result_t&& search(std::vector<alphabet_t>& query)       // TODO: & or &&?
+        result_t search(std::vector<alphabet_t>& query)       // TODO: & or &&?
         {
             // search length k directly
             if (query.size() == k)
@@ -171,53 +171,61 @@ class kmer_index
                 auto it = _data.find(hash(query.begin()));
 
                 if (it == _data.end())
-                    return std::move(result_t{});
+                    return result_t();
                 else
-                    return std::move(result_t{it->second});
+                    return result_t(&it->second);
             }
+            // other length
             else if (query.size() > k)
             {
-                // search first n*k parts
-                size_t rest_n = query.size() % k;
-                std::vector<const std::vector<position_t>*> positions{};
+                std::vector<const std::vector<position_t>*> positions;
                 positions.reserve(query.size() / k + 1);
 
-                for (auto it = query.begin(); it + k != query.end() - rest_n; it += k)
-                    positions.push_back(&_data.find(hash(it))->second);
-
-                // search last m < k part
-                if (rest_n != 0)
-                    for (const std::vector<position_t>* r : search_subk(query.end() - rest_n, rest_n))
-                        positions.push_back(r);
-
-                auto result = result_t{positions};
-
-                size_t i = 0;
-                for (auto start_pos : *positions.at(0))
+                // look up hits for each k part
+                size_t rest_n = query.size() % k;
+                for (size_t i = 0; i < query.size() - rest_n; i += k)
                 {
+                    auto it = _data.find(hash(query.begin() + i));
+
+                    if (it == _data.end())  // if segment is missing, query has no hits
+                        return result_t();
+                    else
+                        positions.push_back(&(it->second));
+                }
+
+                // init result with reference to first segment hit
+                auto result = result_t(positions.at(0));
+
+                // then find out which of those can't be a hit and mark them
+                const std::vector<position_t>* possible_results = positions.at(0);
+
+                for (size_t i = 0; i < possible_results->size(); ++i)
+                {
+                    position_t start_pos = possible_results->at(i);
                     position_t previous_pos = start_pos;
 
-                    for (size_t j = 1; j <= positions.size(); ++j, ++i)
+                    for (size_t j = 1; j <= positions.size(); ++j)
                     {
                         if (j == positions.size())
-                        {
-                            result.set_1(i);    // mark position as confirmed
-                            break;
-                        }
+                            break;  // hit: keep as "should use"
 
-                        auto* current = positions.at(j);
+                        const std::vector<position_t>* current = positions.at(j);
+
                         if (std::find(current->begin(), current->end(), previous_pos + k) != current->end())
                             previous_pos += k;
                         else
-                            break;
+                        {
+                            result.should_not_use(i);
+                            break;  // no hit
+                        }
                     }
                 }
 
-                return std::move(result);
+                return result;
             }
             else
             {
-                return std::move(result_t{search_subk(query.begin(), query.size())});
+                return result_t(search_subk(query.begin(), query.size()));
             }
         }
 

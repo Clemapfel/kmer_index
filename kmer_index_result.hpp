@@ -17,19 +17,20 @@ namespace detail {
             static constexpr integer_t _one = 1, _zero = 0, _not_zero = ~_zero;
 
             // holds integers
+            size_t _n_bits;
             std::vector<integer_t> _bits;
 
         public:
             // create by specifying maximum i
             compressed_bitset(size_t n_bits)
-                    : _bits(std::max(n_bits / (sizeof(integer_t)*8), 1ul), _zero)
+                    : _bits(std::max(n_bits / (sizeof(integer_t)*8), 1ul), _not_zero)
             {
-                seqan3::debug_stream << "int size = " << sizeof(integer_t) << "\n";
-                seqan3::debug_stream << "used " << _bits.size() << " ints to represent " << n_bits << "\n";
+                _n_bits = n_bits;
             }
 
             // set ith bit to 0
-            void set_0(size_t i) {
+            void set_0(size_t i)
+            {
                 assert(i < n_bits);
 
                 size_t n = i & _and_v;
@@ -37,7 +38,8 @@ namespace detail {
             }
 
             // set ith bit to 1
-            void set_1(size_t i) {
+            void set_1(size_t i)
+            {
                 assert(i < n_bits);
 
                 size_t n = i & _and_v;
@@ -45,7 +47,8 @@ namespace detail {
             }
 
             // get ith bit
-            bool at(size_t i) const {
+            bool at(size_t i) const
+            {
                 assert(i < n_bits);
 
                 size_t n = i & _and_v;
@@ -53,16 +56,32 @@ namespace detail {
             }
 
             // resets all bits to 1
-            void clear() {
+            void clear()
+            {
                 for (auto& i : _bits)
-                    i = _zero;
+                    i = _not_zero;
+            }
+
+            std::vector<bool> to_vector() const
+            {
+                std::vector<bool> out;
+                for (size_t i = 0; i < _n_bits; ++i)
+                    out.push_back(at(i));
+
+                return out;
             }
     };
 }
 
+template<seqan3::alphabet, size_t, typename>
+class kmer_index;
+
 // result proxy that supports lazy-eval get
     template<seqan3::alphabet alphabet_t, size_t k, typename position_t = uint32_t>
-    class kmer_index_result {
+    class kmer_index_result
+    {
+        friend class kmer_index<alphabet_t, k, position_t>;
+
         public:
             std::vector<position_t> to_vector() const {
                 std::vector<position_t> output;
@@ -74,6 +93,21 @@ namespace detail {
                             output.push_back(vec->at(j));
 
                 return output;
+            }
+
+            auto get_raw()
+            {
+                std::vector<position_t> output;
+                for (auto& p : _positions)
+                    for (auto& r : *p)
+                        output.push_back(r);
+
+                return output;
+            }
+
+            auto get_bitmask()
+            {
+                return _bitmask;
             }
 
             //protected:
@@ -95,7 +129,12 @@ namespace detail {
                       }()) {
             }
 
-            void set_should_use(size_t i) {
+            void should_not_use(size_t i)
+            {
+                _bitmask.set_0(i);
+            }
+            void should_use(size_t i)
+            {
                 _bitmask.set_1(i);
             }
 

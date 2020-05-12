@@ -21,56 +21,106 @@
 #include <thread_pool.hpp>
 #include <kmer_index_result.hpp>
 
+using namespace seqan3;
 constexpr size_t k = 7;
+
 int main()
 {
-    const auto results = std::vector<uint32_t>{4, 5, 123, 123, 154, 167, 132};
+    input_generator<seqan3::dna4> input{0001};
 
-    auto not_flat = std::vector<const std::vector<uint32_t>*>{&results, &results, &results};
+    std::vector<seqan3::dna4> q = input.generate_sequence(2 * k);
 
-    kmer_index_result<seqan3::dna4, k> results_flat{&results};
-    kmer_index_result<seqan3::dna4, k> results_not_flat{not_flat};
+    auto text = input.generate_text(100, {q});
+    auto kmer = kmer_index<seqan3::dna4, k>{text};
+    auto fm = seqan3::fm_index{text};
 
-    for (size_t i = 0; i < results.size(); ++i)
-        if (i % 2 == 0)
-        {
-            results_flat.set_should_use(i);
-            results_not_flat.set_should_use(i);
-        }
+    auto kmer_results = kmer.search(q);
 
-    seqan3::debug_stream << results_flat.to_vector() << "\n";
-    seqan3::debug_stream << results_not_flat.to_vector() << "\n";
+    seqan3::debug_stream << "query : " << q << "\n"
+                         << "kmer : " << kmer_results.to_vector() << "\n"
+                         << "fm : " << seqan3::search(q, fm) << "\n";
+
+    return 0;
+}
+
+
+
 
     /*
     input_generator<seqan3::dna4> input;
-    auto text = input.generate_sequence(100000);
-
-    auto kmer = kmer_index<seqan3::dna4, k>{text};
-    auto fm = fm_index{text};
 
     std::vector<std::vector<seqan3::dna4>> k_queries = input.generate_queries(1000, k);
     auto subk_queries = input.generate_queries(1000, k-2);
     auto nk_queries = input.generate_queries(1000, 4*k);
 
-    for (auto q : k_queries)
+    auto text = input.generate_text(100000, nk_queries);
+    auto kmer = kmer_index<seqan3::dna4, k>{text};
+    auto fm = seqan3::fm_index{text};
+
+    size_t i = 0;
+    for (auto q : nk_queries)
     {
+        seqan3::debug_stream << i << "\n";
         auto kmer_results = kmer.search(q);
-        auto fm_results = seqan3::search(q, fm);
 
-        std::sort(kmer_results.begin(), kmer_results.end());
-
-        size_t fm_size = 0;
-        for (auto _ : fm_results)
-            fm_size += 1;
-
-        if (not kmer_results.size() == fm_size)
-            return 1;
+        seqan3::debug_stream << "query : " << q << "\n"
+                            << "kmer : " << kmer_results.to_vector() << "\n"
+                            << "fm : " << seqan3::search(q, fm) << "\n";
+        i++;
     }
 
+    seqan3::debug_stream << "done.\n";
     return 0;
-     */
 }
 
+/*
+ // search first n*k parts
+                size_t rest_n = query.size() % k;
+                std::vector<const std::vector<position_t>*> positions{};
+                positions.reserve(query.size() / k + 1);
+
+                for (auto it = query.begin(); it + k != query.end() - rest_n; it += k)
+                    positions.push_back(&_data.find(hash(it))->second);
+
+
+                // search last m < k part
+                if (rest_n != 0)
+                    for (const auto* r : search_subk(query.end() - rest_n, rest_n))
+                        positions.push_back(r);
+
+
+auto result = result_t(positions.at(0));
+
+size_t i = -1;
+for (auto &start_pos : *(positions.at(0)))
+{
+i++;
+position_t previous_pos = start_pos;
+
+for (size_t j = 1; j <= positions.size(); ++j)
+{
+if (j == positions.size())  // successfull hit
+{
+seqan3::debug_stream << "do use : " << i <<"\n";
+break;
+}
+
+const auto* current = positions.at(j);
+if (std::find(current->begin(), current->end(), previous_pos + k) != current->end())
+{
+previous_pos += k;
+}
+else
+{
+seqan3::debug_stream << "don't use : " << i <<"\n";
+result.should_not_use(i);
+break;
+}
+}
+}
+
+return result;
+*/
 
 
 
