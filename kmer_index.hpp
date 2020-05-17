@@ -27,17 +27,16 @@
 #include <unordered_map>
 #include "thread_pool.hpp"
 
-namespace detail
-{
-    // optimized consteval pow
-    constexpr size_t fast_pow(size_t base, size_t exp)  //TODO: set consteval
+namespace detail {
+// optimized consteval pow
+    constexpr size_t fast_pow(size_t base, size_t exp)
     {
-        int result = 1;
+        int result = 1ul;
         for (;;)
         {
-            if (exp & 1)
+            if (exp & 1ul)
                 result *= base;
-            exp >>= 1;
+            exp >>= 1ul;
             if (!exp)
                 break;
             base *= base;
@@ -47,11 +46,6 @@ namespace detail
 
         // reference: https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
     }
-
-    // hash a kmer:
-    // auxiliary function that fold expression instead of for loop so the compiler can pre-unwrape
-    // part of the expression at compile time
-
 }
 
 // represents a kmer index for a single k
@@ -61,43 +55,36 @@ class kmer_index_element
     static_assert(k > 1, "please specify a valid k");
 
     private:
-        robin_hood::unordered_map<size_t, std::vector<position_t>> _map_data;
+        robin_hood::unordered_map<size_t, std::vector<position_t>> _data;
 
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
         size_t _sigma = seqan3::alphabet_size<alphabet_t>;
 
         // hash a query
         template<typename iterator_t, size_t... is>
-        size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence)
+        size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence) const
         {
-            return (... + (seqan3::to_rank(*(query_it++)) * detail::fast_pow(_sigma, k - is - 1)));
+            return (0 + ... + (seqan3::to_rank(*query_it++) * detail::fast_pow(_sigma, k - is - 1)));
         }
 
         template<typename iterator_t>
-        size_t hash(iterator_t query_it)
+        size_t hash2(iterator_t query_it) const
         {
             return hash_aux(query_it, std::make_index_sequence<k>());
         }
 
-    protected:
-        // split query into parts of length k with rest at the end
-        static std::vector<std::vector<alphabet_t>> split_query(std::vector<alphabet_t>& query)
+        template<typename iterator_t>
+        size_t hash(iterator_t query_it) const
         {
-            std::vector<std::vector<alphabet_t>> parts{};
-            parts.reserve(query.size() / k + 1);
+            size_t hash = 0;
+            for (size_t i = 0; i < k; ++i)
+                hash += (seqan3::to_rank(*query_it++) * detail::fast_pow(_sigma, k - i - 1));
 
-            if (query.size() < k)
-                return {query};
-
-            for (size_t offset = 0; offset <= query.size() - k; offset += k)
-                parts.emplace_back(query.begin() + offset, query.begin() + offset + k);
-
-            if (query.size() % k != 0)
-                parts.emplace_back(query.end() - k + 1, query.end());
-
-            return parts;
+            return hash;
         }
 
+    //protected:
+    public:
         // get all possible kmers that have query as suffix, needed for subk search
         static std::unordered_set<std::vector<alphabet_t>> get_all_kmer_with_suffix(std::vector<alphabet_t> sequence)
         {
@@ -150,38 +137,41 @@ class kmer_index_element
         }
 
         // exact search for query.size() == k
-        std::vector<position_t> search_query_length_k(std::vector<alphabet_t> query) const
+        std::vector<position_t> search_query_length_k(std::vector<alphabet_t>& query) const
         {
             assert(query.size() == k);
 
-            auto it = _map_data.find(hash(query.begin()));
-            if (it != _map_data.end())
+            auto seqan_hash = *(query | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}})).begin();
+            auto my_hash = hash(query.begin());
+            auto constexpr_hash = hash2(query.begin());
+            assert(seqan_hash == my_hash);
+
+            auto it = _data.find(hash(query.begin()));
+            if (it != _data.end())
                 return it->second;
             else
                 return std::vector<position_t>{};
-
         }
 
         // exact search for query.size() % k == 0
-        std::vector<position_t> search_query_length_nk(std::vector<alphabet_t> query) const
+        std::vector<position_t> search_query_length_nk(std::vector<alphabet_t>& query) const
         {
             assert(query.size() % k == 0);
 
-            auto query_parts = split_query(query);
+            std::vector<const std::vector<position_t>*> positions;
 
-            // get pos for each section
-            std::vector<std::vector<position_t>> positions{};
-            for (auto &part : query_parts)
+            for (size_t i = 0; i < query.size(); ++i)
             {
-                positions.push_back(search_query_length_k(part));
-
-                if (positions.back().empty())
-                    return std::vector<position_t>{}; // if one segment is missing, no match
+                auto it = _data.find(hash(query.begin() + i));
+                if (it == _data.end())
+                    return std::vector<position_t>();
+                else
+                    positions.push_back(&(it->second));
             }
 
             // find out if pos for sections match
             std::vector<position_t> confirmed_positions{};
-            for (auto &start_pos : positions.at(0))
+            for (position_t start_pos : *positions.at(0))
             {
                 position_t previous_pos = start_pos;
 
@@ -193,9 +183,9 @@ class kmer_index_element
                         break;
                     }
 
-                    const auto current = positions.at(i);
+                    const auto* current = positions.at(i);
 
-                    if (std::find(current.begin(), current.end(), previous_pos + k) != current.end())
+                    if (std::find(current->begin(), current->end(), previous_pos + k) != current->end())
                         previous_pos += k;
                     else
                         break;
@@ -248,43 +238,27 @@ class kmer_index_element
         // ctors
         ~kmer_index_element() = default;
 
-        kmer_index_element(bool use_hashtable = true)
-        {
-            _use_hashtable = use_hashtable;
-        }
-
         template<std::ranges::range text_t>
-        kmer_index_element(text_t & text, bool use_hashtable = true)
+        kmer_index_element(text_t& text)
+                :  _first_kmer(text.begin(), text.begin() + k)
         {
-            _use_hashtable = use_hashtable;
             create(text);
         }
 
         template<std::ranges::range text_t>
         void create(text_t & text)
         {
-            _first_kmer = std::vector<alphabet_t>(text.begin(), text.begin() + k);
+            auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
 
-            if (_use_hashtable)
-            {
-                _da_data = kmer_hash_table{text};
-            }
-            else
-            {
-                auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
-
-                position_t i = 0;
-                for (auto h : hashes) {
-                    if (_map_data.find(h) == _map_data.end())
-                    {
-                        _map_data.emplace(h, std::vector<position_t>({i}));
-                    }
-                    else
-                        _map_data[h].push_back(i);
-                    ++i;
+            position_t i = 0;
+            for (auto h : hashes) {
+                if (_data.find(h) == _data.end())
+                {
+                    _data.emplace(h, std::vector<position_t>({i}));
                 }
-
-                //seqan3::debug_stream << _map_data << "\n";
+                else
+                    _data[h].push_back(i);
+                ++i;
             }
         }
 
@@ -292,9 +266,6 @@ class kmer_index_element
         std::vector<position_t> search(std::vector<alphabet_t> query) const
         {
             std::vector<position_t> result;
-
-            if (query.size() % k >= 10)
-                seqan3::debug_stream << "[WARNING] searching query (length = " << query.size() << ") with kmer index for k = " << k << " may cause runtime or memory issues. Please choose a k and query combination so that query.size() % k is as high as possible.\n";
 
             if (query.size() == k)
                 return search_query_length_k(query);
@@ -343,7 +314,8 @@ class kmer_index_element
                 return false;
         }
 };
-}
+
+/*
 
 // "multi" kmer index, specifying more than one k depending on output can drastically increase performance [1]
 template<seqan3::alphabet alphabet_t, typename position_t, size_t... ks>
@@ -528,8 +500,6 @@ namespace debug
     }
 }
 
-
-/*
 template<auto first, auto... ks, std::ranges::range text_t>
 auto make_kmer_index(text_t text, size_t n_threads = 1)
 {
