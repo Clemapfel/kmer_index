@@ -29,21 +29,39 @@
 
 namespace detail
 {
-template<seqan3::alphabet alphabet_t, size_t k>
-size_t hash_query(std::vector<alphabet_t> query)
-{
-    assert(query.size() == k);
+    // optimized consteval pow
+    constexpr size_t fast_pow(size_t base, size_t exp)  //TODO: set consteval
+    {
+        int result = 1;
+        for (;;)
+        {
+            if (exp & 1)
+                result *= base;
+            exp >>= 1;
+            if (!exp)
+                break;
+            base *= base;
+        }
 
-    auto hashes = query | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
-    return *(hashes.begin());
+        return result;
 
-    /*
-    size_t hash = 0;
-    for (size_t i = 0; i < k; ++i)
-        hash += seqan3::to_rank(query.at(i)) * pow(k, k-i-1);
+        // reference: https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
+    }
 
-    return hash;
-     */
+    // hash a kmer:
+    // auxiliary function that fold expression instead of for loop so the compiler can pre-unwrape
+    // part of the expression at compile time
+    template<typename iterator_t, size_t... is>
+    size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence)
+    {
+        return (... + (seqan3::to_rank(*(query_it++)) * detail::fast_pow(_sigma, k - is - 1)));
+    }
+
+    template<typename iterator_t>
+    size_t hash(iterator_t query_it)
+    {
+        return hash_aux(query_it, std::make_index_sequence<k>());
+    }
 }
 
 // represents a kmer index for a single k
