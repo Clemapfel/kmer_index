@@ -51,17 +51,7 @@ namespace detail
     // hash a kmer:
     // auxiliary function that fold expression instead of for loop so the compiler can pre-unwrape
     // part of the expression at compile time
-    template<typename iterator_t, size_t... is>
-    size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence)
-    {
-        return (... + (seqan3::to_rank(*(query_it++)) * detail::fast_pow(_sigma, k - is - 1)));
-    }
 
-    template<typename iterator_t>
-    size_t hash(iterator_t query_it)
-    {
-        return hash_aux(query_it, std::make_index_sequence<k>());
-    }
 }
 
 // represents a kmer index for a single k
@@ -71,137 +61,23 @@ class kmer_index_element
     static_assert(k > 1, "please specify a valid k");
 
     private:
-        // custom hash table for direct addressing
-        class kmer_hash_table
-        {
-            private:
-                std::vector<std::vector<position_t>> _data;
-
-                size_t _text_length;
-
-            protected:
-                void print_hashtable() const
-                {
-                    seqan3::debug_stream << "i" << "\t" << "kmer_hash" << "\t" << "pos" << "\n";
-
-                    size_t i = 0;
-                    size_t kmer_hash = _min_hash;
-                    for (auto vec : _data)
-                    {
-                        seqan3::debug_stream << i << "\t" << kmer_hash << "\t" << vec << "\n";
-                        i += 1;
-                        kmer_hash += 1;
-                    }
-
-                    size_t n_empty_slots = 0;
-                    for (auto row : _data)
-                        if (row.empty())
-                            n_empty_slots++;
-
-                    seqan3::debug_stream << "Printed DA Hashtable for k = " << k << ", text_length = " << _text_length << "." << "\n";
-                    seqan3::debug_stream << "min hash: " << _min_hash << " , max hash: " << _max_hash
-                                         << " (" << ((n_empty_slots / float(_data.size()))) * 100 << "% entries empty)\n";
-"\n";
-                    seqan3::debug_stream << "______________________________________________\n";
-                }
-
-                size_t _min_hash, _max_hash;
-                size_t _n_different_hashes;
-
-                // construct hash table
-                template<std::ranges::range text_t>
-                void construct(text_t& text)
-                {
-                    _text_length = text.size();
-
-                    auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
-
-                    bool preallocate = k > 9;
-
-                    // no preallocation, resize as necessary
-                    if (not preallocate)
-                    {
-                        _min_hash = *hashes.begin();
-                        _max_hash = *hashes.begin();
-                        _data.emplace_back();
-
-                        position_t i = 0;
-                        for (auto h : hashes)
-                        {
-                            // resize if necessary
-                            if (h < _min_hash) {
-                                _data.insert(_data.begin(), std::labs(_min_hash - h), std::vector<position_t>{});
-                                _min_hash = h;
-                            }
-                            else if (h > _max_hash) {
-                                _data.insert(_data.end(), std::labs(h - _max_hash), std::vector<position_t>{});
-                                _max_hash = h;
-                            }
-
-                            _data[h - _min_hash].push_back(i);
-                            ++i;
-                        }
-                    }
-                    // preallocation but have to scan first
-                    else
-                    {
-                        _min_hash = std::numeric_limits<size_t>::max();
-                        _max_hash = 0;
-
-                        for (auto h : hashes)
-                        {
-                            if (h < _min_hash)
-                                _min_hash = h;
-
-                            if (h > _max_hash)
-                                _max_hash = h;
-                        }
-
-                        _data.reserve(_max_hash - _min_hash);
-                        for (size_t i = 0; i <= (_max_hash - _min_hash); ++i)
-                            _data.emplace_back();
-
-                        position_t i = 0;
-                        for (auto h : hashes)
-                        {
-                            _data[h - _min_hash].push_back(i);
-                            ++i;
-                        }
-                    }
-                }
-
-            public:
-                kmer_hash_table() = default;
-
-                // create from text
-                template<std::ranges::range text_t>
-                kmer_hash_table(text_t& text)
-                {
-                    construct(text);
-                }
-
-                std::vector<position_t> at(std::vector<alphabet_t>& query) const
-                {
-                    assert(query.size() == k);
-
-                    auto hash = hash_query<alphabet_t, k>(query);
-
-                    if (hash < _min_hash or hash > _max_hash)
-                        return std::vector<position_t>{};
-                    else
-                        return _data.data()[hash - _min_hash];
-                };
-        };
-
-        // wether to use direct addressing or map, specified in ctor
-        bool _use_hashtable;
-
-        unsigned long long _current_size = 0;
-
-        kmer_hash_table _da_data;
         robin_hood::unordered_map<size_t, std::vector<position_t>> _map_data;
 
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
+        size_t _sigma = seqan3::alphabet_size<alphabet_t>;
+
+        // hash a query
+        template<typename iterator_t, size_t... is>
+        size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence)
+        {
+            return (... + (seqan3::to_rank(*(query_it++)) * detail::fast_pow(_sigma, k - is - 1)));
+        }
+
+        template<typename iterator_t>
+        size_t hash(iterator_t query_it)
+        {
+            return hash_aux(query_it, std::make_index_sequence<k>());
+        }
 
     protected:
         // split query into parts of length k with rest at the end
@@ -278,16 +154,12 @@ class kmer_index_element
         {
             assert(query.size() == k);
 
-            if (_use_hashtable)
-                return _da_data.at(query);
+            auto it = _map_data.find(hash(query.begin()));
+            if (it != _map_data.end())
+                return it->second;
             else
-            {
-                auto it = _map_data.find(hash_query<alphabet_t, k>(query));
-                if (it != _map_data.end())
-                    return it->second;
-                else
-                    return std::vector<position_t>{};
-            }
+                return std::vector<position_t>{};
+
         }
 
         // exact search for query.size() % k == 0
