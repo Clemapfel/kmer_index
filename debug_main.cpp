@@ -37,20 +37,6 @@
 
     int main()
     {
-        auto text = "ACTAGCTACGTAGCA"_dna4;
-        auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
-
-        auto suffix = "ACG"_dna4;
-
-        auto all_hashes_test = kmer.generate_all_hash_for_kmer_with_suffix(suffix.begin(), 3);
-
-        std::sort(all_hashes_test.begin(), all_hashes_test.end());
-
-        seqan3::debug_stream << all_hashes_test << "\n";
-
-        /*
-        //force_error("GGATGGACCT"_dna4, 543);
-
         debug_stream << "starting test...\n";
 
         auto input = input_generator<dna4>();
@@ -63,7 +49,7 @@
             auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
             auto fm = fm_index(text);
 
-            for (size_t size : {k, 2*k, 3*k, 4*k})  //TODO: nk not working
+            for (size_t size : {k-2})//, k-1, k, 2*k, 3*k, 4*k})
             {
                 //auto query = "GGCAGCATCT"_dna4;
                 auto query = input.generate_sequence(size);
@@ -75,12 +61,15 @@
 
                 bool results_equal = (kmer.search(query).size() - fm_size) == 0;
 
+                auto kmer_results =  kmer.search(query);
+                std::sort(kmer_results.begin(), kmer_results.end());
+
                 if (not results_equal)
                 {
                     debug_stream << "results not equal for seed = " << i << "\n";
                     debug_stream << "query : " << query << " (" << query.size() << ")\n";
                     debug_stream << "fm  : " << search(query, fm) << "\n";
-                    debug_stream << "kmer : " << kmer.search(query) << "\n";
+                    debug_stream << "kmer : " << kmer_results << "\n";
 
                     return 1;
                 }
@@ -89,7 +78,7 @@
         }
 
         debug_stream << "test passed succesfully.";
-         */
+
     }
 
 

@@ -93,31 +93,35 @@ class kmer_index_element
         }
 
     //protected:
-    public:
 
-        const std::vector<position_t>* at(size_t hash)
+        const std::vector<position_t> _empty;
+        std::vector<std::vector<position_t>> _first_kmer_refs;
+
+        const std::vector<position_t>* at(size_t hash) const
         {
             auto it = _data.find(hash);
 
             if (it != _data.end())
-                return it->second;
+                return &it->second;
             else
-                return std::vector<position_t>{};
+                return &_empty;
         }
 
+
         template<typename iterator_t>
-        std::vector<const std::vector<position_t>*> search_(iterator_t suffix_begin, size_t size) //TODO: iterator
+        std::vector<const std::vector<position_t>*> search_subk(iterator_t suffix_begin, size_t size) const //TODO: iterator
         {
             // generate hashes for all kmers that have query as suffix
             std::vector<std::array<int8_t, k>> rank_sums;
             rank_sums.reserve(detail::fast_pow(_sigma, k - size));
 
             std::array<int8_t, k> primer;
+            auto it = suffix_begin;
             for (size_t i = 0; i < k; ++i)
             {
                 if (i >= k - size)
                 {
-                    primer[i] = seqan3::to_rank(*suffix_begin++);
+                    primer[i] = seqan3::to_rank(*it++);
                 }
                 else
                     primer[i] = -1;
@@ -157,6 +161,29 @@ class kmer_index_element
                     hash += (h.at(i) * detail::fast_pow(_sigma, k - i - 1));
 
                 output.push_back(at(hash));
+            }
+
+            // check edge case at first kmer
+            std::vector<size_t> pos;
+            for (size_t i = 0; i < k - size; ++i)
+            {
+                bool equal = true;
+                it = suffix_begin;
+
+                for (size_t j = 0; j < size; ++i)
+                {
+                    if (_first_kmer.at(i) != *it)
+                    {
+                        equal = false;
+                        break;
+                    }
+                    it++;
+                }
+
+                if (equal)
+                {
+                    output.push_back(&_first_kmer_refs.at(i));
+                }
             }
 
             return output;
@@ -259,6 +286,91 @@ class kmer_index_element
             return confirmed_positions;*/
         }
 
+    public:
+        // search any query
+        std::vector<position_t> search(std::vector<alphabet_t> query) const
+        {
+            if (query.size() == k)
+            {
+                //return std::vector<const std::vector<position_t>*>{at(hash(query))};
+
+                std::vector<position_t> output;
+                for (const auto pos : *at(hash(query.begin())))
+                    output.push_back(pos);
+                return output;
+            }
+
+            else if (query.size() > k)
+            {
+                size_t rest_n = query.size() % k;
+
+                std::vector<const std::vector<position_t>*> positions;
+
+                // positions for first n parts of length k
+                for (size_t i = 0; i < query.size() - rest_n; i += k)
+                {
+                    auto my_hash = hash(query.begin() + i);
+
+                    auto it = _data.find(hash(query.begin() + i));
+                    if (it == _data.end())
+                        return std::vector<position_t>();
+                    else
+                        positions.push_back(&(it->second));
+                }
+
+                std::vector<const std::vector<position_t>*> rest_positions;
+
+                // position for last part <k
+                if (rest_n > 0)
+                   rest_positions = search_subk(query.end() - rest_n, rest_n);
+
+                // find out if pos for sections match
+                std::vector<position_t> confirmed_positions{};
+                for (position_t start_pos : *positions.at(0))
+                {
+                    position_t previous_pos = start_pos;
+
+                    for (size_t i = 1; i <= positions.size(); ++i)
+                    {
+                        if (i == positions.size())
+                        {
+                            if (rest_n > 0)
+                            {
+                                for (const auto* vec : rest_positions)
+                                    if (std::find(vec->begin(), vec->end(), previous_pos + k) !=
+                                        vec->end())
+                                            confirmed_positions.push_back(start_pos);
+                            }
+                            else
+                                confirmed_positions.push_back(start_pos);
+
+                            break;
+                        }
+
+                        const auto* current = positions.at(i);
+
+                        if (std::find(current->begin(), current->end(), previous_pos + k) != current->end())
+                            previous_pos += k;
+                        else
+                            break;
+                    }
+                }
+
+                return confirmed_positions;
+            }
+
+            else //query.size() < k
+            {
+                //return search_subk();
+
+                std::vector<position_t> output;
+                for (const auto* vec : search_subk(query.begin(), query.size()))
+                    for (const auto pos : *vec)
+                        output.push_back(pos);
+                return output;
+            }
+        }
+
         // ctors
         ~kmer_index_element() = default;
 
@@ -266,6 +378,9 @@ class kmer_index_element
         kmer_index_element(text_t& text)
                 :  _first_kmer(text.begin(), text.begin() + k)
         {
+            for (position_t i = 0; i < _first_kmer.size(); ++i)
+                _first_kmer_refs.emplace_back(std::vector<position_t>{i});
+
             create(text);
         }
 
@@ -283,46 +398,6 @@ class kmer_index_element
                     _data[h].push_back(i);
 
                 ++i;
-            }
-        }
-
-        // search any query
-        std::vector<position_t> search(std::vector<alphabet_t> query) const
-        {
-            std::vector<position_t> result;
-
-            if (query.size() == k)
-                return search_query_length_k(query);
-
-            else if (query.size() % k == 0)
-                return search_query_length_nk(query);
-
-            else if (query.size() < k)
-            {
-                // subk results need to be sorted since get_kmers_with_suffix does not return in order
-                auto result = search_query_length_subk(query);
-                std::sort(result.begin(), result.end());
-                return result;
-            }
-            else
-            {
-                auto rest = query.size() % k;
-                std::vector<alphabet_t> part_nk{query.begin(), query.begin() + query.size() - rest};
-                std::vector<alphabet_t> part_subk{query.begin() + query.size() - rest, query.end()};
-
-                auto nk_results = search_query_length_nk(part_nk);
-                auto subk_results = search_query_length_subk(part_subk);
-
-                std::vector<position_t> confirmed_positions{};
-
-                for (auto &pos : nk_results)
-                {
-                    if (std::find(subk_results.begin(), subk_results.end(), pos + query.size() - rest) !=
-                        subk_results.end())
-                        confirmed_positions.push_back(pos);
-                }
-
-                return confirmed_positions;
             }
         }
 
