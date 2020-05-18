@@ -43,6 +43,11 @@ class input_generator
             _engine.seed(_starting_seed);
         }
 
+        void reset_state(size_t seed)
+        {
+            _engine.seed(seed);
+        }
+
         // generate sequence
         std::vector<alphabet_t> generate_sequence(size_t length)
         {
