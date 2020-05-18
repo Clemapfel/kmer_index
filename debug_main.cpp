@@ -26,17 +26,29 @@
     {
         auto input = input_generator<dna4>(seed);
         auto text = input.generate_sequence(1e3);
+        text.insert(text.begin(), query.begin(), query.end());
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
         auto fm = fm_index(text);
 
         debug_stream << "fm  : " << search(query, fm) << "\n";
-        debug_stream << "kmer : " << kmer.search(query) << "\n";
+
+        auto kmer_results = kmer.search_subk(query.begin(), query.size());
+        std::vector<size_t> flat;
+        for (auto vec : kmer_results)
+            for (auto p : *vec )
+                flat.push_back(p);
+
+        std::sort(flat.begin(), flat.end());
+
+        debug_stream << "kmer : " << flat << "\n";
 
         exit(0);
     }
 
     int main()
     {
+        force_error("TTG"_dna4, 42);
+
         debug_stream << "starting test...\n";
 
         auto input = input_generator<dna4>();
@@ -66,7 +78,9 @@
 
                 if (not results_equal)
                 {
+
                     debug_stream << "results not equal for seed = " << i << "\n";
+                    debug_stream << "text (head) : " << std::vector<dna4>(text.begin(), text.begin() + 100) << "\n";
                     debug_stream << "query : " << query << " (" << query.size() << ")\n";
                     debug_stream << "fm  : " << search(query, fm) << "\n";
                     debug_stream << "kmer : " << kmer_results << "\n";

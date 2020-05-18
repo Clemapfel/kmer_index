@@ -60,7 +60,6 @@ class kmer_index_element
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
 
         constexpr static size_t _sigma = seqan3::alphabet_size<alphabet_t>;
-        size_t _min_hash, _max_hash;
 
         /*
         template<typename iterator_t>
@@ -170,9 +169,9 @@ class kmer_index_element
                 bool equal = true;
                 it = suffix_begin;
 
-                for (size_t j = 0; j < size; ++i)
+                for (size_t j = i; j < i + size; ++j)
                 {
-                    if (_first_kmer.at(i) != *it)
+                    if (_first_kmer.at(j) != *it)
                     {
                         equal = false;
                         break;
@@ -187,103 +186,6 @@ class kmer_index_element
             }
 
             return output;
-        }
-
-        // exact search for query.size() == k
-        std::vector<position_t> search_query_length_k(std::vector<alphabet_t>& query) const
-        {
-            assert(query.size() == k);
-
-            auto it = _data.find(hash(query.begin()));
-            if (it != _data.end())
-                return it->second;
-            else
-                return std::vector<position_t>{};
-        }
-
-        // exact search for query.size() % k == 0
-        std::vector<position_t> search_query_length_nk(std::vector<alphabet_t>& query) const
-        {
-            assert(query.size() % k == 0);
-
-            std::vector<const std::vector<position_t>*> positions;
-
-            for (size_t i = 0; i < query.size(); i += k)
-            {
-                auto my_hash = hash(query.begin() + i);
-
-                auto it = _data.find(hash(query.begin() + i));
-                if (it == _data.end())
-                    return std::vector<position_t>();
-                else
-                    positions.push_back(&(it->second));
-            }
-
-            // find out if pos for sections match
-            std::vector<position_t> confirmed_positions{};
-            for (position_t start_pos : *positions.at(0))
-            {
-                position_t previous_pos = start_pos;
-
-                for (size_t i = 1; i <= positions.size(); ++i)
-                {
-                    if (i == positions.size())
-                    {
-                        confirmed_positions.push_back(start_pos);
-                        break;
-                    }
-
-                    const auto* current = positions.at(i);
-
-                    if (std::find(current->begin(), current->end(), previous_pos + k) != current->end())
-                        previous_pos += k;
-                    else
-                        break;
-                }
-            }
-
-            return confirmed_positions;
-        }
-
-        // exact search for query.size() < k
-        std::vector<position_t> search_query_length_subk(std::vector<alphabet_t> query) const
-        {
-            /*
-            assert(query.size() < k);
-
-            std::vector<position_t> confirmed_positions{};
-
-            // edge case: query at the very beginning
-            for (size_t i = 0; i < query.size(); ++i)
-            {
-                if (_first_kmer.at(i) == query.at(0))
-                {
-                    bool equal = true;
-                    for (size_t j = 0; j < query.size(); ++j)
-                    {
-                        if (i + j >= _first_kmer.size() || _first_kmer.at(i + j) != query.at(j))
-                        {
-                            equal = false;
-                            break;
-                        }
-                    }
-                    if (equal)
-                        confirmed_positions.push_back(i);
-                }
-            }
-
-            auto all_kmer = get_all_kmer_with_suffix(query);
-            //seqan3::debug_stream << "all kmer with suffix (" << query << ") " << all_kmer << "\n";
-
-            position_t offset = k - query.size();
-
-            for (auto kmer : all_kmer)
-            {
-                for (auto &pos : search_query_length_k(kmer))
-                    confirmed_positions.push_back(pos + offset);
-            }
-
-            return confirmed_positions;*/
         }
 
     public:
