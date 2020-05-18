@@ -27,8 +27,9 @@
 #include <unordered_map>
 #include "thread_pool.hpp"
 
-namespace detail {
-// optimized consteval pow
+namespace detail
+{
+    // optimized consteval pow
     constexpr size_t fast_pow(size_t base, size_t exp)
     {
         int result = 1ul;
@@ -72,12 +73,17 @@ class kmer_index_element
             return hash;
         }*/
 
+        // hash a query, compiler partially unwraps for loop at compile time
+        template<typename iterator_t>
+        static size_t hash_aux_aux(iterator_t query_it, size_t i)
+        {
+            return seqan3::to_rank(*query_it) * detail::fast_pow(_sigma, k - i - 1);
+        }
+
         template<typename iterator_t, size_t... is>
         static size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence)
         {
-            size_t hash = 0;
-            hash += (..., (seqan3::to_rank(*query_it) * detail::fast_pow(_sigma, k - is - 1)));
-            return hash;
+            return (... + hash_aux_aux(query_it++, is));
         }
 
         template<typename iterator_t>
@@ -100,7 +106,6 @@ class kmer_index_element
             else
                 return &_empty;
         }
-
 
         template<typename iterator_t>
         std::vector<const std::vector<position_t>*> search_subk(iterator_t suffix_begin, size_t size) const //TODO: iterator
@@ -221,7 +226,7 @@ class kmer_index_element
 
                 std::vector<const std::vector<position_t>*> rest_positions;
 
-                // position for last part <k
+                // position for last part < k
                 if (rest_n > 0)
                    rest_positions = search_subk(query.end() - rest_n, rest_n);
 
@@ -294,10 +299,9 @@ class kmer_index_element
             for (auto h : hashes)
             {
                 if (_data.find(h) == _data.end())
-                    _data.emplace(h, std::vector<position_t>({i}));
-                else
-                    _data[h].push_back(i);
+                    _data.emplace(h, std::vector<position_t>());
 
+                _data[h].push_back(i);
                 ++i;
             }
         }

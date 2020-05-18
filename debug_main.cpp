@@ -28,26 +28,21 @@
         auto text = input.generate_sequence(1e3);
         text.insert(text.begin(), query.begin(), query.end());
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
-        auto fm = fm_index(text);
 
+        auto fm = fm_index(text);
         debug_stream << "fm  : " << search(query, fm) << "\n";
 
-        auto kmer_results = kmer.search_subk(query.begin(), query.size());
-        std::vector<size_t> flat;
-        for (auto vec : kmer_results)
-            for (auto p : *vec )
-                flat.push_back(p);
+        auto kmer_results = kmer.search(query);
+        std::sort(kmer_results.begin(), kmer_results.end());
 
-        std::sort(flat.begin(), flat.end());
-
-        debug_stream << "kmer : " << flat << "\n";
+        debug_stream << "kmer : " << kmer_results << "\n";
 
         exit(0);
     }
 
     int main()
     {
-        force_error("TTG"_dna4, 42);
+        force_error("TAGGCCTGGAGCGTG"_dna4, 1234);
 
         debug_stream << "starting test...\n";
 
@@ -61,7 +56,7 @@
             auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
             auto fm = fm_index(text);
 
-            for (size_t size : {k-2})//, k-1, k, 2*k, 3*k, 4*k})
+            for (size_t size : {k-2, k-1, k, 2*k, 3*k, 2*k+3})
             {
                 //auto query = "GGCAGCATCT"_dna4;
                 auto query = input.generate_sequence(size);
