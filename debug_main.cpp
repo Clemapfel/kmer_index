@@ -35,26 +35,28 @@
         exit(0);
     }
 
-    constexpr size_t fast_pow(size_t base, size_t exp)
+    std::vector<size_t> generate_all(std::vector<dna4> suffix)
     {
-        int result = 1ul;
-        for (;;)
-        {
-            if (exp & 1ul)
-                result *= base;
-            exp >>= 1ul;
-            if (!exp)
-                break;
-            base *= base;
-        }
-
-        return result;
-
-        // reference: https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
+        
     }
 
     int main()
     {
+        auto text = "ACTAGCTACGTAGCA"_dna4;
+        auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
+
+        auto suffix = "ACG"_dna4;
+
+        auto all_with_suffix = kmer.get_all_kmer_with_suffix(suffix);
+        std::vector<size_t> all_hashes;
+
+        for (auto& s : all_with_suffix)
+            all_hashes.push_back(kmer.hash(s.begin()));
+
+        seqan3::debug_stream << all_with_suffix << "\n";
+        seqan3::debug_stream << all_hashes << "\n";
+
+        /*
         //force_error("GGATGGACCT"_dna4, 543);
 
         debug_stream << "starting test...\n";
@@ -95,6 +97,7 @@
         }
 
         debug_stream << "test passed succesfully.";
+         */
     }
 
 
