@@ -72,17 +72,12 @@ class kmer_index_element
             return hash;
         }*/
 
-        // hash a query, compiler partially unwraps for loop at compile time
-        template<typename iterator_t>
-        static size_t hash_aux_aux(iterator_t query_it, size_t i)
-        {
-            return seqan3::to_rank(*query_it) * detail::fast_pow(_sigma, k - i - 1);
-        }
-
         template<typename iterator_t, size_t... is>
         static size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence)
         {
-            return (... + hash_aux_aux(query_it++, is));
+            size_t hash = 0;
+            hash += (..., (seqan3::to_rank(*query_it) * detail::fast_pow(_sigma, k - is - 1)));
+            return hash;
         }
 
         template<typename iterator_t>
@@ -110,44 +105,48 @@ class kmer_index_element
         template<typename iterator_t>
         std::vector<const std::vector<position_t>*> search_subk(iterator_t suffix_begin, size_t size) const //TODO: iterator
         {
-            // generate hashes for all kmers that have query as suffix
             std::vector<std::array<int8_t, k>> rank_sums;
-            rank_sums.reserve(detail::fast_pow(_sigma, k - size));
+            rank_sums.reserve(detail::fast_pow(seqan3::alphabet_size<alphabet_t>, k - size));
 
             std::array<int8_t, k> primer;
-            auto it = suffix_begin;
-            for (size_t i = 0; i < k; ++i)
+            primer.fill(-1);
+
+            // insert primers
+            for (size_t rank = 0; rank < _sigma; ++rank)
             {
-                if (i >= k - size)
-                {
-                    primer[i] = seqan3::to_rank(*it++);
-                }
-                else
-                    primer[i] = -1;
+                auto to_insert = primer;
+                to_insert[0] = rank;
+                rank_sums.push_back(to_insert);
             }
 
-            rank_sums.push_back(primer);
-
-            std::array<int8_t, _sigma> current_n_appended{};
-
-            for (int8_t i = k - size - 1; i >= 0; --i)
+            for (size_t summand_i = 1; summand_i < k - size; ++summand_i)
             {
                 // duplicate for next level
-                for (auto& sum : rank_sums)
+                for (auto sum : rank_sums)
                 {
-                    for (size_t j = 0; j < _sigma - 1; ++j)
+                    for (size_t i = 0; i < _sigma - 1; ++i)
                     {
                         rank_sums.push_back(sum);
                     }
                 }
 
-                current_n_appended.fill(0);
-                // append in front
+                std::array<size_t, _sigma> current_rank;
+                current_rank.fill(0);
+                // fill next spot
                 for (auto& sum : rank_sums)
                 {
-                    sum[i] = current_n_appended[sum.at(i + 1)];
-                    current_n_appended[sum.at(i + 1)] += 1;
+                    sum[summand_i] = current_rank[sum.at(summand_i - 1)];
+                    current_rank[sum.at(summand_i - 1)] += 1;
                 }
+            }
+
+            auto it = suffix_begin;
+            for (size_t summand_i = k - size; summand_i < k; ++summand_i)
+            {
+                for (auto& sum : rank_sums)
+                    sum[summand_i] = seqan3::to_rank(*it);
+
+                it++;
             }
 
             std::vector<const std::vector<position_t>*> output;
