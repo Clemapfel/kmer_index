@@ -35,11 +35,6 @@
         exit(0);
     }
 
-    std::vector<size_t> generate_all(std::vector<dna4> suffix)
-    {
-        
-    }
-
     int main()
     {
         auto text = "ACTAGCTACGTAGCA"_dna4;
@@ -47,14 +42,11 @@
 
         auto suffix = "ACG"_dna4;
 
-        auto all_with_suffix = kmer.get_all_kmer_with_suffix(suffix);
-        std::vector<size_t> all_hashes;
+        auto all_hashes_test = kmer.generate_all_hash_for_kmer_with_suffix(suffix.begin(), 3);
 
-        for (auto& s : all_with_suffix)
-            all_hashes.push_back(kmer.hash(s.begin()));
+        std::sort(all_hashes_test.begin(), all_hashes_test.end());
 
-        seqan3::debug_stream << all_with_suffix << "\n";
-        seqan3::debug_stream << all_hashes << "\n";
+        seqan3::debug_stream << all_hashes_test << "\n";
 
         /*
         //force_error("GGATGGACCT"_dna4, 543);

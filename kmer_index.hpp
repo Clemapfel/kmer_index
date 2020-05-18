@@ -58,7 +58,9 @@ class kmer_index_element
         robin_hood::unordered_map<size_t, std::vector<position_t>> _data;
 
         std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
-        static inline size_t _sigma = seqan3::alphabet_size<alphabet_t>;
+
+        constexpr static size_t _sigma = seqan3::alphabet_size<alphabet_t>;
+        size_t _min_hash, _max_hash;
 
         /*
         template<typename iterator_t>
@@ -92,52 +94,69 @@ class kmer_index_element
 
     //protected:
     public:
-        // get all possible kmers that have query as suffix, needed for subk search
-        static std::unordered_set<std::vector<alphabet_t>> get_all_kmer_with_suffix(std::vector<alphabet_t> sequence)
+
+        const std::vector<position_t>* at(size_t hash)
         {
-            assert(sequence.size() <= k);
+            auto it = _data.find(hash);
 
-            std::vector<alphabet_t> all_letters{};
+            if (it != _data.end())
+                return it->second;
+            else
+                return std::vector<position_t>{};
+        }
 
-            for (size_t i = 0; i < alphabet_t::alphabet_size; ++i)
-                all_letters.push_back(seqan3::assign_rank_to(i, alphabet_t{}));
+        template<typename iterator_t>
+        std::vector<const std::vector<position_t>*> search_(iterator_t suffix_begin, size_t size) //TODO: iterator
+        {
+            // generate hashes for all kmers that have query as suffix
+            std::vector<std::array<int8_t, k>> rank_sums;
+            rank_sums.reserve(detail::fast_pow(_sigma, k - size));
 
-            std::unordered_set<std::vector<alphabet_t>> output{};
-
-            size_t size = pow(alphabet_t::alphabet_size, (sequence.size()));
-
-            auto current = output;
-            current.reserve(size);
-
-            for (auto letter : all_letters)
-                output.insert({letter});
-
-            for (size_t i = 1; i < k; i++)
+            std::array<int8_t, k> primer;
+            for (size_t i = 0; i < k; ++i)
             {
-                current.swap(output);
-                output.clear();
-
-                if (i < k - sequence.size())
+                if (i >= k - size)
                 {
-                    for (auto seq : current)
-                    {
-                        for (auto letter : all_letters)
-                        {
-                            auto temp = seq;
-                            temp.push_back(letter);
-                            output.insert(temp);
-                        }
-                    }
+                    primer[i] = seqan3::to_rank(*suffix_begin++);
                 }
                 else
+                    primer[i] = -1;
+            }
+
+            rank_sums.push_back(primer);
+
+            std::array<int8_t, _sigma> current_n_appended{};
+
+            for (int8_t i = k - size - 1; i >= 0; --i)
+            {
+                // duplicate for next level
+                for (auto& sum : rank_sums)
                 {
-                    for (auto seq : current)
+                    for (size_t j = 0; j < _sigma - 1; ++j)
                     {
-                        auto temp = seq;
-                        temp.push_back(sequence.at(i - (k - sequence.size())));
-                        output.insert(temp);
+                        rank_sums.push_back(sum);
                     }
                 }
+
+                current_n_appended.fill(0);
+                // append in front
+                for (auto& sum : rank_sums)
+                {
+                    sum[i] = current_n_appended[sum.at(i + 1)];
+                    current_n_appended[sum.at(i + 1)] += 1;
+                }
+            }
+
+            std::vector<const std::vector<position_t>*> output;
+            output.reserve(rank_sums.size());
+
+            for (auto& h : rank_sums)
+            {
+                size_t hash = 0;
+                for (size_t i = 0; i < k; ++i)
+                    hash += (h.at(i) * detail::fast_pow(_sigma, k - i - 1));
+
+                output.push_back(at(hash));
             }
 
             return output;
@@ -202,6 +221,7 @@ class kmer_index_element
         // exact search for query.size() < k
         std::vector<position_t> search_query_length_subk(std::vector<alphabet_t> query) const
         {
+            /*
             assert(query.size() < k);
 
             std::vector<position_t> confirmed_positions{};
@@ -236,7 +256,7 @@ class kmer_index_element
                     confirmed_positions.push_back(pos + offset);
             }
 
-            return confirmed_positions;
+            return confirmed_positions;*/
         }
 
         // ctors
@@ -255,13 +275,13 @@ class kmer_index_element
             auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
 
             position_t i = 0;
-            for (auto h : hashes) {
+            for (auto h : hashes)
+            {
                 if (_data.find(h) == _data.end())
-                {
                     _data.emplace(h, std::vector<position_t>({i}));
-                }
                 else
                     _data[h].push_back(i);
+
                 ++i;
             }
         }
