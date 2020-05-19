@@ -20,8 +20,10 @@
 #include <thread_pool.hpp>
 
     using namespace seqan3;
-    constexpr size_t k = 5;
+    using alphabet_t = dna4;
+    constexpr size_t k = 8;
 
+    /*
     void force_error(std::vector<dna4> query, size_t seed)
     {
         auto input = input_generator<dna4>(seed);
@@ -39,9 +41,62 @@
 
         exit(0);
     }
+    */
+
+    using kmer_index_t = kmer_index_element<seqan3::dna4, k, uint32_t>;
+
+    std::vector<size_t> generate_all_hashs(std::vector<alphabet_t> suffix)
+    {
+        auto sigma = seqan3::alphabet_size<alphabet_t>;
+        auto m = suffix.size();
+
+        size_t suffix_hash = 0;
+        for (size_t i = k - m, index = 0; i < k; ++i, ++index)
+            suffix_hash += seqan3::to_rank(suffix.at(index)) * std::pow(sigma, k - i - 1);
+
+        size_t lower_bound = 0 + suffix_hash;
+        size_t upper_bound = std::pow(sigma, k) - std::pow(sigma, m) + suffix_hash;    // [1]
+
+        size_t step_size = std::pow(sigma, k - (k - m -1) -1);
+
+        std::vector<size_t> output;
+
+        for (size_t i = lower_bound; i <= upper_bound; i += step_size)
+            output.push_back(i);
+
+        return output;
+    }
 
     int main()
     {
+        auto input = input_generator<dna4>();
+
+        input.reset_state();
+        auto text = input.generate_sequence(1e3);
+        auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
+
+        auto suffix = "TCG"_dna4;
+
+        auto all_kmers = kmer.get_all_kmer_with_suffix(suffix);
+        std::vector<size_t> hashs_true;
+
+        for (auto q : all_kmers)
+            hashs_true.push_back(kmer.hash(q.begin()));
+
+        std::sort(hashs_true.begin(), hashs_true.end());
+
+        auto hashs_test = generate_all_hashs(suffix);
+
+        seqan3::debug_stream << all_kmers << "\n";
+        seqan3::debug_stream << (hashs_true == hashs_test) << "\n";
+
+        generate_all_hashs("TCG"_dna4);
+
+
+
+
+
+        /*
         force_error("TAGGCCTGGAGCGTG"_dna4, 1234);
 
         debug_stream << "starting test...\n";
@@ -86,7 +141,7 @@
 
         }
 
-        debug_stream << "test passed succesfully.";
+        debug_stream << "test passed succesfully."; */
 
     }
 

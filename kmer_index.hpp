@@ -94,6 +94,57 @@ class kmer_index_element
 
     //protected:
 
+        // get all possible kmers that have query as suffix, needed for subk search
+        static std::unordered_set<std::vector<alphabet_t>> get_all_kmer_with_suffix(std::vector<alphabet_t> sequence)
+        {
+            assert(sequence.size() <= k);
+
+            std::vector<alphabet_t> all_letters{};
+
+            for (size_t i = 0; i < alphabet_t::alphabet_size; ++i)
+                all_letters.push_back(seqan3::assign_rank_to(i, alphabet_t{}));
+
+            std::unordered_set<std::vector<alphabet_t>> output{};
+
+            size_t size = pow(alphabet_t::alphabet_size, (sequence.size()));
+
+            auto current = output;
+            current.reserve(size);
+
+            for (auto letter : all_letters)
+                output.insert({letter});
+
+            for (size_t i = 1; i < k; i++)
+            {
+                current.swap(output);
+                output.clear();
+
+                if (i < k - sequence.size())
+                {
+                    for (auto seq : current)
+                    {
+                        for (auto letter : all_letters)
+                        {
+                            auto temp = seq;
+                            temp.push_back(letter);
+                            output.insert(temp);
+                        }
+                    }
+                }
+                else
+                {
+                    for (auto seq : current)
+                    {
+                        auto temp = seq;
+                        temp.push_back(sequence.at(i - (k - sequence.size())));
+                        output.insert(temp);
+                    }
+                }
+            }
+
+            return output;
+        }
+
         const std::vector<position_t> _empty;
         std::vector<std::vector<position_t>> _first_kmer_refs;
 
