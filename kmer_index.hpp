@@ -62,18 +62,20 @@ class kmer_index_element
 
         constexpr static size_t _sigma = seqan3::alphabet_size<alphabet_t>;
 
-        /*
+        // hash a query of arbitrary length
         template<typename iterator_t>
-        static size_t hash(iterator_t query_it)
+        static size_t hash_any(iterator_t query_it, size_t size)
         {
+            auto it = query_it;
+
             size_t hash = 0;
-            for (size_t i = 0; i < k; ++i)
-                hash += (seqan3::to_rank(*query_it++) * detail::fast_pow(_sigma, k - i - 1));
+            for (size_t i = 0; i < size; ++i)
+                hash += (seqan3::to_rank(*it++) * detail::fast_pow(_sigma, size - i - 1));
 
             return hash;
-        }*/
+        }
 
-        // hash a query, compiler partially unwraps for loop at compile time
+        // hash a query of length k, optimized by compiler unwrapping fold expression
         template<typename iterator_t>
         static size_t hash_aux_aux(iterator_t query_it, size_t i)
         {
@@ -89,64 +91,17 @@ class kmer_index_element
         template<typename iterator_t>
         static size_t hash(iterator_t query_it)
         {
-            return hash_aux(query_it, std::make_index_sequence<k>());
+            auto it = query_it;
+            return hash_aux(it, std::make_index_sequence<k>());
         }
 
     //protected:
 
-        // get all possible kmers that have query as suffix, needed for subk search
-        static std::unordered_set<std::vector<alphabet_t>> get_all_kmer_with_suffix(std::vector<alphabet_t> sequence)
-        {
-            assert(sequence.size() <= k);
-
-            std::vector<alphabet_t> all_letters{};
-
-            for (size_t i = 0; i < alphabet_t::alphabet_size; ++i)
-                all_letters.push_back(seqan3::assign_rank_to(i, alphabet_t{}));
-
-            std::unordered_set<std::vector<alphabet_t>> output{};
-
-            size_t size = pow(alphabet_t::alphabet_size, (sequence.size()));
-
-            auto current = output;
-            current.reserve(size);
-
-            for (auto letter : all_letters)
-                output.insert({letter});
-
-            for (size_t i = 1; i < k; i++)
-            {
-                current.swap(output);
-                output.clear();
-
-                if (i < k - sequence.size())
-                {
-                    for (auto seq : current)
-                    {
-                        for (auto letter : all_letters)
-                        {
-                            auto temp = seq;
-                            temp.push_back(letter);
-                            output.insert(temp);
-                        }
-                    }
-                }
-                else
-                {
-                    for (auto seq : current)
-                    {
-                        auto temp = seq;
-                        temp.push_back(sequence.at(i - (k - sequence.size())));
-                        output.insert(temp);
-                    }
-                }
-            }
-
-            return output;
-        }
-
         const std::vector<position_t> _empty;
+
+        // used for edge case
         std::vector<std::vector<position_t>> _first_kmer_refs;
+        std::vector<size_t> _first_kmer_hashes;
 
         const std::vector<position_t>* at(size_t hash) const
         {
@@ -161,68 +116,25 @@ class kmer_index_element
         template<typename iterator_t>
         std::vector<const std::vector<position_t>*> search_subk(iterator_t suffix_begin, size_t size) const //TODO: iterator
         {
-            std::vector<std::array<int8_t, k>> rank_sums;
-            rank_sums.reserve(detail::fast_pow(seqan3::alphabet_size<alphabet_t>, k - size));
+            // generate all hashes for kmers with suffix and search them
 
-            std::array<int8_t, k> primer;
-            primer.fill(-1);
+            // c.f. addendum
+            size_t suffix_hash = hash_any(suffix_begin, size);
 
-            // insert primers
-            for (size_t rank = 0; rank < _sigma; ++rank)
-            {
-                auto to_insert = primer;
-                to_insert[0] = rank;
-                rank_sums.push_back(to_insert);
-            }
-
-            for (size_t summand_i = 1; summand_i < k - size; ++summand_i)
-            {
-                // duplicate for next level
-                for (auto sum : rank_sums)
-                {
-                    for (size_t i = 0; i < _sigma - 1; ++i)
-                    {
-                        rank_sums.push_back(sum);
-                    }
-                }
-
-                std::array<size_t, _sigma> current_rank;
-                current_rank.fill(0);
-                // fill next spot
-                for (auto& sum : rank_sums)
-                {
-                    sum[summand_i] = current_rank[sum.at(summand_i - 1)];
-                    current_rank[sum.at(summand_i - 1)] += 1;
-                }
-            }
-
-            auto it = suffix_begin;
-            for (size_t summand_i = k - size; summand_i < k; ++summand_i)
-            {
-                for (auto& sum : rank_sums)
-                    sum[summand_i] = seqan3::to_rank(*it);
-
-                it++;
-            }
+            //size_t lower_bound = 0 + suffix_hash;
+            size_t upper_bound = detail::fast_pow(_sigma, k) - detail::fast_pow(_sigma, size) + suffix_hash;
+            size_t step_size = detail::fast_pow(_sigma, k - (k - size - 1) - 1);
 
             std::vector<const std::vector<position_t>*> output;
-            output.reserve(rank_sums.size());
 
-            for (auto& h : rank_sums)
-            {
-                size_t hash = 0;
-                for (size_t i = 0; i < k; ++i)
-                    hash += (h.at(i) * detail::fast_pow(_sigma, k - i - 1));
-
+            for (size_t hash = suffix_hash; hash <= upper_bound; hash += step_size)
                 output.push_back(at(hash));
-            }
 
             // check edge case at first kmer
-            std::vector<size_t> pos;
             for (size_t i = 0; i < k - size; ++i)
             {
                 bool equal = true;
-                it = suffix_begin;
+                auto it = suffix_begin;
 
                 for (size_t j = i; j < i + size; ++j)
                 {
@@ -247,7 +159,7 @@ class kmer_index_element
         // search any query
         std::vector<position_t> search(std::vector<alphabet_t> query) const
         {
-            if (query.size() == k)
+            else if (query.size() == k)
             {
                 //return std::vector<const std::vector<position_t>*>{at(hash(query))};
 

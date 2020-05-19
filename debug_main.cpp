@@ -21,7 +21,7 @@
 
     using namespace seqan3;
     using alphabet_t = dna4;
-    constexpr size_t k = 8;
+    constexpr size_t k = 6;
 
     /*
     void force_error(std::vector<dna4> query, size_t seed)
@@ -65,11 +65,9 @@
             output.push_back(i);
 
         return output;
-    }
 
-    int main()
-    {
-        auto input = input_generator<dna4>();
+        /*
+         * auto input = input_generator<dna4>();
 
         input.reset_state();
         auto text = input.generate_sequence(1e3);
@@ -91,13 +89,12 @@
         seqan3::debug_stream << (hashs_true == hashs_test) << "\n";
 
         generate_all_hashs("TCG"_dna4);
+         */
+    }
 
-
-
-
-
-        /*
-        force_error("TAGGCCTGGAGCGTG"_dna4, 1234);
+    int main()
+    {
+        //force_error("TAGGCCTGGAGCGTG"_dna4, 1234);
 
         debug_stream << "starting test...\n";
 
@@ -141,8 +138,7 @@
 
         }
 
-        debug_stream << "test passed succesfully."; */
-
+        debug_stream << "test passed succesfully.";
     }
 
 
