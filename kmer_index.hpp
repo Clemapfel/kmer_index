@@ -114,21 +114,9 @@ class kmer_index_element
         }
 
         template<typename iterator_t>
-        std::vector<const std::vector<position_t>*> search_subk(iterator_t suffix_begin, size_t size) const //TODO: iterator
+        std::vector<const std::vector<position_t>*> check_first_kmer(iterator_t subk_begin, size_t size, std::vector<const std::vector<position_t>*>& to_fill) const
         {
-            // generate all hashes for kmers with suffix and search them
-
-            // c.f. addendum
-            size_t suffix_hash = hash_any(suffix_begin, size);
-
-            //size_t lower_bound = 0 + suffix_hash;
-            size_t upper_bound = detail::fast_pow(_sigma, k) - detail::fast_pow(_sigma, size) + suffix_hash;
-            size_t step_size = detail::fast_pow(_sigma, k - (k - size - 1) - 1);
-
-            std::vector<const std::vector<position_t>*> output;
-
-            for (size_t hash = suffix_hash; hash <= upper_bound; hash += step_size)
-                output.push_back(at(hash));
+            TODO create mini kmer index with positions < 0 and then search like regular subk
 
             // check edge case at first kmer
             for (size_t i = 0; i < k - size; ++i)
@@ -148,9 +136,30 @@ class kmer_index_element
 
                 if (equal)
                 {
-                    output.push_back(&_first_kmer_refs.at(i));
+                    to_fill.push_back(&_first_kmer_refs.at(i));  // returns position
                 }
             }
+        }
+
+        template<typename iterator_t>
+        std::vector<const std::vector<position_t>*> search_subk(iterator_t suffix_begin, size_t size) const //TODO: iterator
+        {
+            // generate all hashes for kmers with suffix and search them
+
+            // c.f. addendum
+            size_t suffix_hash = hash_any(suffix_begin, size);
+
+            //size_t lower_bound = 0 + suffix_hash;
+            size_t upper_bound = detail::fast_pow(_sigma, k) - detail::fast_pow(_sigma, size) + suffix_hash;
+            size_t step_size = detail::fast_pow(_sigma, k - (k - size - 1) - 1);
+
+            std::vector<const std::vector<position_t>*> output;
+
+            for (size_t hash = suffix_hash; hash <= upper_bound; hash += step_size)
+                output.push_back(at(hash));
+
+            // check edge case at the beginning of text
+            check_first_kmer(suffix_begin, size, output);
 
             return output;
         }
@@ -159,7 +168,7 @@ class kmer_index_element
         // search any query
         std::vector<position_t> search(std::vector<alphabet_t> query) const
         {
-            else if (query.size() == k)
+            if (query.size() == k)
             {
                 //return std::vector<const std::vector<position_t>*>{at(hash(query))};
 
