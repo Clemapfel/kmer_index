@@ -22,11 +22,12 @@
     using namespace seqan3;
     using alphabet_t = dna4;
     constexpr size_t k = 6;
+    constexpr size_t text_size = 100;
 
     void force_error(std::vector<dna4> query, size_t seed)
     {
         auto input = input_generator<dna4>(seed);
-        auto text = input.generate_sequence(1e3);
+        auto text = input.generate_sequence(text_size);
         text.insert(text.begin(), query.begin(), query.end());
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
 
@@ -105,11 +106,11 @@
         {
             // state not reset so new text everytime
             input.reset_state(i);
-            auto text = input.generate_sequence(1e3);
+            auto text = input.generate_sequence(text_size);
             auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
             auto fm = fm_index(text);
 
-            for (size_t size : {k})
+            for (size_t size : {k-2, k-4})
             {
                 //auto query = "GGCAGCATCT"_dna4;
                 auto query = input.generate_sequence(size);
@@ -122,10 +123,13 @@
                 bool results_equal = (kmer.search(query).size() - fm_size) == 0;
                 auto kmer_results =  kmer.search(query);
 
-                debug_stream << "text (head) : " << std::vector<dna4>(text.begin(), text.begin() + 100) << "\n";
-                debug_stream << "query : " << query << " (" << query.size() << ")\n";
-                debug_stream << "fm  : " << search(query, fm) << " (" << fm_size << ") " << "\n";
-                debug_stream << "kmer : " << kmer_results.to_vector()  << " (" << kmer_results.size() << ")" << "\n";
+                if (kmer_results.size() != 0 or fm_size != 0)
+                {
+                    debug_stream << "text (head) : " << std::vector<dna4>(text.begin(), text.begin() + 100) << "\n";
+                    debug_stream << "query : " << query << " (" << query.size() << ")\n";
+                    debug_stream << "fm  : " << search(query, fm) << " (" << fm_size << ") " << "\n";
+                    debug_stream << "kmer : " << kmer_results.to_vector() << " (" << kmer_results.size() << ")" << "\n";
+                }
 
                 if (not results_equal)
                     return 1;

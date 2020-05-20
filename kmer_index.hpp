@@ -160,7 +160,7 @@ class kmer_index_element
             {
                 const auto* pos = at(hash);
                 if (pos)
-                    output.push_back(pos);
+                    output.push_back(pos + (k - size));
             }
 
             // check edge case at the beginning of text

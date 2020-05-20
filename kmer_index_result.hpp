@@ -3,6 +3,7 @@
 #pragma once
 
 #include <kmer_index.hpp>
+#include <bit>
 
 template<seqan3::alphabet, size_t, typename>
 class kmer_index_element;
@@ -93,21 +94,8 @@ namespace detail
             {
                 size_t n_ones = 0;
 
-                // A
-                for (size_t i = 0; i < _n_bits; ++i)
-                    if (at(i))
-                        n_ones++;
-
-                // B
-                /*
-                for (auto i : _bits)
-                {
-                    while (n)
-                    {
-                        n &= (n - 1);
-                        n_ones++;
-                    }
-                }*/
+                for (auto& i : _bits)
+                    n_ones += seqan3::detail::popcount(i);
 
                 return (b ? n_ones : _n_bits - n_ones);
             }
@@ -190,6 +178,7 @@ namespace detail
                         if (_bitmask.at(i))
                             output.push_back(vec->at(j));
 
+                std::sort(output.begin(), output.end());
                 return output;
             }
 
