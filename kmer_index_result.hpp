@@ -4,6 +4,9 @@
 
 #include <kmer_index.hpp>
 
+template<seqan3::alphabet, size_t, typename>
+class kmer_index_element;
+
 namespace detail
 {
     // runtime-optimized equivalent for std::vector<bool>
@@ -33,8 +36,9 @@ namespace detail
             // create by specifying maximum number of bits
             // while supporting an arbitrary number, unless n_bits & sizeof(integer_t) == 0 more bits than necessary
             // have to be allocated. Consider using a smaller integer_t if this proofs problematic
-            compressed_bitset(size_t n_bits)
-                    : _bits(std::max(n_bits / (sizeof(integer_t) * 8), 1ul), _not_zero) {
+            compressed_bitset(size_t n_bits, bool zero_or_one)
+                    : _bits(std::max(n_bits / (sizeof(integer_t) * 8), 1ul), (zero_or_one ? _not_zero : _zero))
+            {
                 _n_bits = n_bits;
             }
 
@@ -63,9 +67,23 @@ namespace detail
             }
 
             // resets all bits to 1
-            void clear() {
+            void clear_to_1()
+            {
                 for (auto& i : _bits)
                     i = _not_zero;
+            }
+
+            // to 0
+            void clear_to_0()
+            {
+                for (auto& i : _bits)
+                    i = _zero;
+            }
+
+            // get maximum number of usable bits
+            size_t size() const
+            {
+                return _n_bits;
             }
 
             // cast to regular vector
@@ -73,9 +91,6 @@ namespace detail
                 return to_vector();
             }
     };
-
-    template<seqan3::alphabet, size_t, typename>
-    class kmer_index_element;
 
     // result type that only holds pointers to the positions inside kmer index
     template<seqan3::alphabet alphabet_t, size_t k, typename position_t>
@@ -93,30 +108,30 @@ namespace detail
             const std::vector<const std::vector<position_t>*> _positions;
 
             //keep index in memory so results don't become invalid
-            std::shared_ptr<index_t> _index;
+            const index_t& _index;
 
         //protected:
         public:
             // ctors
-            kmer_index_result(index_t* index)
-                    : _index(index), _bitmask(0)
+            kmer_index_result(const index_t* index, bool zero_or_one = false)
+                    : _index(*index), _bitmask(0, zero_or_one)
             {
             }
 
-            kmer_index_result(const std::vector<position_t>* positions, index_t* index)
-                    : _index(index), _bitmask(positions->size()), _positions{positions}
+            kmer_index_result(const std::vector<position_t>* positions, const index_t* index, bool zero_or_one = false)
+                    : _index(*index), _bitmask(positions->size(), zero_or_one), _positions{positions}
             {
             }
 
-            kmer_index_result(std::vector<const std::vector<position_t>*> positions, index_t* index)
-                    : _index(index),
+            kmer_index_result(std::vector<const std::vector<position_t>*> positions, const index_t* index, bool zero_or_one = false)
+                    : _index(*index),
                       _positions(positions.begin(), positions.end()),
                       _bitmask([&positions]() {
                           size_t n = 0;
                           for (const auto* p : positions)
                               n += p->size();
                           return n;
-                      }())
+                      }(), zero_or_one)
             {
             }
 
@@ -132,6 +147,11 @@ namespace detail
             }
 
         public:
+            size_t size() const
+            {
+                return _bitmask.size();
+            }
+
             // lazy eval placeholder
             std::vector<position_t> to_vector() const
             {

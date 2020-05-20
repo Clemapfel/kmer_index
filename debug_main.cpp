@@ -119,18 +119,15 @@
                     fm_size++;
 
                 bool results_equal = (kmer.search(query).size() - fm_size) == 0;
-
                 auto kmer_results =  kmer.search(query);
-                std::sort(kmer_results.begin(), kmer_results.end());
 
                 if (not results_equal)
                 {
-
                     debug_stream << "results not equal for seed = " << i << "\n";
                     debug_stream << "text (head) : " << std::vector<dna4>(text.begin(), text.begin() + 100) << "\n";
                     debug_stream << "query : " << query << " (" << query.size() << ")\n";
-                    debug_stream << "fm  : " << search(query, fm) << "\n";
-                    debug_stream << "kmer : " << kmer_results << "\n";
+                    debug_stream << "fm  : " << fm_results << " (" << fm_size << ") " << "\n";
+                    debug_stream << "kmer : " << kmer_results.to_vector()  << " (" << kmer_results.size() << ")" << "\n";
 
                     return 1;
                 }

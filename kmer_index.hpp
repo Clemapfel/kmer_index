@@ -25,6 +25,8 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
+
+#include "kmer_index_result.hpp"
 #include "thread_pool.hpp"
 
 namespace detail
@@ -56,11 +58,19 @@ class kmer_index_element
     static_assert(k > 1, "please specify a valid k");
 
     public:
+        // typedefs for readability
+        using result_t = detail::kmer_index_result<alphabet_t, k, position_t>;
+        constexpr static size_t _sigma = seqan3::alphabet_size<alphabet_t>;
+
+        // data
         robin_hood::unordered_map<size_t, std::vector<position_t>> _data;
 
-        std::vector<alphabet_t> _first_kmer; // needed for subk search edge case
+        // needed for subk search edge case
+        std::vector<alphabet_t> _first_kmer;
 
-        constexpr static size_t _sigma = seqan3::alphabet_size<alphabet_t>;
+        // reference to vectors that may be returned as pointers but aren't actually part of map
+        const std::vector<std::vector<position_t>> _first_kmer_refs;
+        const std::vector<position_t> _empty;
 
         // hash a query of arbitrary length
         template<typename iterator_t>
@@ -96,12 +106,6 @@ class kmer_index_element
         }
 
     //protected:
-
-        const std::vector<position_t> _empty;
-
-        // used for edge case
-        std::vector<std::vector<position_t>> _first_kmer_refs;
-
         const std::vector<position_t>* at(size_t hash) const
         {
             auto it = _data.find(hash);
@@ -109,19 +113,17 @@ class kmer_index_element
             if (it != _data.end())
                 return &it->second;
             else
-                return &_empty;
+                return nullptr;
         }
 
         template<typename iterator_t>
-        std::vector<const std::vector<position_t>*> check_first_kmer(iterator_t subk_begin, size_t size, std::vector<const std::vector<position_t>*>& to_fill) const
+        void check_first_kmer(iterator_t subk_begin, size_t size, std::vector<const std::vector<position_t>*>& to_fill) const
         {
-            //TODO create mini kmer index with positions < 0 and then search like regular subk
-
             // check edge case at first kmer
             for (size_t i = 0; i < k - size; ++i)
             {
                 bool equal = true;
-                auto it = suffix_begin;
+                auto it = subk_begin;
 
                 for (size_t j = i; j < i + size; ++j)
                 {
@@ -188,16 +190,11 @@ class kmer_index_element
 
     public:
         // search any query
-        std::vector<position_t> search(std::vector<alphabet_t> query) const
+        result_t search(std::vector<alphabet_t> query) const
         {
             if (query.size() == k)
             {
-                //return std::vector<const std::vector<position_t>*>{at(hash(query))};
-
-                std::vector<position_t> output;
-                for (const auto pos : *at(hash(query.begin())))
-                    output.push_back(pos);
-                return output;
+                return result_t(std::vector<const std::vector<position_t>*>{at(hash(query.begin()))}, this, true);
             }
 
             else if (query.size() > k)
@@ -213,7 +210,7 @@ class kmer_index_element
 
                     auto it = _data.find(hash(query.begin() + i));
                     if (it == _data.end())
-                        return std::vector<position_t>();
+                        return result_t(this, true);
                     else
                         positions.push_back(&(it->second));
                 }
@@ -225,7 +222,9 @@ class kmer_index_element
                    rest_positions = search_subk(query.end() - rest_n, rest_n);
 
                 // find out if pos for sections match
-                std::vector<position_t> confirmed_positions{};
+                result_t output(positions.at(0), this, false);    // init bitmask as all 0
+
+                size_t start_pos_i = 0;
                 for (position_t start_pos : *positions.at(0))
                 {
                     position_t previous_pos = start_pos;
@@ -239,10 +238,12 @@ class kmer_index_element
                                 for (const auto* vec : rest_positions)
                                     if (std::find(vec->begin(), vec->end(), previous_pos + k) !=
                                         vec->end())
-                                            confirmed_positions.push_back(start_pos);
+                                            output.should_use(start_pos_i);
                             }
                             else
-                                confirmed_positions.push_back(start_pos);
+                            {
+                                output.should_use(start_pos_i);
+                            }
 
                             break;
                         }
@@ -254,20 +255,16 @@ class kmer_index_element
                         else
                             break;
                     }
+
+                    start_pos_i++;
                 }
 
-                return confirmed_positions;
+                return output;
             }
 
             else //query.size() < k
             {
-                //return search_subk();
-
-                std::vector<position_t> output;
-                for (const auto* vec : search_subk(query.begin(), query.size()))
-                    for (const auto pos : *vec)
-                        output.push_back(pos);
-                return output;
+                return result_t(search_subk(query.begin(), query.size()), this, true);
             }
         }
 
@@ -276,11 +273,16 @@ class kmer_index_element
 
         template<std::ranges::range text_t>
         kmer_index_element(text_t& text)
-                :  _first_kmer(text.begin(), text.begin() + k)
-        {
-            for (position_t i = 0; i < _first_kmer.size(); ++i)
-                _first_kmer_refs.emplace_back(std::vector<position_t>{i});
+                :  _first_kmer(text.begin(), text.begin() + k),
+                   _first_kmer_refs([this]() -> std::vector<std::vector<position_t>> {
+                       std::vector<std::vector<position_t>> output;
 
+                       for (position_t i = 0; i < _first_kmer.size(); ++i)
+                           output.emplace_back(std::vector<position_t>{i});
+
+                       return output;
+                   }())
+        {
             create(text);
         }
 
