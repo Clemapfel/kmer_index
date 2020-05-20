@@ -28,7 +28,7 @@
     {
         auto input = input_generator<dna4>(seed);
         auto text = input.generate_sequence(text_size);
-        text.insert(text.begin(), query.begin(), query.end());
+        //text.insert(text.begin(), query.begin(), query.end());
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
 
         debug_stream << "text : " << text << "\n\n";
@@ -39,9 +39,9 @@
 
         auto kmer_results = kmer.search(query);
 
-        debug_stream << "kmer : " << kmer_results.to_vector() << "\n";
+        debug_stream << "kmer : " << kmer_results.to_vector() << "\n\n";
 
-        exit(0);
+        //exit(0);
     }
 
 
@@ -59,7 +59,7 @@
         size_t lower_bound = 0 + suffix_hash;
         size_t upper_bound = std::pow(sigma, k) - std::pow(sigma, m) + suffix_hash;    // [1]
 
-        size_t step_size = std::pow(sigma, k - (k - m -1) -1);
+        size_t step_size = std::pow(sigma, k - (k - m - 1) - 1);
 
         std::vector<size_t> output;
 
@@ -67,15 +67,17 @@
             output.push_back(i);
 
         return output;
+    }
 
-        /*
-         * auto input = input_generator<dna4>();
+    int main()
+    {
+        auto input = input_generator<dna4>();
 
         input.reset_state();
-        auto text = input.generate_sequence(1e3);
+        auto text = input.generate_sequence(text_size);
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
 
-        auto suffix = "TCG"_dna4;
+        auto suffix = "TT"_dna4;//input.generate_sequence(i);
 
         auto all_kmers = kmer.get_all_kmer_with_suffix(suffix);
         std::vector<size_t> hashs_true;
@@ -88,16 +90,14 @@
         auto hashs_test = generate_all_hashs(suffix);
 
         seqan3::debug_stream << all_kmers << "\n";
-        seqan3::debug_stream << (hashs_true == hashs_test) << "\n";
+        seqan3::debug_stream << hashs_true << "\n";
+        seqan3::debug_stream << hashs_test << "\n";
+        //seqan3::debug_stream << "(" << n << ") for " << suffix << " : " << (hashs_true == hashs_test) << "\n";
+        assert(hashs_true == hashs_test);
 
-        generate_all_hashs("TCG"_dna4);
-         */
-    }
+        force_error("TT"_dna4, 0);
 
-    int main()
-    {
-        //force_error("GTTAAG"_dna4, 16);
-
+        /*
         debug_stream << "starting test...\n";
 
         auto input = input_generator<dna4>();
@@ -120,16 +120,17 @@
                 for (auto f : fm_results)
                     fm_size++;
 
-                bool results_equal = (kmer.search(query).size() - fm_size) == 0;
-                auto kmer_results =  kmer.search(query);
+                auto kmer_results =  kmer.search(query).to_vector();
+                bool results_equal = (kmer_results.size() - fm_size) == 0;
 
-                if (kmer_results.size() != 0 or fm_size != 0)
-                {
+
+
+                    debug_stream << "seed : " << i << "\n";
                     debug_stream << "text (head) : " << std::vector<dna4>(text.begin(), text.begin() + 100) << "\n";
                     debug_stream << "query : " << query << " (" << query.size() << ")\n";
                     debug_stream << "fm  : " << search(query, fm) << " (" << fm_size << ") " << "\n";
-                    debug_stream << "kmer : " << kmer_results.to_vector() << " (" << kmer_results.size() << ")" << "\n";
-                }
+                    debug_stream << "kmer : " << kmer_results << " (" << kmer_results.size() << ")" << "\n";
+
 
                 if (not results_equal)
                     return 1;
@@ -137,7 +138,7 @@
 
         }
 
-        debug_stream << "test passed succesfully.";
+        debug_stream << "test passed succesfully.";*/
     }
 
 

@@ -3,7 +3,6 @@
 #pragma once
 
 #include <kmer_index.hpp>
-#include <bit>
 
 template<seqan3::alphabet, size_t, typename>
 class kmer_index_element;
@@ -94,8 +93,9 @@ namespace detail
             {
                 size_t n_ones = 0;
 
-                for (auto& i : _bits)
-                    n_ones += seqan3::detail::popcount(i);
+                for (size_t i = 0; i < _n_bits; ++i)
+                    if (at(i))
+                        n_ones++;
 
                 return (b ? n_ones : _n_bits - n_ones);
             }
@@ -170,6 +170,9 @@ namespace detail
             // lazy eval placeholder
             std::vector<position_t> to_vector() const
             {
+                if (_positions.empty())
+                    return std::vector<position_t>();
+
                 std::vector<position_t> output;
 
                 size_t i = 0;

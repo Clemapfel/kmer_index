@@ -70,7 +70,57 @@ class kmer_index_element
 
         // reference to vectors that may be returned as pointers but aren't actually part of map
         const std::vector<std::vector<position_t>> _first_kmer_refs;
-        const std::vector<position_t> _empty;
+
+        // get all possible kmers that have query as suffix, needed for subk search
+        static std::unordered_set<std::vector<alphabet_t>> get_all_kmer_with_suffix(std::vector<alphabet_t> sequence)
+        {
+            assert(sequence.size() <= k);
+
+            std::vector<alphabet_t> all_letters{};
+
+            for (size_t i = 0; i < alphabet_t::alphabet_size; ++i)
+                all_letters.push_back(seqan3::assign_rank_to(i, alphabet_t{}));
+
+            std::unordered_set<std::vector<alphabet_t>> output{};
+
+            size_t size = pow(alphabet_t::alphabet_size, (sequence.size()));
+
+            auto current = output;
+            current.reserve(size);
+
+            for (auto letter : all_letters)
+                output.insert({letter});
+
+            for (size_t i = 1; i < k; i++)
+            {
+                current.swap(output);
+                output.clear();
+
+                if (i < k - sequence.size())
+                {
+                    for (auto seq : current)
+                    {
+                        for (auto letter : all_letters)
+                        {
+                            auto temp = seq;
+                            temp.push_back(letter);
+                            output.insert(temp);
+                        }
+                    }
+                }
+                else
+                {
+                    for (auto seq : current)
+                    {
+                        auto temp = seq;
+                        temp.push_back(sequence.at(i - (k - sequence.size())));
+                        output.insert(temp);
+                    }
+                }
+            }
+
+            return output;
+        }
 
         // hash a query of arbitrary length
         template<typename iterator_t>
@@ -148,7 +198,12 @@ class kmer_index_element
             // generate all hashes for kmers with suffix and search them
 
             // c.f. addendum
-            size_t suffix_hash = hash_any(suffix_begin, size);
+            //size_t suffix_hash = hash_any(suffix_begin, size);
+
+            auto it = suffix_begin;
+            size_t suffix_hash = 0;
+            for (size_t i = k - size; i < k; ++i)
+                suffix_hash += seqan3::to_rank(*it++) * std::pow(_sigma, k - i - 1);
 
             size_t lower_bound = 0 + suffix_hash;
             size_t upper_bound = detail::fast_pow(_sigma, k) - detail::fast_pow(_sigma, size) + suffix_hash;
@@ -159,7 +214,7 @@ class kmer_index_element
             for (size_t hash = lower_bound; hash <= upper_bound; hash += step_size)
             {
                 const auto* pos = at(hash);
-                if (pos)
+                if (pos != nullptr)
                     output.push_back(pos + (k - size));
             }
 
