@@ -101,7 +101,6 @@ class kmer_index_element
 
         // used for edge case
         std::vector<std::vector<position_t>> _first_kmer_refs;
-        std::vector<size_t> _first_kmer_hashes;
 
         const std::vector<position_t>* at(size_t hash) const
         {
@@ -116,7 +115,7 @@ class kmer_index_element
         template<typename iterator_t>
         std::vector<const std::vector<position_t>*> check_first_kmer(iterator_t subk_begin, size_t size, std::vector<const std::vector<position_t>*>& to_fill) const
         {
-            TODO create mini kmer index with positions < 0 and then search like regular subk
+            //TODO create mini kmer index with positions < 0 and then search like regular subk
 
             // check edge case at first kmer
             for (size_t i = 0; i < k - size; ++i)
@@ -142,26 +141,49 @@ class kmer_index_element
         }
 
         template<typename iterator_t>
-        std::vector<const std::vector<position_t>*> search_subk(iterator_t suffix_begin, size_t size) const //TODO: iterator
+        std::vector<const std::vector<position_t>*> search_subk(iterator_t suffix_begin, size_t size) const
         {
             // generate all hashes for kmers with suffix and search them
 
             // c.f. addendum
             size_t suffix_hash = hash_any(suffix_begin, size);
 
-            //size_t lower_bound = 0 + suffix_hash;
+            size_t lower_bound = 0 + suffix_hash;
             size_t upper_bound = detail::fast_pow(_sigma, k) - detail::fast_pow(_sigma, size) + suffix_hash;
             size_t step_size = detail::fast_pow(_sigma, k - (k - size - 1) - 1);
 
             std::vector<const std::vector<position_t>*> output;
 
-            for (size_t hash = suffix_hash; hash <= upper_bound; hash += step_size)
+            for (size_t hash = lower_bound; hash <= upper_bound; hash += step_size)
                 output.push_back(at(hash));
 
             // check edge case at the beginning of text
             check_first_kmer(suffix_begin, size, output);
 
             return output;
+
+            // Addendum:
+            // To calculate set H of hashes for all kmers with suffix s
+            // i)   hash of a kmer q_0 q_1 q_2 ... q_k = sum {i=0 to k} rank(q_i) * sigma^(k - i - 1)
+            //
+            // ii)  for a suffix s_0,..., s_m , the latter part of the sum is known:
+            //      h_s = sum {i= (k - m) to k} rank(s_i) * sigma^(m - i - 1)
+            //
+            // iii) for prefix p_0, ..., p_(k-m-1) we observe:
+            //      min(H) = hs
+            //      by setting all p_i so that rank(p_i) = 0
+            //
+            // iv)  max(H) = hs + (hash of prefix with all p_i so that r(p_i) = maximum = sigma-1)
+            //             = hs + sum {i=0 to i=(k-m-1)} (sigma-1) * sigma^(k-i-1)
+            //             = hs + sigma^k - sigma^m
+            //
+            // v)   for two hashes from H h_1 and h_2 so that h_1 < h_2 it is true that
+            //      The minimum increase is achieved by setting the last possible char of the prefix of h_2
+            //      1 rank higher than the equivalent position of h_1. Writing out the sums that make up h_2 and h_1
+            //      by simplyifing we observe that h_2 - h_1 >= sigma^(k - (k-m-1) -1)
+            //
+            // vi)  thus to generate all hashes we start with min(H) = hs and stepwise add sigma^(k-(k-m-1)-1)
+            //      until we reach max(H) = hs + sigma^k - sigma^m
         }
 
     public:
