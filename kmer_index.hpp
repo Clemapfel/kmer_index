@@ -157,7 +157,11 @@ class kmer_index_element
             std::vector<const std::vector<position_t>*> output;
 
             for (size_t hash = lower_bound; hash <= upper_bound; hash += step_size)
-                output.push_back(at(hash));
+            {
+                const auto* pos = at(hash);
+                if (pos)
+                    output.push_back(pos);
+            }
 
             // check edge case at the beginning of text
             check_first_kmer(suffix_begin, size, output);
@@ -194,7 +198,11 @@ class kmer_index_element
         {
             if (query.size() == k)
             {
-                return result_t(std::vector<const std::vector<position_t>*>{at(hash(query.begin()))}, this, true);
+                const auto* pos = at(hash(query.begin()));
+                if (pos)
+                    return result_t(pos, this, true);
+                else
+                    return result_t(this, true);
             }
 
             else if (query.size() > k)
@@ -206,13 +214,12 @@ class kmer_index_element
                 // positions for first n parts of length k
                 for (size_t i = 0; i < query.size() - rest_n; i += k)
                 {
-                    auto my_hash = hash(query.begin() + i);
+                    const auto* pos = at(hash(query.begin() + i));
 
-                    auto it = _data.find(hash(query.begin() + i));
-                    if (it == _data.end())
-                        return result_t(this, true);
+                    if (pos)
+                        positions.push_back(pos);
                     else
-                        positions.push_back(&(it->second));
+                        return result_t(this);
                 }
 
                 std::vector<const std::vector<position_t>*> rest_positions;

@@ -18,8 +18,9 @@ namespace detail
             static constexpr integer_t _rshift_v = log2((sizeof(integer_t) * 8));  // i / n = i >> log2(n)
             static constexpr integer_t _one = 1, _zero = 0, _not_zero = ~_zero;
 
-            // holds integers
             size_t _n_bits;
+
+            // holds integers
             std::vector<integer_t> _bits;
 
         protected:
@@ -43,7 +44,8 @@ namespace detail
             }
 
             // set ith bit to 0
-            void set_0(size_t i) {
+            void set_0(size_t i)
+            {
                 assert(i < _n_bits);
 
                 size_t n = i & _and_v;
@@ -51,7 +53,8 @@ namespace detail
             }
 
             // set ith bit to 1
-            void set_1(size_t i) {
+            void set_1(size_t i)
+            {
                 assert(i < _n_bits);
 
                 size_t n = i & _and_v;
@@ -59,7 +62,8 @@ namespace detail
             }
 
             // get ith bit
-            bool at(size_t i) const {
+            bool at(size_t i) const
+            {
                 assert(i < _n_bits);
 
                 size_t n = i & _and_v;
@@ -80,10 +84,32 @@ namespace detail
                     i = _zero;
             }
 
-            // get maximum number of usable bits
-            size_t size() const
+            size_t size()
             {
                 return _n_bits;
+            }
+
+            size_t count_bits_equal_to(bool b) const
+            {
+                size_t n_ones = 0;
+
+                // A
+                for (size_t i = 0; i < _n_bits; ++i)
+                    if (at(i))
+                        n_ones++;
+
+                // B
+                /*
+                for (auto i : _bits)
+                {
+                    while (n)
+                    {
+                        n &= (n - 1);
+                        n_ones++;
+                    }
+                }*/
+
+                return (b ? n_ones : _n_bits - n_ones);
             }
 
             // cast to regular vector
@@ -113,7 +139,7 @@ namespace detail
         //protected:
         public:
             // ctors
-            kmer_index_result(const index_t* index, bool zero_or_one = false)
+            kmer_index_result(const index_t* index, bool zero_or_one = true)
                     : _index(*index), _bitmask(0, zero_or_one)
             {
             }
@@ -121,6 +147,7 @@ namespace detail
             kmer_index_result(const std::vector<position_t>* positions, const index_t* index, bool zero_or_one = false)
                     : _index(*index), _bitmask(positions->size(), zero_or_one), _positions{positions}
             {
+
             }
 
             kmer_index_result(std::vector<const std::vector<position_t>*> positions, const index_t* index, bool zero_or_one = false)
@@ -149,7 +176,7 @@ namespace detail
         public:
             size_t size() const
             {
-                return _bitmask.size();
+                return _bitmask.count_bits_equal_to(true);
             }
 
             // lazy eval placeholder

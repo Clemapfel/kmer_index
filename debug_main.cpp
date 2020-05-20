@@ -23,7 +23,6 @@
     using alphabet_t = dna4;
     constexpr size_t k = 6;
 
-    /*
     void force_error(std::vector<dna4> query, size_t seed)
     {
         auto input = input_generator<dna4>(seed);
@@ -31,17 +30,19 @@
         text.insert(text.begin(), query.begin(), query.end());
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
 
+        debug_stream << "text : " << text << "\n\n";
+        debug_stream << "query : " << query << "\n";
+
         auto fm = fm_index(text);
         debug_stream << "fm  : " << search(query, fm) << "\n";
 
         auto kmer_results = kmer.search(query);
-        std::sort(kmer_results.begin(), kmer_results.end());
 
-        debug_stream << "kmer : " << kmer_results << "\n";
+        debug_stream << "kmer : " << kmer_results.to_vector() << "\n";
 
         exit(0);
     }
-    */
+
 
     using kmer_index_t = kmer_index_element<seqan3::dna4, k, uint32_t>;
 
@@ -94,7 +95,7 @@
 
     int main()
     {
-        //force_error("TAGGCCTGGAGCGTG"_dna4, 1234);
+        //force_error("GTTAAG"_dna4, 16);
 
         debug_stream << "starting test...\n";
 
@@ -108,7 +109,7 @@
             auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
             auto fm = fm_index(text);
 
-            for (size_t size : {k-2, k-1, k, 2*k, 3*k, 2*k+3})
+            for (size_t size : {k})
             {
                 //auto query = "GGCAGCATCT"_dna4;
                 auto query = input.generate_sequence(size);
@@ -121,16 +122,13 @@
                 bool results_equal = (kmer.search(query).size() - fm_size) == 0;
                 auto kmer_results =  kmer.search(query);
 
-                if (not results_equal)
-                {
-                    debug_stream << "results not equal for seed = " << i << "\n";
-                    debug_stream << "text (head) : " << std::vector<dna4>(text.begin(), text.begin() + 100) << "\n";
-                    debug_stream << "query : " << query << " (" << query.size() << ")\n";
-                    debug_stream << "fm  : " << fm_results << " (" << fm_size << ") " << "\n";
-                    debug_stream << "kmer : " << kmer_results.to_vector()  << " (" << kmer_results.size() << ")" << "\n";
+                debug_stream << "text (head) : " << std::vector<dna4>(text.begin(), text.begin() + 100) << "\n";
+                debug_stream << "query : " << query << " (" << query.size() << ")\n";
+                debug_stream << "fm  : " << search(query, fm) << " (" << fm_size << ") " << "\n";
+                debug_stream << "kmer : " << kmer_results.to_vector()  << " (" << kmer_results.size() << ")" << "\n";
 
+                if (not results_equal)
                     return 1;
-                }
             }
 
         }
