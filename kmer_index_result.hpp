@@ -153,7 +153,7 @@ namespace detail
                 // ctor
                 kmer_index_result_iterator(kmer_index_result<alphabet_t, k, position_t>& result)
                 {
-                    
+
                 }
 
                 // operators
