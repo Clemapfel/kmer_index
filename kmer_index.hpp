@@ -13,10 +13,6 @@
 #include <seqan3/core/type_traits/range.hpp>
 #include <seqan3/core/debug_stream.hpp>
 
-#include <seqan3/alphabet/nucleotide/dna4.hpp> //TODO
-
-#include <robin_hood.h>
-
 #include <type_traits>
 #include <cstdint>
 #include <cassert>
@@ -27,6 +23,8 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
+
+#include <robin_hood.h>
 
 #include "kmer_index_result.hpp"
 #include "thread_pool.hpp"
@@ -169,18 +167,14 @@ class kmer_index_element
         template<typename iterator_t>
         void check_last_kmer(iterator_t subk_begin, size_t size, std::vector<const std::vector<position_t>*>& to_fill) const
         {
-            seqan3::debug_stream << "last kmer: " << _last_kmer << "\n";
-
             // check edge case at first kmer
-            for (size_t i = 0; i < k - size + 1; ++i)
+            for (size_t i = 1; i < k - size + 1; ++i)   // sic, first char is covered by last kmer being in _data
             {
                 bool equal = true;
                 auto it = subk_begin;
 
                 for (size_t j = i; j < i + size; ++j)
                 {
-                    seqan3::debug_stream << _last_kmer.at(j) << " " << *it << "\n";
-
                     if (_last_kmer.at(j) != *it)
                     {
                         equal = false;
@@ -197,61 +191,6 @@ class kmer_index_element
         }
 
         template<typename iterator_t>
-        std::vector<const std::vector<position_t>*> search_subk(iterator_t suffix_begin, size_t size) const
-        {
-            // generate all hashes for kmers with suffix and search them
-
-            // c.f. addendum
-            //size_t suffix_hash = hash_any(suffix_begin, size);
-
-            auto it = suffix_begin;
-            size_t suffix_hash = 0;
-            for (size_t i = k - size; i < k; ++i)
-                suffix_hash += seqan3::to_rank(*it++) * std::pow(_sigma, k - i - 1);
-
-            size_t lower_bound = 0 + suffix_hash;
-            size_t upper_bound = detail::fast_pow(_sigma, k) - detail::fast_pow(_sigma, size) + suffix_hash;
-            size_t step_size = detail::fast_pow(_sigma, k - (k - size - 1) - 1);
-
-            std::vector<const std::vector<position_t>*> output;
-
-            for (size_t hash = lower_bound; hash <= upper_bound; hash += step_size)
-            {
-                const auto* pos = at(hash);
-                if (pos != nullptr)
-                    output.push_back(pos);// + (k - size));
-            }
-
-            // check edge case at the beginning of text
-            check_first_kmer(suffix_begin, size, output);
-
-            return output;
-
-            // Addendum:
-            // To calculate set H of hashes for all kmers with suffix s
-            // i)   hash of a kmer q_0 q_1 q_2 ... q_k = sum {i=0 to k} rank(q_i) * sigma^(k - i - 1)
-            //
-            // ii)  for a suffix s_0,..., s_m , the latter part of the sum is known:
-            //      h_s = sum {i= (k - m) to k} rank(s_i) * sigma^(m - i - 1)
-            //
-            // iii) for prefix p_0, ..., p_(k-m-1) we observe:
-            //      min(H) = hs
-            //      by setting all p_i so that rank(p_i) = 0
-            //
-            // iv)  max(H) = hs + (hash of prefix with all p_i so that r(p_i) = maximum = sigma-1)
-            //             = hs + sum {i=0 to i=(k-m-1)} (sigma-1) * sigma^(k-i-1)
-            //             = hs + sigma^k - sigma^m
-            //
-            // v)   for two hashes from H h_1 and h_2 so that h_1 < h_2 it is true that
-            //      The minimum increase is achieved by setting the last possible char of the prefix of h_2
-            //      1 rank higher than the equivalent position of h_1. Writing out the sums that make up h_2 and h_1
-            //      by simplyifing we observe that h_2 - h_1 >= sigma^(k - (k-m-1) -1)
-            //
-            // vi)  thus to generate all hashes we start with min(H) = hs and stepwise add sigma^(k-(k-m-1)-1)
-            //      until we reach max(H) = hs + sigma^k - sigma^m
-        }
-
-        template<typename iterator_t>
         std::vector<const std::vector<position_t>*> get_position_for_all_kmer_with_prefix(iterator_t prefix_begin, size_t size) const
         {
             auto it = prefix_begin;
@@ -260,12 +199,13 @@ class kmer_index_element
                 prefix_hash += seqan3::to_rank(*it++) * detail::fast_pow(_sigma, k - i -1);
 
             size_t lower_bound = 0 + prefix_hash;
-            size_t upper_bound = detail::fast_pow(_sigma, size) - (1.f / _sigma) + prefix_hash;
+            size_t upper_bound = detail::fast_pow(_sigma, size) - (1 / _sigma) + prefix_hash; //c.f. addendum
             size_t step_size = 1;
 
             std::vector<const std::vector<position_t>*> output;
 
-            for (size_t hash = lower_bound; hash <= upper_bound; hash += step_size)
+            // bc stepsize is 1, just add number of possible hashes to lower_bound;
+            for (size_t hash = lower_bound; hash < lower_bound + detail::fast_pow(_sigma, k - size); hash += step_size)
             {
                 const auto* pos = at(hash);
                 if (pos != nullptr)
@@ -274,6 +214,30 @@ class kmer_index_element
 
             check_last_kmer(prefix_begin, size, output);
             return output;
+
+            // Addendum:
+            // To calculate set H of hashes for all kmers with suffix s
+            // i)   hash of a kmer q_0 q_1 q_2 ... q_k = sum {i=0 to k} rank(q_i) * sigma^(k - i - 1)
+            //
+            // ii)  for a suffix s_0,..., s_m , the first part of the sum is known:
+            //      h_p = sum {i= 0 to m} rank(s_i) * sigma^(k - i - 1)
+            //
+            // iii) for arbitrary suffix p_0, ..., p_(k-m-1) we observe:
+            //      min(H) = hs
+            //      by setting all p_i so that rank(p_i) = 0
+            //
+            // iv)  max(H) = hs + (hash of suffix with all p_i so that r(p_i) = maximum = sigma-1)
+            //             = hs + sum {i=k-m to i=k} (sigma-1) * sigma^(k-i-1)
+            //             = hs + sigma^m - 1/sigma
+            //
+            // v)   for two hashes from H h_1 and h_2 so that h_1 < h_2 it is true that
+            //      The minimum increase is achieved by setting the last possible char of the suffix of h_2
+            //      1 rank higher than the equivalent position of h_1. Because the input of that char to the
+            //      value of the hash is 1 * sigma^(k - k-1 - 1) = 1 we know that for all pairs off h_1, h_2 so
+            //      the difference h_2 - h_1 is minimal, it holds that h_2 - h_1 = 1
+            //
+            // vi)  thus to generate all hashes we start with min(H) = hs and stepwise add 1
+            //      until we reach max(H) = hs + sigma^m - 1/sigma
         }
 
     public:
