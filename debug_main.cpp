@@ -21,7 +21,7 @@
 
     using namespace seqan3;
     using alphabet_t = dna4;
-    constexpr size_t k = 6;
+    constexpr size_t k = 4;
     constexpr size_t text_size = 100;
 
     void force_error(std::vector<dna4> query, size_t seed)
@@ -30,15 +30,16 @@
         auto text = "TTTACGACGACGGACGACGAGCAGACGCAGCGCAGTTAGCGCAGCAGACACGAGTT"_dna4;//input.generate_sequence(text_size);
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
 
-        debug_stream << "text : " << text << "\n\n";
+        debug_stream << "text : " << text << " (" << text.size() << ")\n\n";
         debug_stream << "query : " << query << "\n";
 
         auto fm = fm_index(text);
         debug_stream << "fm  : " << search(query, fm) << "\n";
 
         auto kmer_results = kmer.search(query);
+        auto vec = kmer_results.to_vector();
 
-        debug_stream << "kmer : " << kmer_results.to_vector() << "\n\n";
+        debug_stream << "kmer : " << vec << "\n\n";
 
         exit(0);
     }

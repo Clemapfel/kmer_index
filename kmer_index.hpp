@@ -13,6 +13,8 @@
 #include <seqan3/core/type_traits/range.hpp>
 #include <seqan3/core/debug_stream.hpp>
 
+#include <seqan3/alphabet/nucleotide/dna4.hpp> //TODO
+
 #include <robin_hood.h>
 
 #include <type_traits>
@@ -66,10 +68,8 @@ class kmer_index_element
         robin_hood::unordered_map<size_t, std::vector<position_t>> _data;
 
         // needed for subk search edge case
-        std::vector<alphabet_t> _first_kmer;
-
-        // reference to vectors that may be returned as pointers but aren't actually part of map
-        const std::vector<std::vector<position_t>> _first_kmer_refs;
+        std::vector<alphabet_t> _last_kmer;
+        std::vector<std::vector<position_t>> _last_kmer_refs;
 
         // get all possible kmers that have query as suffix, needed for subk search
         static std::unordered_set<std::vector<alphabet_t>> get_all_kmer_with_suffix(std::vector<alphabet_t> sequence)
@@ -167,17 +167,21 @@ class kmer_index_element
         }
 
         template<typename iterator_t>
-        void check_first_kmer(iterator_t subk_begin, size_t size, std::vector<const std::vector<position_t>*>& to_fill) const
+        void check_last_kmer(iterator_t subk_begin, size_t size, std::vector<const std::vector<position_t>*>& to_fill) const
         {
+            seqan3::debug_stream << "last kmer: " << _last_kmer << "\n";
+
             // check edge case at first kmer
-            for (size_t i = 0; i < k - size; ++i)
+            for (size_t i = 0; i < k - size + 1; ++i)
             {
                 bool equal = true;
                 auto it = subk_begin;
 
                 for (size_t j = i; j < i + size; ++j)
                 {
-                    if (_first_kmer.at(j) != *it)
+                    seqan3::debug_stream << _last_kmer.at(j) << " " << *it << "\n";
+
+                    if (_last_kmer.at(j) != *it)
                     {
                         equal = false;
                         break;
@@ -187,7 +191,7 @@ class kmer_index_element
 
                 if (equal)
                 {
-                    to_fill.push_back(&_first_kmer_refs.at(i));  // returns position
+                    to_fill.push_back(&_last_kmer_refs.at(i));  // returns correct position at text.size() - k + i
                 }
             }
         }
@@ -247,6 +251,31 @@ class kmer_index_element
             //      until we reach max(H) = hs + sigma^k - sigma^m
         }
 
+        template<typename iterator_t>
+        std::vector<const std::vector<position_t>*> get_position_for_all_kmer_with_prefix(iterator_t prefix_begin, size_t size) const
+        {
+            auto it = prefix_begin;
+            size_t prefix_hash = 0;
+            for (size_t i = 0; i < size; ++i)
+                prefix_hash += seqan3::to_rank(*it++) * detail::fast_pow(_sigma, k - i -1);
+
+            size_t lower_bound = 0 + prefix_hash;
+            size_t upper_bound = detail::fast_pow(_sigma, size) - (1.f / _sigma) + prefix_hash;
+            size_t step_size = 1;
+
+            std::vector<const std::vector<position_t>*> output;
+
+            for (size_t hash = lower_bound; hash <= upper_bound; hash += step_size)
+            {
+                const auto* pos = at(hash);
+                if (pos != nullptr)
+                    output.push_back(pos);
+            }
+
+            check_last_kmer(prefix_begin, size, output);
+            return output;
+        }
+
     public:
         // search any query
         result_t search(std::vector<alphabet_t> query) const
@@ -281,7 +310,7 @@ class kmer_index_element
 
                 // position for last part < k
                 if (rest_n > 0)
-                   rest_positions = search_subk(query.end() - rest_n, rest_n);
+                   rest_positions = get_position_for_all_kmer_with_prefix(query.end() - rest_n, rest_n);
 
                 // find out if pos for sections match
                 result_t output(positions.at(0), this, false);    // init bitmask as all 0
@@ -326,7 +355,7 @@ class kmer_index_element
 
             else //query.size() < k
             {
-                return result_t(search_subk(query.begin(), query.size()), this, true);
+                return result_t(get_position_for_all_kmer_with_prefix(query.begin(), query.size()), this, true);
             }
         }
 
@@ -335,11 +364,11 @@ class kmer_index_element
 
         template<std::ranges::range text_t>
         kmer_index_element(text_t& text)
-                :  _first_kmer(text.begin(), text.begin() + k),
-                   _first_kmer_refs([this]() -> std::vector<std::vector<position_t>> {
+                :  _last_kmer(text.end() - k, text.end()),
+                   _last_kmer_refs([this]() -> std::vector<std::vector<position_t>> {
                        std::vector<std::vector<position_t>> output;
 
-                       for (position_t i = 0; i < _first_kmer.size(); ++i)
+                       for (position_t i = 0; i < _last_kmer.size(); ++i)
                            output.emplace_back(std::vector<position_t>{i});
 
                        return output;
@@ -362,6 +391,13 @@ class kmer_index_element
                 _data[h].push_back(i);
                 ++i;
             }
+
+            size_t text_size = i + k - 1;
+
+            // modify last_kmer_refs with now available text size
+            for (auto& ref : _last_kmer_refs)
+                ref[0] += text_size - k;
+
         }
 
         // returns bool so fold expression in kmer_index can shortcircuit (c.f. kmer_index exact search comments)
