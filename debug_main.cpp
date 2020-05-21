@@ -27,8 +27,7 @@
     void force_error(std::vector<dna4> query, size_t seed)
     {
         auto input = input_generator<dna4>(seed);
-        auto text = input.generate_sequence(text_size);
-        //text.insert(text.begin(), query.begin(), query.end());
+        auto text = "TTTACGACGACGGACGACGAGCAGACGCAGCGCAGTTAGCGCAGCAGACACGAGTT"_dna4;//input.generate_sequence(text_size);
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
 
         debug_stream << "text : " << text << "\n\n";
@@ -41,7 +40,7 @@
 
         debug_stream << "kmer : " << kmer_results.to_vector() << "\n\n";
 
-        //exit(0);
+        exit(0);
     }
 
 
@@ -71,6 +70,9 @@
 
     int main()
     {
+        force_error("TT"_dna4, 0);
+
+        /*
         auto input = input_generator<dna4>();
 
         input.reset_state();
@@ -95,7 +97,8 @@
         //seqan3::debug_stream << "(" << n << ") for " << suffix << " : " << (hashs_true == hashs_test) << "\n";
         assert(hashs_true == hashs_test);
 
-        force_error("TT"_dna4, 0);
+        seqan3::debug_stream << true_results << "\n";
+
 
         /*
         debug_stream << "starting test...\n";
