@@ -106,11 +106,68 @@ namespace detail
             }
     };
 
+    template<long FROM, long TO>
+    class Range {
+        public:
+            class iterator {
+                    long num = FROM;
+                public:
+                    iterator(long _num = 0) : num(_num) {}
+                    iterator& operator++() {num = TO >= FROM ? num + 1: num - 1; return *this;}
+                    iterator operator++(int) {iterator retval = *this; ++(*this); return retval;}
+                    bool operator==(iterator other) const {return num == other.num;}
+                    bool operator!=(iterator other) const {return !(*this == other);}
+                    long operator*() {return num;}
+                    // iterator traits
+                    using difference_type = long;
+                    using value_type = long;
+                    using pointer = const long*;
+                    using reference = const long&;
+                    using iterator_category = std::forward_iterator_tag;
+            };
+            iterator begin() {return FROM;}
+            iterator end() {return TO >= FROM? TO+1 : TO-1;}
+    };
+
+
+
     // result type that only holds pointers to the positions inside kmer index
     template<seqan3::alphabet alphabet_t, size_t k, typename position_t>
     class kmer_index_result
     {
        friend class kmer_index_element<alphabet_t, k, position_t>;
+
+        public:
+            class kmer_index_result_iterator
+            {
+                // reference: https://stackoverflow.com/questions/37031805/preparation-for-stditerator-being-deprecated/38103394
+                // typedefs required
+                using iterator_category = std::random_access_iterator_tag;
+                using value_type = position_t;
+                using difference_type = void;
+                using pointer = position_t*;
+                using reference = position_t&;
+
+                using iterator_t = kmer_index_result<alphabet_t, k, position_t>::kmer_index_result_iterator;
+
+                // ctor
+                kmer_index_result_iterator(kmer_index_result<alphabet_t, k, position_t>& result)
+                {
+                    
+                }
+
+                // operators
+                iterator_t& operator++();
+                iterator operator++(int);
+
+                bool operator==(iterator_t other);
+                bool operator!=(iterator_t other);
+
+                value_type operator*();
+            };
+
+            kmer_index_result_iterator begin();
+            kmer_index_result_iterator end();
 
         private:
             using index_t = kmer_index_element<alphabet_t, k, position_t>;
@@ -124,8 +181,7 @@ namespace detail
             //keep index in memory so results don't become invalid
             const index_t& _index;
 
-        //protected:
-        public:
+        protected:
             // ctors
             kmer_index_result(const index_t* index, bool zero_or_one = true)
                     : _index(*index), _bitmask(0, zero_or_one)
