@@ -324,7 +324,9 @@ namespace detail
 
         public:
             // user should not be able to construct results, only kmer_index does
-            kmer_index_result() = delete;
+            //kmer_index_result() = default;
+            //kmer_index_result(const kmer_index_result&) = delete;
+            //kmer_index_result(kmer_index_result&&) = delete;
 
             // get number of valid positions
             size_t size() const

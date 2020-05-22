@@ -248,11 +248,16 @@ class kmer_index_element
             {
                 const auto* pos = at(hash(query.begin()));
                 if (pos)
-                    return false;//result_t(pos, this, true);
+                {
+                    auto res = result_t(pos, this, true);
+                    return true;
+                }
                 else
-                    return true;//result_t(this, true);
+                {
+                    auto res = result_t(this, true);
+                    return false;
+                }
             }
-
             else if (query.size() > k)
             {
                 size_t rest_n = query.size() % k;
@@ -267,7 +272,10 @@ class kmer_index_element
                     if (pos)
                         positions.push_back(pos);
                     else
-                        return false;//result_t(this);
+                    {
+                        auto res = result_t(this);
+                        return false;
+                    }
                 }
 
                 std::vector<const std::vector<position_t>*> rest_positions;
@@ -314,13 +322,13 @@ class kmer_index_element
                     start_pos_i++;
                 }
 
-                return false;
+                return true;
             }
 
             else //query.size() < k
             {
                 auto res = result_t(get_position_for_all_kmer_with_prefix(query.begin(), query.size()), this, true);
-                return false;
+                return true;
             }
         }
 
