@@ -11,7 +11,7 @@ namespace detail
 {
     // runtime-optimized equivalent for std::vector<bool>
     template<typename integer_t = uint_fast64_t>
-    class compressed_bitset {
+    class compressed_bitset{
         private:
             // pre-calculate frequently used constants
             static constexpr integer_t _and_v = (sizeof(integer_t) * 8) - 1;          // i % n = i & n-1
@@ -112,7 +112,8 @@ namespace detail
     {
        friend class kmer_index_element<alphabet_t, k, position_t>;
 
-        public:
+        private:
+            // iterator class that automatically jumps to next valid result
             class kmer_index_result_iterator
             {
                 friend class kmer_index_result<alphabet_t, k, position_t>;
@@ -120,7 +121,7 @@ namespace detail
                 private:
                     const kmer_index_result<alphabet_t, k, position_t>* _result;
                     size_t _position_i = 0;
-                    size_t _last_valid_i;
+                    size_t _first_valid_i, _last_valid_i;
 
                     bool advance_to_next_valid_result()
                     {
@@ -131,6 +132,22 @@ namespace detail
 
                         while(new_i < _result->_bitmask.size() and _result->_bitmask.at(new_i) == false)
                             new_i++;
+
+                        assert(new_i != _position_i);
+
+                        _position_i = new_i;
+                        return true;
+                    }
+
+                    bool advance_to_previous_valid_result()
+                    {
+                        if (_position_i == _first_valid_i)
+                            return false;
+
+                        size_t new_i = _position_i-1;
+
+                        while (new_i > 0 and _result->bitmask.at(new_i) == false)
+                            new_i--;
 
                         assert(new_i != _position_i);
 
@@ -154,13 +171,12 @@ namespace detail
                     }
 
                 public:
-                    // reference: https://stackoverflow.com/questions/37031805/preparation-for-stditerator-being-deprecated/38103394
                     // typedefs required
-                    using iterator_category = std::input_iterator_tag;
+                    using iterator_category = std::bidirectional_iterator_tag;
                     using value_type = position_t;
                     using difference_type = void;
-                    using pointer = position_t*;
-                    using reference = position_t&;
+                    using pointer = void;
+                    using reference = void;
 
                     using iterator_t = kmer_index_result<alphabet_t, k, position_t>::kmer_index_result_iterator;
 
@@ -176,7 +192,12 @@ namespace detail
                         _last_valid_i = i;
 
                         if (not result->_bitmask.at(0))
+                        {
                             advance_to_next_valid_result();
+                            _first_valid_i = _position_i;
+                        }
+                        else
+                            _first_valid_i = 0;
                     }
 
                     // operators
@@ -192,6 +213,25 @@ namespace detail
                         {
                             advance_to_next_valid_result();
                             if (_position_i == _result->size())
+                                break;
+
+                            i--;
+                        }
+                        return *this;
+                    }
+
+                    iterator_t& operator--()
+                    {
+                        advance_to_previous_valid_result();
+                        return *this;
+                    }
+
+                    iterator_t& operator--(int i)
+                    {
+                        while (i > 0)
+                        {
+                            advance_to_previous_valid_result();
+                            if (_position_i == 0)
                                 break;
 
                             i--;
@@ -216,17 +256,6 @@ namespace detail
                     }
             };
 
-            kmer_index_result_iterator begin()
-            {
-                return kmer_index_result_iterator(this, true);
-            }
-
-            kmer_index_result_iterator end()
-            {
-                return kmer_index_result_iterator(this, false);
-            }
-
-        private:
             using index_t = kmer_index_element<alphabet_t, k, position_t>;
 
             // bitmask specifies which of the results should be ignore
@@ -259,7 +288,7 @@ namespace detail
                 return _positions.at(vector_i)->at(i);
             }
 
-            // ctors
+            // ctors only used by kmer_index
             kmer_index_result(const index_t* index, bool zero_or_one = true)
                     : _index(*index), _bitmask(0, zero_or_one)
             {
@@ -268,7 +297,6 @@ namespace detail
             kmer_index_result(const std::vector<position_t>* positions, const index_t* index, bool zero_or_one = false)
                     : _index(*index), _bitmask(positions->size(), zero_or_one), _positions{positions}
             {
-
             }
 
             kmer_index_result(std::vector<const std::vector<position_t>*> positions, const index_t* index, bool zero_or_one = false)
@@ -295,12 +323,22 @@ namespace detail
             }
 
         public:
+            // user should not be able to construct results, only kmer_index does
+            kmer_index_result() = delete;
+
+            // get number of valid positions
             size_t size() const
             {
                 return _bitmask.count_bits_equal_to(true);
             }
 
-            std::vector<position_t> to_vector() const
+            size_t count() const
+            {
+                return size();
+            }
+
+            // copy result into vector
+            std::vector<position_t> to_vector(bool sort_results = true) const
             {
                 if (_positions.empty())
                     return std::vector<position_t>();
@@ -313,9 +351,21 @@ namespace detail
                         if (_bitmask.at(i))
                             output.push_back(vec->at(j));
 
-                //std::sort(output.begin(), output.end());
+                if(sort_results)
+                    std::sort(output.begin(), output.end());
+
                 return output;
             }
 
+            // iterables
+            kmer_index_result_iterator begin()
+            {
+                return kmer_index_result_iterator(this, true);
+            }
+
+            kmer_index_result_iterator end()
+            {
+                return kmer_index_result_iterator(this, false);
+            }
     };
-}
+} // end of namespace detail

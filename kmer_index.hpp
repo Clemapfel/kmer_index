@@ -57,7 +57,7 @@ class kmer_index_element
 {
     static_assert(k > 1, "please specify a valid k");
 
-    public:
+    private:
         // typedefs for readability
         using result_t = detail::kmer_index_result<alphabet_t, k, position_t>;
         constexpr static size_t _sigma = seqan3::alphabet_size<alphabet_t>;
@@ -121,6 +121,7 @@ class kmer_index_element
         }
 
         // hash a query of arbitrary length
+        /*
         template<typename iterator_t>
         static size_t hash_any(iterator_t query_it, size_t size)
         {
@@ -132,6 +133,7 @@ class kmer_index_element
 
             return hash;
         }
+         */
 
         // hash a query of length k, optimized by compiler unwrapping fold expression
         template<typename iterator_t>
@@ -153,7 +155,6 @@ class kmer_index_element
             return hash_aux(it, std::make_index_sequence<k>());
         }
 
-    //protected:
         const std::vector<position_t>* at(size_t hash) const
         {
             auto it = _data.find(hash);
@@ -167,8 +168,8 @@ class kmer_index_element
         template<typename iterator_t>
         void check_last_kmer(iterator_t subk_begin, size_t size, std::vector<const std::vector<position_t>*>& to_fill) const
         {
-            // check edge case at first kmer
-            for (size_t i = 1; i < k - size + 1; ++i)   // sic, first char is covered by last kmer being in _data
+            // check edge case at last kmer
+            for (size_t i = 1; i < k - size + 1; ++i)   // first char is covered by last kmer being in _data
             {
                 bool equal = true;
                 auto it = subk_begin;
@@ -364,6 +365,7 @@ class kmer_index_element
 
         }
 
+        /*
         // returns bool so fold expression in kmer_index can shortcircuit (c.f. kmer_index exact search comments)
         bool search_if(bool expression, std::vector<alphabet_t> query, std::vector<position_t> &result) const
         {
@@ -375,6 +377,7 @@ class kmer_index_element
             else
                 return false;
         }
+         */
 };
 
 /*
