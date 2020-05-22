@@ -23,7 +23,7 @@ namespace detail
             // holds integers
             std::vector<integer_t> _bits;
 
-        protected:
+        public:
             // convert to regular vector
             std::vector<bool> to_vector() const {
                 std::vector<bool> out;
@@ -84,7 +84,7 @@ namespace detail
                     i = _zero;
             }
 
-            size_t size()
+            size_t size() const
             {
                 return _n_bits;
             }
@@ -106,68 +106,125 @@ namespace detail
             }
     };
 
-    template<long FROM, long TO>
-    class Range {
-        public:
-            class iterator {
-                    long num = FROM;
-                public:
-                    iterator(long _num = 0) : num(_num) {}
-                    iterator& operator++() {num = TO >= FROM ? num + 1: num - 1; return *this;}
-                    iterator operator++(int) {iterator retval = *this; ++(*this); return retval;}
-                    bool operator==(iterator other) const {return num == other.num;}
-                    bool operator!=(iterator other) const {return !(*this == other);}
-                    long operator*() {return num;}
-                    // iterator traits
-                    using difference_type = long;
-                    using value_type = long;
-                    using pointer = const long*;
-                    using reference = const long&;
-                    using iterator_category = std::forward_iterator_tag;
-            };
-            iterator begin() {return FROM;}
-            iterator end() {return TO >= FROM? TO+1 : TO-1;}
-    };
-
-
-
     // result type that only holds pointers to the positions inside kmer index
     template<seqan3::alphabet alphabet_t, size_t k, typename position_t>
-    class kmer_index_result
+    struct kmer_index_result
     {
        friend class kmer_index_element<alphabet_t, k, position_t>;
 
         public:
             class kmer_index_result_iterator
             {
-                // reference: https://stackoverflow.com/questions/37031805/preparation-for-stditerator-being-deprecated/38103394
-                // typedefs required
-                using iterator_category = std::random_access_iterator_tag;
-                using value_type = position_t;
-                using difference_type = void;
-                using pointer = position_t*;
-                using reference = position_t&;
+                friend class kmer_index_result<alphabet_t, k, position_t>;
 
-                using iterator_t = kmer_index_result<alphabet_t, k, position_t>::kmer_index_result_iterator;
+                private:
+                    const kmer_index_result<alphabet_t, k, position_t>* _result;
+                    size_t _position_i = 0;
+                    size_t _last_valid_i;
 
-                // ctor
-                kmer_index_result_iterator(kmer_index_result<alphabet_t, k, position_t>& result)
-                {
+                    bool advance_to_next_valid_result()
+                    {
+                        if (_position_i == _last_valid_i)
+                            return false;
 
-                }
+                        size_t new_i = _position_i+1;
 
-                // operators
-                iterator_t& operator++();
-                iterator operator++(int);
+                        while(new_i < _result->_bitmask.size() and _result->_bitmask.at(new_i) == false)
+                            new_i++;
 
-                bool operator==(iterator_t other);
-                bool operator!=(iterator_t other);
+                        assert(new_i != _position_i);
 
-                value_type operator*();
+                        _position_i = new_i;
+                        return true;
+                    }
+
+                protected:
+                    kmer_index_result_iterator(kmer_index_result<alphabet_t, k, position_t>* result, bool beginning_or_end)
+                        : kmer_index_result_iterator(result)
+                    {
+                        if (beginning_or_end)
+                        {
+                            if (not _result->_bitmask.at(0))
+                                advance_to_next_valid_result();
+                        }
+                        else
+                        {
+                            _position_i = _last_valid_i;
+                        }
+                    }
+
+                public:
+                    // reference: https://stackoverflow.com/questions/37031805/preparation-for-stditerator-being-deprecated/38103394
+                    // typedefs required
+                    using iterator_category = std::input_iterator_tag;
+                    using value_type = position_t;
+                    using difference_type = void;
+                    using pointer = position_t*;
+                    using reference = position_t&;
+
+                    using iterator_t = kmer_index_result<alphabet_t, k, position_t>::kmer_index_result_iterator;
+
+                    // ctor
+                    kmer_index_result_iterator(kmer_index_result<alphabet_t, k, position_t>* result)
+                        : _result(result), _position_i(0)
+                    {
+                        size_t i= result->_bitmask.size()-1;
+                        for (i; i >= 0; i--)
+                            if(result->_bitmask.at(i))
+                                break;
+
+                        _last_valid_i = i;
+
+                        if (not result->_bitmask.at(0))
+                            advance_to_next_valid_result();
+                    }
+
+                    // operators
+                    iterator_t& operator++()
+                    {
+                        advance_to_next_valid_result();
+                        return *this;
+                    }
+
+                    iterator_t& operator++(int i)
+                    {
+                        while(i > 0)
+                        {
+                            advance_to_next_valid_result();
+                            if (_position_i == _result->size())
+                                break;
+
+                            i--;
+                        }
+                        return *this;
+                    }
+
+                    bool operator==(iterator_t other)
+                    {
+                        return this->_position_i == other._position_i and this->_result == other._result;
+                    }
+
+                    bool operator!=(iterator_t other)
+                    {
+                        return not (*this == other);
+                    }
+
+                    value_type operator*()
+                    {
+                        auto result = _result->at(_position_i);
+                        return result;
+                    }
             };
 
-            kmer_index_result_iterator begin();
-            kmer_index_result_iterator end();
+            kmer_index_result_iterator begin()
+            {
+                return kmer_index_result_iterator(this, true);
+            }
+
+            kmer_index_result_iterator end()
+            {
+                return kmer_index_result_iterator(this, false);
+            }
 
         private:
             using index_t = kmer_index_element<alphabet_t, k, position_t>;
@@ -182,6 +239,26 @@ namespace detail
             const index_t& _index;
 
         protected:
+            position_t at(size_t i) const
+            {
+                assert(_bitmask.at(i));
+
+                if (i < _positions.at(0)->size())
+                    return _positions.at(0)->at(i);
+
+                size_t vector_i = 0;
+                for (; vector_i < _positions.size(); ++vector_i)
+                {
+                    if (int(i) - int(_positions.at(vector_i)->size()) < 0)
+                        break;
+
+                    else
+                        i -= _positions.at(vector_i)->size();
+                }
+
+                return _positions.at(vector_i)->at(i);
+            }
+
             // ctors
             kmer_index_result(const index_t* index, bool zero_or_one = true)
                     : _index(*index), _bitmask(0, zero_or_one)
@@ -223,7 +300,6 @@ namespace detail
                 return _bitmask.count_bits_equal_to(true);
             }
 
-            // lazy eval placeholder
             std::vector<position_t> to_vector() const
             {
                 if (_positions.empty())
@@ -237,7 +313,7 @@ namespace detail
                         if (_bitmask.at(i))
                             output.push_back(vec->at(j));
 
-                std::sort(output.begin(), output.end());
+                //std::sort(output.begin(), output.end());
                 return output;
             }
 
