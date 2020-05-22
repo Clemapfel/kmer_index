@@ -242,8 +242,90 @@ class kmer_index_element
         }
 
     public:
+        bool test_search(std::vector<alphabet_t>& query) const
+        {
+            if (query.size() == k)
+            {
+                const auto* pos = at(hash(query.begin()));
+                if (pos)
+                    return false;//result_t(pos, this, true);
+                else
+                    return true;//result_t(this, true);
+            }
+
+            else if (query.size() > k)
+            {
+                size_t rest_n = query.size() % k;
+
+                std::vector<const std::vector<position_t>*> positions;
+
+                // positions for first n parts of length k
+                for (size_t i = 0; i < query.size() - rest_n; i += k)
+                {
+                    const auto* pos = at(hash(query.begin() + i));
+
+                    if (pos)
+                        positions.push_back(pos);
+                    else
+                        return false;//result_t(this);
+                }
+
+                std::vector<const std::vector<position_t>*> rest_positions;
+
+                // position for last part < k
+                if (rest_n > 0)
+                    rest_positions = get_position_for_all_kmer_with_prefix(query.end() - rest_n, rest_n);
+
+                // find out if pos for sections match
+                result_t output(positions.at(0), this, false);    // init bitmask as all 0
+
+                size_t start_pos_i = 0;
+                for (position_t start_pos : *positions.at(0))
+                {
+                    position_t previous_pos = start_pos;
+
+                    for (size_t i = 1; i <= positions.size(); ++i)
+                    {
+                        if (i == positions.size())
+                        {
+                            if (rest_n > 0)
+                            {
+                                for (const auto* vec : rest_positions)
+                                    if (std::find(vec->begin(), vec->end(), previous_pos + k) !=
+                                        vec->end())
+                                        output.should_use(start_pos_i);
+                            }
+                            else
+                            {
+                                output.should_use(start_pos_i);
+                            }
+
+                            break;
+                        }
+
+                        const auto* current = positions.at(i);
+
+                        if (std::find(current->begin(), current->end(), previous_pos + k) != current->end())
+                            previous_pos += k;
+                        else
+                            break;
+                    }
+
+                    start_pos_i++;
+                }
+
+                return false;
+            }
+
+            else //query.size() < k
+            {
+                auto res = result_t(get_position_for_all_kmer_with_prefix(query.begin(), query.size()), this, true);
+                return false;
+            }
+        }
+
         // search any query
-        result_t search(std::vector<alphabet_t> query) const
+        result_t search(std::vector<alphabet_t>& query) const
         {
             if (query.size() == k)
             {
