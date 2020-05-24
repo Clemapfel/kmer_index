@@ -2,6 +2,7 @@
 
 #include "kmer_index.hpp"
 #include "benchmarks/input_generator.hpp"
+#include "benchmarks/cleanup_csv.hpp"
 #include <benchmark/benchmark.h>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/search/fm_index/fm_index.hpp>
@@ -86,17 +87,25 @@ void register_benchmarks(size_t text_length, size_t query_length)
     auto text = input.generate_sequence(text_length);
     auto queries = input.generate_queries(query_length, 100000);
 
-    benchmark::RegisterBenchmark("kmer_base", &kmer_search_base<k>, text_length, query_length);
+    //benchmark::RegisterBenchmark("kmer_base", &kmer_search_base<k>, text_length, query_length);
     benchmark::RegisterBenchmark("kmer_search", &kmer_search<k>, text_length, query_length);
-    benchmark::RegisterBenchmark("fm_search", &fm_search, text_length, query_length);
+    //benchmark::RegisterBenchmark("fm_search", &fm_search, text_length, query_length);
 }
+
+constexpr size_t k = 5;
 
 int main(int argc, char** argv)
 {
-    register_benchmarks<6>(100000, 6);
-    register_benchmarks<6>(100000, 3);
-    register_benchmarks<6>(100000, 10*6);
+    //register_benchmarks<6>(100000, k);
+    //register_benchmarks<6>(100000, k-2);
+
+    for (size_t i = k-1; i < 3*k; ++i)
+        register_benchmarks<k>(100000, i);
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
+
+    cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/raw.csv");
+
+
 }
