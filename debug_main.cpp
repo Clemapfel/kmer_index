@@ -21,7 +21,7 @@
 
 using namespace seqan3;
 using alphabet_t = dna4;
-constexpr size_t k = 6;
+constexpr size_t k = 5;
 constexpr size_t text_size = 100000;
 
 int main()
@@ -30,20 +30,13 @@ int main()
     auto text = input.generate_sequence(text_size);
     auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
 
-    auto result = kmer.search("AGCT"_dna4);
+    //auto query_k1 = input.generate_sequence(k+1);
+    auto query_2k1 = input.generate_sequence(2*k+1);
 
-    seqan3::debug_stream << result.to_vector() << "\n";
+    //auto result = kmer.search(query_k1);
+    auto result2 = kmer.search(query_2k1);
 
-    debug_stream << "\nstarting loop:\n";
-    size_t previous = -1;   //sic
-    for (auto pos : result)
-    {
-        if (previous == pos)
-            return 1;
 
-        debug_stream << pos << " | ";
-        previous = pos;
-    }
 
     debug_stream << "\n";
 }

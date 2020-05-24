@@ -382,8 +382,7 @@ class kmer_index_element
                             if (rest_n > 0)
                             {
                                 for (const auto* vec : rest_positions)
-                                    if (std::find(vec->begin(), vec->end(), previous_pos + k) !=
-                                        vec->end())
+                                    if (std::binary_search(vec->begin(), vec->end(), previous_pos + k))
                                             output.should_use(start_pos_i);
                             }
                             else
@@ -396,7 +395,7 @@ class kmer_index_element
 
                         const auto* current = positions.at(i);
 
-                        if (std::find(current->begin(), current->end(), previous_pos + k) != current->end())
+                        if (std::binary_search(current->begin(), current->end(), previous_pos + k))
                             previous_pos += k;
                         else
                             break;
