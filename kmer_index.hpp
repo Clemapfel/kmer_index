@@ -137,19 +137,19 @@ class kmer_index_element
 
         // hash a query of length k, optimized by compiler unwrapping fold expression
         template<typename iterator_t>
-        static size_t hash_aux_aux(iterator_t query_it, size_t i)
+        size_t hash_aux_aux(iterator_t query_it, size_t i) const
         {
             return seqan3::to_rank(*query_it) * detail::fast_pow(_sigma, k - i - 1);
         }
 
         template<typename iterator_t, size_t... is>
-        static size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence)
+        size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence) const
         {
             return (... + hash_aux_aux(query_it++, is));
         }
 
         template<typename iterator_t>
-        static size_t hash(iterator_t query_it)
+        size_t hash(iterator_t query_it) const
         {
             auto it = query_it;
             return hash_aux(it, std::make_index_sequence<k>());
@@ -243,7 +243,7 @@ class kmer_index_element
 
     public:
 
-        result_t search_test(std::vector<alphabet_t>& query)
+        result_t search_test(std::vector<alphabet_t>& query) const
         {
             if (query.size() == k)
             {
@@ -261,9 +261,14 @@ class kmer_index_element
                 std::vector<const std::vector<position_t>*> nk_positions;
 
                 for (size_t i = 0; i < query.size() - rest_n; i += k)
-                    nk_positions.push_back(at(hash(query.begin() + i)));
+                {
+                    const auto* pos = at(hash(query.begin() + i));
 
-                // get positions of rest
+                    if (pos)
+                        nk_positions.push_back(pos);
+                    else
+                        return result_t(this);
+                }
 
                 result_t output(nk_positions.at(0), this, true);
 
@@ -276,20 +281,19 @@ class kmer_index_element
                     {
                         auto* current = nk_positions.at(next_pos_i);
 
-                        if (std::binary_search(current->begin(), current->end(), previous_pos + k))
+                        if (not std::binary_search(current->begin(), current->end(), previous_pos + k))
                         {
-                            previous_pos += k;
-                            continue;
-                        }
-                        else
-                        {
+                            output.should_not_use(start_pos_i);
                             should_use = false;
                             break;
                         }
+                        else
+                            previous_pos += k;
                     }
 
-                    if (not should_use)
-                        output.should_not_use(start_pos_i);
+                    if (should_use)
+                        output.should_use(start_pos_i);
+
                 }
 
                 return output;

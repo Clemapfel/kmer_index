@@ -55,7 +55,8 @@ namespace detail
             // set ith bit to 1
             void set_1(size_t i)
             {
-                assert(i < _n_bits);
+                if (i >= _n_bits)
+                    throw std::out_of_range("compressed bitset index out of range");
 
                 size_t n = i & _and_v;
                 _bits.data()[i >> _rshift_v] |= _one << n;
@@ -64,7 +65,8 @@ namespace detail
             // get ith bit
             bool at(size_t i) const
             {
-                assert(i < _n_bits);
+                if (i >= _n_bits)
+                    throw std::out_of_range("compressed bitset index out of range");
 
                 size_t n = i & _and_v;
                 return (_bits[i >> _rshift_v] & (_one << n)) != _zero;
