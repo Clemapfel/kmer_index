@@ -32,14 +32,14 @@ int main()
         auto text = input.generate_text(text_size, {});
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
 
-        auto query = input.generate_sequence(2*k);
+        auto query = input.generate_sequence(2*k+2);
 
         auto fm = fm_index(text);
         std::vector<unsigned int> fm_result;
         for (auto _ : search(query, fm))
             fm_result.push_back(_.second);
 
-        auto kmer_result = kmer.search_test(query).to_vector();
+        auto kmer_result = kmer.search(query).to_vector();
 
         auto equal = fm_result == kmer_result;
 
@@ -47,7 +47,7 @@ int main()
             seqan3::debug_stream << "TRUE ";
         else
         {
-            seqan3::debug_stream << "NOT EQUAL FOR QUERY " << query
+            seqan3::debug_stream << "\n\nNOT EQUAL FOR QUERY " << query
             << "\nFM : " << fm_result << "\n\n KMER : " << kmer_result << "\n";
             exit(1);
         }

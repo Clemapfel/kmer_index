@@ -69,57 +69,6 @@ class kmer_index_element
         std::vector<alphabet_t> _last_kmer;
         std::vector<std::vector<position_t>> _last_kmer_refs;
 
-        // get all possible kmers that have query as suffix, needed for subk search
-        static std::unordered_set<std::vector<alphabet_t>> get_all_kmer_with_suffix(std::vector<alphabet_t> sequence)
-        {
-            assert(sequence.size() <= k);
-
-            std::vector<alphabet_t> all_letters{};
-
-            for (size_t i = 0; i < alphabet_t::alphabet_size; ++i)
-                all_letters.push_back(seqan3::assign_rank_to(i, alphabet_t{}));
-
-            std::unordered_set<std::vector<alphabet_t>> output{};
-
-            size_t size = pow(alphabet_t::alphabet_size, (sequence.size()));
-
-            auto current = output;
-            current.reserve(size);
-
-            for (auto letter : all_letters)
-                output.insert({letter});
-
-            for (size_t i = 1; i < k; i++)
-            {
-                current.swap(output);
-                output.clear();
-
-                if (i < k - sequence.size())
-                {
-                    for (auto seq : current)
-                    {
-                        for (auto letter : all_letters)
-                        {
-                            auto temp = seq;
-                            temp.push_back(letter);
-                            output.insert(temp);
-                        }
-                    }
-                }
-                else
-                {
-                    for (auto seq : current)
-                    {
-                        auto temp = seq;
-                        temp.push_back(sequence.at(i - (k - sequence.size())));
-                        output.insert(temp);
-                    }
-                }
-            }
-
-            return output;
-        }
-
         // hash a query of arbitrary length
         /*
         template<typename iterator_t>
@@ -243,7 +192,7 @@ class kmer_index_element
 
     public:
 
-        result_t search_test(std::vector<alphabet_t>& query) const
+        result_t search(std::vector<alphabet_t>& query) const
         {
             if (query.size() == k)
             {
@@ -270,121 +219,104 @@ class kmer_index_element
                         return result_t(this);
                 }
 
-                result_t output(nk_positions.at(0), this, true);
+                // precompute rest positions
+                auto usable = detail::compressed_bitset(nk_positions.back()->size(), true);
 
-                for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
-                {
-                    size_t previous_pos = nk_positions.front()->at(start_pos_i);
-                    bool should_use = true;
-
-                    for (size_t next_pos_i = 1; next_pos_i < nk_positions.size(); ++next_pos_i)
-                    {
-                        auto* current = nk_positions.at(next_pos_i);
-
-                        if (not std::binary_search(current->begin(), current->end(), previous_pos + k))
-                        {
-                            output.should_not_use(start_pos_i);
-                            should_use = false;
-                            break;
-                        }
-                        else
-                            previous_pos += k;
-                    }
-
-                    if (should_use)
-                        output.should_use(start_pos_i);
-
-                }
-
-                return output;
-            }
-
-            else //query.size() < k
-            {
-                return result_t(get_position_for_all_kmer_with_prefix(query.begin(), query.size()), this, true);
-            }
-        }
-
-        result_t search(std::vector<alphabet_t>& query) const
-        {
-            if (query.size() == k)
-            {
-                const auto* pos = at(hash(query.begin()));
-                if (pos)
-                    return result_t(pos, this, true);
-                else
-                    return result_t(this, true);
-            }
-            else if (query.size() > k)
-            {
-                size_t rest_n = query.size() % k;
-
-                std::vector<const std::vector<position_t>*> positions;
-
-                // positions for first n parts of length k
-                for (size_t i = 0; i < query.size() - rest_n; i += k)
-                {
-                    const auto* pos = at(hash(query.begin() + i));
-
-                    if (pos)
-                        positions.push_back(pos);
-                    else
-                        return result_t(this);
-                }
-
-                std::vector<const std::vector<position_t>*> rest_positions;
-
-                // position for last part < k
                 if (rest_n > 0)
                 {
-                    rest_positions = get_position_for_all_kmer_with_prefix(query.end() - rest_n, rest_n);
+                    auto rest_results = get_position_for_all_kmer_with_prefix(query.end() - k, rest_n);
 
-                    size_t n_rest_pos = 0;
-                    for (auto _ : rest_positions)
-                        n_rest_pos++;
-
-                    seqan3::debug_stream << "rest has " << n_rest_pos << "hits.\n";
-                }
-
-                // find out if pos for sections match
-                result_t output(positions.at(0), this, false);    // init bitmask as all 0
-
-                size_t start_pos_i = 0;
-                for (position_t start_pos : *positions.at(0))
-                {
-                    position_t previous_pos = start_pos;
-
-                    for (size_t i = 1; i <= positions.size(); ++i)
+                    size_t i = 0;
+                    for (auto pos : *nk_positions.back())
                     {
-                        if (i == positions.size())
+                        bool can_be_used = false;
+                        for (const auto* res_vec : rest_results)
                         {
-                            if (rest_n > 0)
+                            if (std::binary_search(res_vec->begin(), res_vec->end(), pos + k))
                             {
-                                for (const auto* vec : rest_positions)
-                                    if (std::binary_search(vec->begin(), vec->end(), previous_pos + k))
-                                        output.should_use(start_pos_i);
+                                can_be_used = true;
+                                break;
                             }
-                            else
-                            {
-                                output.should_use(start_pos_i);
-                            }
-
-                            break;
                         }
 
-                        const auto* current = positions.at(i);
-
-                        if (std::binary_search(current->begin(), current->end(), previous_pos + k))
-                            previous_pos += k;
+                        if (can_be_used)
+                            usable.set_1(i);
                         else
-                            break;
-                    }
+                            usable.set_0(i);
 
-                    start_pos_i++;
+                        ++i;
+                    }
                 }
 
-                return output;
+                if (rest_n == 0)
+                {
+                    result_t output(nk_positions.at(0), this, true);
 
+                    for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
+                    {
+                        size_t previous_pos = nk_positions.front()->at(start_pos_i);
+                        bool should_use = true;
+
+                        for (size_t next_pos_i = 1; next_pos_i < nk_positions.size(); ++next_pos_i)
+                        {
+                            auto* current = nk_positions.at(next_pos_i);
+
+                            if (not std::binary_search(current->begin(), current->end(), previous_pos + k))
+                            {
+                                output.should_not_use(start_pos_i);
+                                should_use = false;
+                                break;
+                            }
+                            else
+                                previous_pos += k;
+                        }
+
+                        if (should_use)
+                            output.should_use(start_pos_i);
+
+                    }
+
+                    return output;
+                }
+                else
+                {
+                    result_t output(nk_positions.at(0), this, false);
+
+                    for (size_t start_pos_i = 0; start_pos_i < nk_positions.at(0)->size(); ++start_pos_i)
+                    {
+                        size_t previous_pos = nk_positions.front()->at(start_pos_i);
+
+                        bool interrupted = false;
+                        for (size_t next_pos_i = 1; next_pos_i < nk_positions.size(); ++next_pos_i)
+                        {
+                            const auto* current = nk_positions.back();
+                            auto it = std::find(current->begin(), current->end(), previous_pos += k);
+
+                            if (it == current->end())
+                            {
+                                interrupted = true;
+                                break;
+                            }
+
+                            // for last k part, also check rest pos
+                            if (next_pos_i == nk_positions.size())
+                            {
+                                if (not usable.at(it - current->begin()))
+                                {
+                                    interrupted = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (interrupted)
+                            output.should_not_use(start_pos_i);
+                        else
+                            output.should_use(start_pos_i);
+                    }
+
+                    return output;
+                }
             }
 
             else //query.size() < k
