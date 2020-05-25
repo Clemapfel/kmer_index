@@ -311,6 +311,11 @@ namespace detail
             {
             }
 
+            const std::vector<const std::vector<position_t>*>* get_positions_raw() const
+            {
+                return &_positions;
+            }
+
             // specify which positions to use by setting bitmask
             void should_not_use(size_t i)
             {

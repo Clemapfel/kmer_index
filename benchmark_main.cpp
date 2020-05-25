@@ -22,7 +22,7 @@ constexpr size_t SEED = 1234;
 template<size_t k>
 static void kmer_search(benchmark::State& state, size_t text_length, size_t query_length)
 {
-    auto input = input_generator<seqan3::dna4>(SEED);
+    auto input = input_generator<seqan3::dna4>(rand());
     auto text = input.generate_sequence(text_length);
     auto queries = input.generate_queries(100000, query_length);
 
@@ -43,7 +43,7 @@ static void kmer_search(benchmark::State& state, size_t text_length, size_t quer
 template<size_t k>
 static void kmer_search_base(benchmark::State& state, size_t text_length, size_t query_length)
 {
-    auto input = input_generator<seqan3::dna4>(SEED);
+    auto input = input_generator<seqan3::dna4>(rand());
     auto text = input.generate_sequence(text_length);
     auto queries = input.generate_queries(100000, query_length);
 
@@ -63,7 +63,7 @@ static void kmer_search_base(benchmark::State& state, size_t text_length, size_t
 
 static void fm_search(benchmark::State& state, size_t text_length, size_t query_length)
 {
-    auto input = input_generator<seqan3::dna4>(SEED);
+    auto input = input_generator<seqan3::dna4>(rand());
     auto text = input.generate_sequence(text_length);
     auto queries = input.generate_queries(100000, query_length);
 
@@ -87,7 +87,7 @@ void register_benchmarks(size_t text_length, size_t query_length)
     auto text = input.generate_sequence(text_length);
     auto queries = input.generate_queries(query_length, 100000);
 
-    //benchmark::RegisterBenchmark("kmer_base", &kmer_search_base<k>, text_length, query_length);
+    benchmark::RegisterBenchmark("kmer_base", &kmer_search_base<k>, text_length, query_length);
     benchmark::RegisterBenchmark("kmer_search", &kmer_search<k>, text_length, query_length);
     //benchmark::RegisterBenchmark("fm_search", &fm_search, text_length, query_length);
 }
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
     //register_benchmarks<6>(100000, k);
     //register_benchmarks<6>(100000, k-2);
 
-    for (size_t i = k-1; i < 3*k; ++i)
+    for (size_t i = k+1; i < 3*k; ++i)
         register_benchmarks<k>(100000, i);
 
     benchmark::Initialize(&argc, argv);

@@ -22,22 +22,28 @@
 using namespace seqan3;
 using alphabet_t = dna4;
 constexpr size_t k = 5;
-constexpr size_t text_size = 100000;
+constexpr size_t text_size = 10000;
 
 int main()
 {
+    auto query = "ACGTAACGTA"_dna4;
+
     auto input = input_generator<dna4>(0);
-    auto text = input.generate_sequence(text_size);
+    auto text = input.generate_text(text_size, {query});
     auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
 
-    //auto query_k1 = input.generate_sequence(k+1);
-    auto query_2k1 = input.generate_sequence(2*k+1);
+    auto result_true = kmer.search(query).to_vector();
+    auto result_test = kmer.search_test(query).to_vector();
 
-    //auto result = kmer.search(query_k1);
-    auto result2 = kmer.search(query_2k1);
+    seqan3::debug_stream << result_true << "\n\n" << result_test << "\n\n";
 
+    auto fm = fm_index(text);
+    std::vector<size_t> fm_result;
+    for (auto _ : search(query, fm))
+        fm_result.push_back(_.second);
 
+    seqan3::debug_stream << fm_result << "\n";
 
-    debug_stream << "\n";
+    seqan3::debug_stream << "kmer_old : " << result_true.size() << "\nkmer_new : " << result_test.size() << "\nfm : " << fm_result.size();
 }
 
