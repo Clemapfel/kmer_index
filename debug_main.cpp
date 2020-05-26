@@ -26,30 +26,39 @@ constexpr size_t text_size = 10000;
 
 int main()
 {
-    for (size_t i = 0; i < 100; ++i)
+    for (size_t i = 0; i < 1000; ++i)
     {
         auto input = input_generator<dna4>(i);
         auto text = input.generate_text(text_size, {});
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
-
-        auto query = input.generate_sequence(2*k+2);
-
         auto fm = fm_index(text);
-        std::vector<unsigned int> fm_result;
-        for (auto _ : search(query, fm))
-            fm_result.push_back(_.second);
 
-        auto kmer_result = kmer.search(query).to_vector();
-
-        auto equal = fm_result == kmer_result;
-
-        if (equal)
-            seqan3::debug_stream << "TRUE ";
-        else
+        for (size_t query_size : {k, 2*k+1, 3*k+2, 4*k+3, 10*k+3})
         {
-            seqan3::debug_stream << "\n\nNOT EQUAL FOR QUERY " << query
-            << "\nFM : " << fm_result << "\n\n KMER : " << kmer_result << "\n";
-            exit(1);
+            auto query = input.generate_sequence(query_size);
+
+            std::vector<unsigned int> fm_result;
+            for (auto _ : search(query, fm))
+                fm_result.push_back(_.second);
+
+            auto kmer_result = kmer.search(query).to_vector();
+
+            auto equal = fm_result == kmer_result;
+
+            if (equal)
+                seqan3::debug_stream << "TRUE ";
+            else
+            {
+                seqan3::debug_stream << "\n\nNOT EQUAL FOR QUERY " << query << " (" << query.size() << ")\n"
+                                     << "\nFM : " << fm_result << "\n\n KMER : " << kmer_result << "\n";
+                seqan3::debug_stream << "query size = " << query_size << "\nseed = " << i << "\n"
+                <<  "difference (fm - kmer) = " << int(fm_result.size()) - int(kmer_result.size()) << "\n";
+
+                std::vector<uint32_t> diff;
+                std::set_difference(fm_result.begin(), fm_result.end(), kmer_result.begin(), kmer_result.end(), std::inserter(diff, diff.begin()));
+                seqan3::debug_stream << diff;
+                exit(1);
+            }
         }
     }
 
