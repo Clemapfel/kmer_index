@@ -29,7 +29,7 @@
 #include "kmer_index_result.hpp"
 #include "thread_pool.hpp"
 
-namespace detail {
+//namespace detail {
     // optimized consteval pow
     constexpr size_t fast_pow(size_t base, size_t exp)
     {
@@ -86,7 +86,7 @@ namespace detail {
             template<typename iterator_t>
             size_t hash_aux_aux(iterator_t query_it, size_t i) const
             {
-                return seqan3::to_rank(*query_it) * detail::fast_pow(_sigma, k - i - 1);
+                return seqan3::to_rank(*query_it) * fast_pow(_sigma, k - i - 1);
             }
 
             template<typename iterator_t, size_t... is>
@@ -148,17 +148,17 @@ namespace detail {
                 auto it = prefix_begin;
                 size_t prefix_hash = 0;
                 for (size_t i = 0; i < size; ++i)
-                    prefix_hash += seqan3::to_rank(*it++) * detail::fast_pow(_sigma, k - i - 1);
+                    prefix_hash += seqan3::to_rank(*it++) * fast_pow(_sigma, k - i - 1);
 
                 size_t lower_bound = 0 + prefix_hash;
-                size_t upper_bound = detail::fast_pow(_sigma, size) - (1 / _sigma) + prefix_hash; //c.f. addendum
+                size_t upper_bound = fast_pow(_sigma, size) - (1 / _sigma) + prefix_hash; //c.f. addendum
                 size_t step_size = 1;
 
                 std::vector<const std::vector<position_t>*> output;
 
                 // bc stepsize is 1, just add number of possible hashes to lower_bound;
                 for (size_t hash = lower_bound;
-                     hash < lower_bound + detail::fast_pow(_sigma, k - size); hash += step_size)
+                     hash < lower_bound + fast_pow(_sigma, k - size); hash += step_size)
                 {
                     const auto* pos = at(hash);
                     if (pos != nullptr)
@@ -346,6 +346,8 @@ namespace detail {
             // ctors
             ~kmer_index_element() = default;
 
+            kmer_index_element() = default;
+
             template<std::ranges::range text_t>
             kmer_index_element(text_t& text)
                     :  _last_kmer(text.end() - k, text.end()),
@@ -376,11 +378,15 @@ namespace detail {
                     ++i;
                 }
 
-                size_t text_size = i + k - 1;
+                // setup last kmer
+                position_t text_size = i + k - 1;
 
-                // modify last_kmer_refs with now available text size
-                for (auto& ref : _last_kmer_refs)
-                    ref[0] += text_size - k;
+                _last_kmer = std::vector<alphabet_t>(text.end() - k, text.end());
+
+                _last_kmer_refs = std::vector<std::vector<position_t>>();
+
+                for (position_t j = 0; j < _last_kmer.size(); ++j)
+                    _last_kmer_refs.emplace_back(std::vector<position_t>{j + text_size - position_t(k)});
             }
 
             /*
@@ -397,8 +403,46 @@ namespace detail {
             }
              */
     };
+//}
 
-}
+template<seqan3::alphabet alphabet_t, typename position_t, size_t... ks>
+class kmer_index
+    : protected kmer_index_element<alphabet_t, ks, position_t>...
+{
+    private:
+        // typedefs for readability
+        template<size_t k>
+        using index_element = kmer_index_element<alphabet_t, k, position_t>;
+
+    public:
+        // ctor
+        template<std::ranges::range text_t>
+        kmer_index(text_t& text, size_t n_threads = std::thread::hardware_concurrency())
+                : index_element<ks>()...
+        {
+            // catch hardware concurrency failing
+            if (n_threads == 0)
+                n_threads = 1;
+
+            // use multiple threads to build index elements at the same time
+            auto pool = thread_pool{n_threads};
+
+            std::vector<std::future<void>> futures;
+            (futures.emplace_back(
+                    pool.execute(&index_element<ks>::template create<text_t>, static_cast<index_element<ks>*>(this),
+                                 std::ref(text))), ...);
+            // wait to finish
+            for (auto& f : futures)
+                f.get();
+        }
+
+        template<std::ranges::range text_t>
+        kmer_index(text_t& text)
+                : index_element<ks>(text)...
+        {}
+
+};
+
 
 /*
 
