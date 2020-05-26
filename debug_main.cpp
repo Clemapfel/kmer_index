@@ -24,9 +24,42 @@ using alphabet_t = dna4;
 constexpr size_t k = 5;
 constexpr size_t text_size = 10000;
 
+void force_error(std::vector<alphabet_t> query, size_t seed)
+{
+    auto input = input_generator<dna4>(seed);
+    auto text = input.generate_text(text_size, {});
+    auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
+    auto fm = fm_index(text);
+
+    std::vector<unsigned int> fm_result;
+    for (auto _ : search(query, fm))
+        fm_result.push_back(_.second);
+
+    auto kmer_result = kmer.search(query).to_vector();
+
+    auto equal = fm_result == kmer_result;
+
+    seqan3::debug_stream << (equal ? "EQUAL FOR " : "NOT EQUAL FOR ") << "\nQUERY " << query << " (" << query.size() << ")\n"
+                         << "\nFM : " << fm_result << "\n\n KMER : " << kmer_result << "\n";
+    seqan3::debug_stream << "query size = " << query.size() << "\nseed = " << seed << "\n"
+                         <<  "difference (fm - kmer) = " << int(fm_result.size()) - int(kmer_result.size()) << "\n";
+
+    std::vector<uint32_t> diff;
+    std::set_difference(fm_result.begin(), fm_result.end(), kmer_result.begin(), kmer_result.end(), std::inserter(diff, diff.begin()));
+    seqan3::debug_stream << diff;
+
+    if (not equal)
+        exit(1);
+    else
+        exit(0);
+
+}
+
 int main()
 {
-    for (size_t i = 0; i < 1000; ++i)
+    force_error("TATTGGTACCG"_dna4, 26);
+
+    for (size_t i = 0; i < 10000; ++i)
     {
         auto input = input_generator<dna4>(i);
         auto text = input.generate_text(text_size, {});

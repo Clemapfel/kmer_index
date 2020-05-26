@@ -70,7 +70,8 @@ namespace detail
                     throw std::out_of_range("compressed bitset index out of range");
 
                 size_t n = i & _and_v;
-                return (_bits[i >> _rshift_v] & (_one << n)) != _zero;
+                auto v = (_bits[i >> _rshift_v] & (_one << n)) != _zero;
+                return v;
             }
 
             // resets all bits to 1

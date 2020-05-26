@@ -222,9 +222,12 @@ class kmer_index_element
                 // precompute rest positions
                 auto usable = detail::compressed_bitset(nk_positions.back()->size(), true);
 
+                //3748
                 if (rest_n > 0)
                 {
-                    auto rest_results = get_position_for_all_kmer_with_prefix(query.end() - k, rest_n);
+                    auto rest_results = get_position_for_all_kmer_with_prefix(query.end() - rest_n, rest_n);
+
+                    //auto rest_results_vec = result_t(rest_results, this, true).to_vector();
 
                     size_t i = 0;
                     for (auto pos : *nk_positions.back())
@@ -240,12 +243,29 @@ class kmer_index_element
                         }
 
                         if (can_be_used)
+                        {
                             usable.set_1(i);
+                            //seqan3::debug_stream << nk_positions.back()->at(i) << " : " << 1 << "\n";
+                        }
                         else
+                        {
                             usable.set_0(i);
+                            //seqan3::debug_stream << nk_positions.back()->at(i) << " : " << 0 << "\n";
+                        }
 
                         ++i;
                     }
+                }
+
+                // query.size % k != 0 and query.size < 2*k
+                if (nk_positions.size() == 1)
+                {
+                    result_t output(nk_positions.at(0), this, false);
+                    for (size_t i = 0; i < nk_positions.at(0)->size(); ++i)
+                        if (usable.at(i))
+                            output.should_use(i);
+
+                    return output;
                 }
 
                 if (rest_n == 0)
@@ -286,33 +306,41 @@ class kmer_index_element
                     {
                         size_t previous_pos = nk_positions.front()->at(start_pos_i);
 
-                        bool interrupted = false;
-                        for (size_t next_pos_i = 1; next_pos_i < nk_positions.size(); ++next_pos_i)
+                        if (nk_positions.size() > 1)
                         {
-                            const auto* current = nk_positions.back();
-                            auto it = std::find(current->begin(), current->end(), previous_pos += k);
-
-                            if (it == current->end())
+                            bool interrupted = false;
+                            for (size_t next_pos_i = 1; next_pos_i < nk_positions.size(); ++next_pos_i)
                             {
-                                interrupted = true;
-                                break;
-                            }
+                                const auto* current = nk_positions.back();
+                                auto it = std::find(current->begin(), current->end(), previous_pos += k);
 
-                            // for last k part, also check rest pos
-                            if (next_pos_i == nk_positions.size())
-                            {
-                                if (not usable.at(it - current->begin()))
+                                if (it == current->end())
                                 {
                                     interrupted = true;
                                     break;
                                 }
-                            }
-                        }
 
-                        if (interrupted)
-                            output.should_not_use(start_pos_i);
-                        else
-                            output.should_use(start_pos_i);
+                                // for last k part, also check rest pos
+                                if (next_pos_i == nk_positions.size()-1)
+                                {
+                                    if (not usable.at(it - current->begin()))
+                                    {
+                                        interrupted = true;
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        auto vec = usable.to_vector();
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (interrupted)
+                                output.should_not_use(start_pos_i);
+                            else
+                                output.should_use(start_pos_i);
+                        }
                     }
 
                     return output;
