@@ -104,6 +104,7 @@ class kmer_index_element
             return hash_aux(it, std::make_index_sequence<k>());
         }
 
+        // get vector of positions from map
         const std::vector<position_t>* at(size_t hash) const
         {
             auto it = _data.find(hash);
@@ -114,10 +115,10 @@ class kmer_index_element
                 return nullptr;
         }
 
+        // check last kmer (needed for edge case where subk query is at the very end of the text)
         template<typename iterator_t>
         void check_last_kmer(iterator_t subk_begin, size_t size, std::vector<const std::vector<position_t>*>& to_fill) const
         {
-            // check edge case at last kmer
             for (size_t i = 1; i < k - size + 1; ++i)   // first char is covered by last kmer being in _data
             {
                 bool equal = true;
@@ -140,6 +141,7 @@ class kmer_index_element
             }
         }
 
+        // generate hashs for all kmer that have the given prefix and lookup those hashes
         template<typename iterator_t>
         std::vector<const std::vector<position_t>*> get_position_for_all_kmer_with_prefix(iterator_t prefix_begin, size_t size) const
         {
@@ -192,6 +194,7 @@ class kmer_index_element
 
     public:
 
+        // search any query, bevahior (and thus runtime) dependend on query length
         result_t search(std::vector<alphabet_t>& query) const
         {
             if (query.size() == k)
@@ -222,12 +225,9 @@ class kmer_index_element
                 // precompute rest positions
                 auto usable = detail::compressed_bitset(nk_positions.back()->size(), true);
 
-                //3748
                 if (rest_n > 0)
                 {
                     auto rest_results = get_position_for_all_kmer_with_prefix(query.end() - rest_n, rest_n);
-
-                    //auto rest_results_vec = result_t(rest_results, this, true).to_vector();
 
                     size_t i = 0;
                     for (auto pos : *nk_positions.back())
@@ -243,15 +243,9 @@ class kmer_index_element
                         }
 
                         if (can_be_used)
-                        {
                             usable.set_1(i);
-                            //seqan3::debug_stream << nk_positions.back()->at(i) << " : " << 1 << "\n";
-                        }
                         else
-                        {
                             usable.set_0(i);
-                            //seqan3::debug_stream << nk_positions.back()->at(i) << " : " << 0 << "\n";
-                        }
 
                         ++i;
                     }
@@ -268,7 +262,8 @@ class kmer_index_element
                     return output;
                 }
 
-                if (rest_n == 0)
+                // query.size % k == 0 does not need to check rest
+                else if (rest_n == 0)
                 {
                     result_t output(nk_positions.at(0), this, true);
 
@@ -293,11 +288,11 @@ class kmer_index_element
 
                         if (should_use)
                             output.should_use(start_pos_i);
-
                     }
 
                     return output;
                 }
+                // query.size() % k != 0 and query.size() > 2*k
                 else
                 {
                     result_t output(nk_positions.at(0), this, false);
@@ -313,7 +308,6 @@ class kmer_index_element
                             {
                                 const auto* current = nk_positions.back();
                                 auto it = std::find(current->begin(), current->end(), previous_pos += k);
-                                // TODO: should use auto it_2 = std::lower_bound(current->begin(), current->end(), previous_pos);
 
                                 if (it == current->end())
                                 {
@@ -321,26 +315,20 @@ class kmer_index_element
                                     break;
                                 }
 
-                                // for last k part, also check rest pos
+                                // for last k part, also check precomputed rest pos
                                 if (next_pos_i == nk_positions.size()-1)
                                 {
                                     if (not usable.at(it - current->begin()))
-                                    {
                                         interrupted = true;
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        auto vec = usable.to_vector();
-                                        break;
-                                    }
+
+                                    break;
                                 }
                             }
 
                             if (interrupted)
                                 output.should_not_use(start_pos_i);
-                            else
-                                output.should_use(start_pos_i);
+                            //else
+                                //output.should_use(start_pos_i);
                         }
                     }
 
@@ -392,7 +380,6 @@ class kmer_index_element
             // modify last_kmer_refs with now available text size
             for (auto& ref : _last_kmer_refs)
                 ref[0] += text_size - k;
-
         }
 
         /*

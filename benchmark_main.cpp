@@ -40,26 +40,6 @@ static void kmer_search(benchmark::State& state, size_t text_length, size_t quer
     state.counters["query_length"] = query_length;
 }
 
-template<size_t k>
-static void kmer_search_base(benchmark::State& state, size_t text_length, size_t query_length)
-{
-    auto input = input_generator<seqan3::dna4>(rand());
-    auto text = input.generate_sequence(text_length);
-    auto queries = input.generate_queries(100000, query_length);
-
-    auto index = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
-
-    size_t i = 0;
-    for (auto _ : state)
-    {
-        benchmark::DoNotOptimize(index.test_search(queries.at(i)));
-        i = i < queries.size()-1 ? i + 1 : 0;
-    }
-
-    state.counters["k"] = k;
-    state.counters["text_length"] = text_length;
-    state.counters["query_length"] = query_length;
-}
 
 static void fm_search(benchmark::State& state, size_t text_length, size_t query_length)
 {
@@ -87,25 +67,22 @@ void register_benchmarks(size_t text_length, size_t query_length)
     auto text = input.generate_sequence(text_length);
     auto queries = input.generate_queries(query_length, 100000);
 
-    benchmark::RegisterBenchmark("kmer_base", &kmer_search_base<k>, text_length, query_length);
     benchmark::RegisterBenchmark("kmer_search", &kmer_search<k>, text_length, query_length);
     //benchmark::RegisterBenchmark("fm_search", &fm_search, text_length, query_length);
 }
 
-constexpr size_t k = 5;
+constexpr size_t k = 10;
 
 int main(int argc, char** argv)
 {
     //register_benchmarks<6>(100000, k);
     //register_benchmarks<6>(100000, k-2);
 
-    for (size_t i = k+1; i < 3*k; ++i)
+    for (size_t i = k-2; i < 3*k; i += 1)
         register_benchmarks<k>(100000, i);
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
     cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/raw.csv");
-
-
 }
