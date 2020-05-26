@@ -33,7 +33,7 @@ int main()
         auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
         auto fm = fm_index(text);
 
-        for (size_t query_size : {k, 2*k+1, 3*k+2, 4*k+3, 10*k+3})
+        for (size_t query_size : {1ul, k-2, k-1, k, k+1, k+2, 2*k, 2*k+1, 3*k, 5*k, 10*k})
         {
             auto query = input.generate_sequence(query_size);
 

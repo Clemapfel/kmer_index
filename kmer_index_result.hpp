@@ -38,7 +38,7 @@ namespace detail
             // while supporting an arbitrary number, unless n_bits & sizeof(integer_t) == 0 more bits than necessary
             // have to be allocated. Consider using a smaller integer_t if this proofs problematic
             compressed_bitset(size_t n_bits, bool zero_or_one)
-                    : _bits(std::max(n_bits / (sizeof(integer_t) * 8), 1ul), (zero_or_one ? _not_zero : _zero))
+                    : _bits(std::max(n_bits / (sizeof(integer_t) * 8) + 1, 1ul), (zero_or_one ? _not_zero : _zero))
             {
                 _n_bits = n_bits;
             }
@@ -46,7 +46,8 @@ namespace detail
             // set ith bit to 0
             void set_0(size_t i)
             {
-                assert(i < _n_bits);
+                if (i >= _n_bits)
+                    throw std::out_of_range("compressed bitset index out of range");
 
                 size_t n = i & _and_v;
                 _bits.data()[i >> _rshift_v] &= ~(_one << n);
@@ -103,7 +104,8 @@ namespace detail
             }
 
             // cast to regular vector
-            explicit operator std::vector<bool>() {
+            explicit operator std::vector<bool>()
+            {
                 return to_vector();
             }
     };
