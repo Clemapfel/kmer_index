@@ -57,7 +57,7 @@ void force_error(std::vector<alphabet_t> query, size_t seed)
 
 int main()
 {
-    force_error("TATTGGTACCG"_dna4, 26);
+    //force_error("TATTGGTACCG"_dna4, 26);
 
     for (size_t i = 0; i < 10000; ++i)
     {

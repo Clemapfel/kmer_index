@@ -313,6 +313,7 @@ class kmer_index_element
                             {
                                 const auto* current = nk_positions.back();
                                 auto it = std::find(current->begin(), current->end(), previous_pos += k);
+                                // TODO: should use auto it_2 = std::lower_bound(current->begin(), current->end(), previous_pos);
 
                                 if (it == current->end())
                                 {
