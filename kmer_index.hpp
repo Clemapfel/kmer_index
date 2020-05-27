@@ -28,6 +28,7 @@
 
 #include "kmer_index_result.hpp"
 #include "thread_pool.hpp"
+#include <compressed_bitset>
 
 //namespace detail {
     // optimized consteval pow
@@ -440,7 +441,6 @@ class kmer_index
         kmer_index(text_t& text)
                 : index_element<ks>(text)...
         {}
-
 };
 
 
