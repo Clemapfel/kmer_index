@@ -28,14 +28,15 @@ void force_error(std::vector<alphabet_t> query, size_t seed)
 {
     auto input = input_generator<dna4>(seed);
     auto text = input.generate_text(text_size, {});
-    auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
+    auto kmer = kmer_index<seqan3::dna4, uint32_t, 5>(text);
     auto fm = fm_index(text);
 
     std::vector<unsigned int> fm_result;
     for (auto _ : search(query, fm))
         fm_result.push_back(_.second);
 
-    auto kmer_result = kmer.search(query).to_vector();
+    auto res = kmer.search(query);
+    auto kmer_result = res.to_vector();
 
     auto equal = fm_result == kmer_result;
 
@@ -57,7 +58,8 @@ void force_error(std::vector<alphabet_t> query, size_t seed)
 
 int main()
 {
-    //force_error("TATTGGTACCG"_dna4, 26);
+    force_error("TATTGGTACCG"_dna4, 26);
+    return 0;
 
     for (size_t i = 0; i < 10000; ++i)
     {

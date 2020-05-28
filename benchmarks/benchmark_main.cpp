@@ -20,7 +20,7 @@ constexpr size_t SEED = 1234;
  */
 
 template<size_t k>
-static void kmer_search(benchmark::State& state, size_t text_length, size_t query_length)
+static void single_kmer_search(benchmark::State& state, size_t text_length, size_t query_length)
 {
     auto input = input_generator<seqan3::dna4>(rand());
     auto text = input.generate_sequence(text_length);
@@ -36,6 +36,29 @@ static void kmer_search(benchmark::State& state, size_t text_length, size_t quer
     }
 
     state.counters["k"] = k;
+    state.counters["text_length"] = text_length;
+    state.counters["query_length"] = query_length;
+}
+
+template<size_t... ks>
+static void multi_kmer_search(benchmark::State& state, size_t text_length, size_t query_length)
+{
+    auto input = input_generator<seqan3::dna4>(rand());
+    auto text = input.generate_sequence(text_length);
+    auto queries = input.generate_queries(100000, query_length);
+
+    auto index = kmer_index<seqan3::dna4, uint32_t, ks...>(text);
+
+    size_t i = 0;
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(index.search(queries.at(i)));
+        i = i < queries.size()-1 ? i + 1 : 0;
+    }
+
+    auto _all_ks = std::vector<size_t>{ks...};
+
+    //state.counters["min_k"] = k;
     state.counters["text_length"] = text_length;
     state.counters["query_length"] = query_length;
 }
@@ -67,8 +90,8 @@ void register_benchmarks(size_t text_length, size_t query_length)
     auto text = input.generate_sequence(text_length);
     auto queries = input.generate_queries(query_length, 100000);
 
-    benchmark::RegisterBenchmark("kmer_search", &kmer_search<k>, text_length, query_length);
-    //benchmark::RegisterBenchmark("fm_search", &fm_search, text_length, query_length);
+    benchmark::RegisterBenchmark("single", &single_kmer_search<k>, text_length, query_length);
+    benchmark::RegisterBenchmark("multi", &multi_kmer_search<k>, text_length, query_length);
 }
 
 constexpr size_t k = 10;
@@ -84,5 +107,5 @@ int main(int argc, char** argv)
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
-    cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/raw.csv");
+    cleanup_csv("/home/clem/Documents/Workspace/kmer_index/benchmarks/multi_vs_single/raw.csv");
 }

@@ -11,19 +11,17 @@ class kmer_index_element;
 namespace detail
 {
     // result type that only holds pointers to the positions inside kmer index
-    template<seqan3::alphabet alphabet_t, size_t k, typename position_t>
+    template<typename position_t>
     struct kmer_index_result
     {
-       friend class kmer_index_element<alphabet_t, k, position_t>;
-
         private:
             // iterator class that automatically jumps to next valid result
             class kmer_index_result_iterator
             {
-                friend class kmer_index_result<alphabet_t, k, position_t>;
+                friend class kmer_index_result<position_t>;
 
                 private:
-                    const kmer_index_result<alphabet_t, k, position_t>* _result;
+                    const kmer_index_result<position_t>* _result;
                     size_t _position_i = 0;
                     size_t _first_valid_i, _last_valid_i;
 
@@ -60,7 +58,7 @@ namespace detail
                     }
 
                 protected:
-                    kmer_index_result_iterator(kmer_index_result<alphabet_t, k, position_t>* result, bool beginning_or_end)
+                    kmer_index_result_iterator(kmer_index_result<position_t>* result, bool beginning_or_end)
                         : kmer_index_result_iterator(result)
                     {
                         if (beginning_or_end)
@@ -82,10 +80,10 @@ namespace detail
                     using pointer = void;
                     using reference = void;
 
-                    using iterator_t = kmer_index_result<alphabet_t, k, position_t>::kmer_index_result_iterator;
+                    using iterator_t = kmer_index_result<position_t>::kmer_index_result_iterator;
 
                     // ctor
-                    kmer_index_result_iterator(kmer_index_result<alphabet_t, k, position_t>* result)
+                    kmer_index_result_iterator(kmer_index_result<position_t>* result)
                         : _result(result), _position_i(0)
                     {
                         size_t i= result->_bitmask.size()-1;
@@ -160,18 +158,13 @@ namespace detail
                     }
             };
 
-            using index_t = kmer_index_element<alphabet_t, k, position_t>;
-
             // bitmask specifies which of the results should be ignore
             compressed_bitset<uint_fast64_t> _bitmask;
 
             // pointers to positions inside kmer index map
-            const std::vector<const std::vector<position_t>*> _positions;
+            std::vector<const std::vector<position_t>*> _positions;
 
-            //keep index in memory so results don't become invalid
-            const index_t& _index;
-
-        protected:
+        public:
             position_t at(size_t i) const
             {
                 assert(_bitmask.at(i));
@@ -193,19 +186,18 @@ namespace detail
             }
 
             // ctors only used by kmer_index
-            kmer_index_result(const index_t* index, bool zero_or_one = true)
-                    : _index(*index), _bitmask(0, zero_or_one)
+            kmer_index_result(bool zero_or_one = true)
+                    : _bitmask(0, zero_or_one)
             {
             }
 
-            kmer_index_result(const std::vector<position_t>* positions, const index_t* index, bool zero_or_one = false)
-                    : _index(*index), _bitmask(positions->size(), zero_or_one), _positions{positions}
+            kmer_index_result(const std::vector<position_t>* positions, bool zero_or_one = true)
+                    : _bitmask(positions->size(), zero_or_one), _positions{positions}
             {
             }
 
-            kmer_index_result(std::vector<const std::vector<position_t>*> positions, const index_t* index, bool zero_or_one = false)
-                    : _index(*index),
-                      _positions(positions.begin(), positions.end()),
+            kmer_index_result(std::vector<const std::vector<position_t>*> positions, bool zero_or_one = true)
+                    : _positions(positions.begin(), positions.end()),
                       _bitmask([&positions]() {
                           size_t n = 0;
                           for (const auto* p : positions)
@@ -231,7 +223,6 @@ namespace detail
                 _bitmask.set_1(i);
             }
 
-        public:
             // user should not be able to construct results, only kmer_index does
             //kmer_index_result() = default;
             //kmer_index_result(const kmer_index_result&) = delete;

@@ -28,7 +28,7 @@
 
 #include "kmer_index_result.hpp"
 #include "thread_pool.hpp"
-#include <compressed_bitset>
+#include <compressed_bitset.hpp>
 
 //namespace detail {
     // optimized consteval pow
@@ -58,7 +58,7 @@
 
         private:
             // typedefs for readability
-            using result_t = detail::kmer_index_result<alphabet_t, k, position_t>;
+            using result_t = detail::kmer_index_result<position_t>;
             constexpr static size_t _sigma = seqan3::alphabet_size<alphabet_t>;
 
             // data
@@ -195,7 +195,6 @@
             }
 
         public:
-
             // search any query, bevahior (and thus runtime) dependend on query length
             result_t search(std::vector<alphabet_t>& query) const
             {
@@ -203,9 +202,9 @@
                 {
                     const auto* pos = at(hash(query.begin()));
                     if (pos)
-                        return result_t(pos, this, true);
+                        return result_t(pos);
                     else
-                        return result_t(this, true);
+                        return result_t();
                 }
                 else if (query.size() > k)
                 {
@@ -221,7 +220,7 @@
                         if (pos)
                             nk_positions.push_back(pos);
                         else
-                            return result_t(this);
+                            return result_t();
                     }
 
                     // precompute rest positions
@@ -256,7 +255,7 @@
                     // query.size % k != 0 and query.size < 2*k
                     if (nk_positions.size() == 1)
                     {
-                        result_t output(nk_positions.at(0), this, false);
+                        result_t output(nk_positions.at(0), false);
                         for (size_t i = 0; i < nk_positions.at(0)->size(); ++i)
                             if (usable.at(i))
                                 output.should_use(i);
@@ -264,10 +263,10 @@
                         return output;
                     }
 
-                        // query.size % k == 0 does not need to check rest
+                    // query.size % k == 0 does not need to check rest
                     else if (rest_n == 0)
                     {
-                        result_t output(nk_positions.at(0), this, true);
+                        result_t output(nk_positions.at(0), true);
 
                         for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
                         {
@@ -297,7 +296,7 @@
                         // query.size() % k != 0 and query.size() > 2*k
                     else
                     {
-                        result_t output(nk_positions.at(0), this, false);
+                        result_t output(nk_positions.at(0), false);
 
                         for (size_t start_pos_i = 0; start_pos_i < nk_positions.at(0)->size(); ++start_pos_i)
                         {
@@ -340,7 +339,7 @@
 
                 else //query.size() < k
                 {
-                    return result_t(get_position_for_all_kmer_with_prefix(query.begin(), query.size()), this, true);
+                    return result_t(get_position_for_all_kmer_with_prefix(query.begin(), query.size()), true);
                 }
             }
 
@@ -389,31 +388,87 @@
                 for (position_t j = 0; j < _last_kmer.size(); ++j)
                     _last_kmer_refs.emplace_back(std::vector<position_t>{j + text_size - position_t(k)});
             }
-
-            /*
-            // returns bool so fold expression in kmer_index can shortcircuit (c.f. kmer_index exact search comments)
-            bool search_if(bool expression, std::vector<alphabet_t> query, std::vector<position_t> &result) const
-            {
-                if (expression == true)
-                {
-                    result = search(query);
-                    return true;
-                }
-                else
-                    return false;
-            }
-             */
     };
 //}
 
 template<seqan3::alphabet alphabet_t, typename position_t, size_t... ks>
 class kmer_index
-    : protected kmer_index_element<alphabet_t, ks, position_t>...
+    : private kmer_index_element<alphabet_t, ks, position_t>...
 {
     private:
         // typedefs for readability
         template<size_t k>
         using index_element = kmer_index_element<alphabet_t, k, position_t>;
+        using result_t = detail::kmer_index_result<position_t>;
+
+        inline const static std::vector<size_t> _all_ks = std::vector<size_t>{ks...};
+
+        // #################################################
+
+        struct _search_wrapper_base
+        {
+            virtual ~_search_wrapper_base() {};
+            virtual result_t operator()(std::vector<alphabet_t>& query) = 0;
+        };
+
+        template<typename function_t>
+        struct _search_wrapper : public _search_wrapper_base
+        {
+            _search_wrapper(function_t&& function)
+                : _function(std::forward<function_t>(function))
+            {}
+
+            virtual result_t operator()(std::vector<alphabet_t>& query) override
+            {
+                return std::invoke(_function, _owner, query);
+            }
+
+            private:
+                kmer_index<alphabet_t, position_t, ks...> _owner;
+                function_t _function;
+        };
+
+        std::map<size_t, size_t> _k_to_search_wrapper_i;
+        std::array<std::unique_ptr<_search_wrapper_base>, sizeof...(ks)> _search_fns;
+
+        template<typename function_t>
+        void wrap_and_push(function_t&& function, size_t i)
+        {
+            _search_fns[i] = std::move(std::unique_ptr<_search_wrapper_base>(new _search_wrapper<function_t>(std::forward<function_t>(function))));
+        }
+
+        void allocate_search_calls()
+        {
+            size_t i = 0;
+            (wrap_and_push(&index_element<ks>::search, i++), ...);
+
+            auto add_to_lookup_table = [this](size_t k, size_t i) {
+                _k_to_search_wrapper_i.insert(std::make_pair(i, k));
+            };
+
+            i = 0;
+            (add_to_lookup_table(ks, i++), ...);
+        }
+
+        result_t call_search(std::vector<alphabet_t>& query, size_t optimal_k) const
+        {
+            auto* fn = _search_fns.at(_k_to_search_wrapper_i.at(optimal_k)).get();
+            return (*fn)(query);
+        }
+
+        // #################################################
+
+        template<size_t k>
+        bool search_if(bool expression, std::vector<alphabet_t>& query, result_t& result) const
+        {
+            if (expression)
+            {
+                result = index_element<k>::search(query);
+                return true;
+            }
+            else
+                return false;
+        }
 
     public:
         // ctor
@@ -437,10 +492,36 @@ class kmer_index
                 f.get();
         }
 
-        template<std::ranges::range text_t>
-        kmer_index(text_t& text)
-                : index_element<ks>(text)...
-        {}
+        template<std::ranges::range query_t>
+        result_t search(query_t& query) const
+        {
+            size_t optimal_k = query.size() + 1;
+            size_t optimal_k_i = 0;
+
+            for (optimal_k_i; optimal_k_i < _all_ks.size(); ++optimal_k_i)
+            {
+                size_t k = _all_ks.at(optimal_k_i);
+                if (query.size() % k <= query.size() % optimal_k)
+                    optimal_k = k;
+            }
+
+            return call_search(query, optimal_k);
+        }
+
+            /*
+
+            size_t optimal_k = 0;
+            for (auto k : _all_ks)
+                if (std::labs(k - query.size()) < std::labs(k - optimal_k)) // [2]
+                    optimal_k = k;
+
+            std::vector<position_t> result;
+
+            // use boolean fold expression to short-circuit execution and save a few search calls
+            (... || index_element<ks>::search_if(ks == optimal_k, query, result));
+
+            return result;*/
+
 };
 
 
