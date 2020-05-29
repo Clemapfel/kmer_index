@@ -94,7 +94,9 @@ void register_benchmarks(size_t text_length, size_t query_length)
     benchmark::RegisterBenchmark("multi", &multi_kmer_search<k>, text_length, query_length);
 }
 
-constexpr size_t k = 10;
+constexpr size_t k = 6;
+constexpr size_t k_2 = k - 1;
+constexpr size_t k_4 = k + 1;
 
 int main(int argc, char** argv)
 {

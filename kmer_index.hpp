@@ -196,7 +196,7 @@
 
         public:
             // search any query, bevahior (and thus runtime) dependend on query length
-            result_t search(std::vector<alphabet_t>& query) const
+            virtual result_t search(std::vector<alphabet_t>& query) const
             {
                 if (query.size() == k)
                 {
@@ -393,88 +393,34 @@
 
 template<seqan3::alphabet alphabet_t, typename position_t, size_t... ks>
 class kmer_index
-    : private kmer_index_element<alphabet_t, ks, position_t>...
+    : public kmer_index_element<alphabet_t, ks, position_t>...
 {
     private:
         // typedefs for readability
         template<size_t k>
-        using index_element = kmer_index_element<alphabet_t, k, position_t>;
+        using index_element_t = kmer_index_element<alphabet_t, k, position_t>;
+        using index_t = kmer_index<alphabet_t, position_t, ks...>;
         using result_t = detail::kmer_index_result<position_t>;
 
         inline const static std::vector<size_t> _all_ks = std::vector<size_t>{ks...};
 
-        // #################################################
-
-        struct _search_wrapper_base
-        {
-            virtual ~_search_wrapper_base() {};
-            virtual result_t operator()(std::vector<alphabet_t>& query) = 0;
-        };
-
-        template<typename function_t>
-        struct _search_wrapper : public _search_wrapper_base
-        {
-            _search_wrapper(function_t&& function)
-                : _function(std::forward<function_t>(function))
-            {}
-
-            virtual result_t operator()(std::vector<alphabet_t>& query) override
-            {
-                return std::invoke(_function, _owner, query);
-            }
-
-            private:
-                kmer_index<alphabet_t, position_t, ks...> _owner;
-                function_t _function;
-        };
-
-        std::map<size_t, size_t> _k_to_search_wrapper_i;
-        std::array<std::unique_ptr<_search_wrapper_base>, sizeof...(ks)> _search_fns;
-
-        template<typename function_t>
-        void wrap_and_push(function_t&& function, size_t i)
-        {
-            _search_fns[i] = std::move(std::unique_ptr<_search_wrapper_base>(new _search_wrapper<function_t>(std::forward<function_t>(function))));
-        }
-
-        void allocate_search_calls()
-        {
-            size_t i = 0;
-            (wrap_and_push(&index_element<ks>::search, i++), ...);
-
-            auto add_to_lookup_table = [this](size_t k, size_t i) {
-                _k_to_search_wrapper_i.insert(std::make_pair(i, k));
-            };
-
-            i = 0;
-            (add_to_lookup_table(ks, i++), ...);
-        }
-
-        result_t call_search(std::vector<alphabet_t>& query, size_t optimal_k) const
-        {
-            auto* fn = _search_fns.at(_k_to_search_wrapper_i.at(optimal_k)).get();
-            return (*fn)(query);
-        }
-
-        // #################################################
-
         template<size_t k>
-        bool search_if(bool expression, std::vector<alphabet_t>& query, result_t& result) const
+        result_t call_search(std::vector<alphabet_t>& query) const
         {
-            if (expression)
-            {
-                result = index_element<k>::search(query);
-                return true;
-            }
-            else
-                return false;
+            return static_cast<const index_element_t<k>*>(this)->index_element_t<k>::search(query);
         }
+
+        typedef result_t(kmer_index<alphabet_t, position_t, ks...>::*element_search_fn)(std::vector<alphabet_t>&) const;
+
+        const std::array<element_search_fn, sizeof...(ks)> _search_fns = {(&kmer_index<alphabet_t, position_t, ks...>::call_search<ks>)...};
+
+        std::array<int, std::max({ks...})+1> _k_to_search_fns_i;
 
     public:
         // ctor
         template<std::ranges::range text_t>
         kmer_index(text_t& text, size_t n_threads = std::thread::hardware_concurrency())
-                : index_element<ks>()...
+                : index_element_t<ks>()...
         {
             // catch hardware concurrency failing
             if (n_threads == 0)
@@ -485,44 +431,89 @@ class kmer_index
 
             std::vector<std::future<void>> futures;
             (futures.emplace_back(
-                    pool.execute(&index_element<ks>::template create<text_t>, static_cast<index_element<ks>*>(this),
+                    pool.execute(&index_element_t<ks>::template create<text_t>, static_cast<index_element_t<ks>*>(this),
                                  std::ref(text))), ...);
             // wait to finish
             for (auto& f : futures)
                 f.get();
+
+            // setup k_to_search_fn_i
+            size_t ks_i = 0;
+            for (size_t i = 0; i < _k_to_search_fns_i.size(); ++i)
+                if (i == _all_ks.at(ks_i))
+                {
+                    _k_to_search_fns_i[i] = ks_i;
+                    ks_i++;
+                }
+                else
+                    _k_to_search_fns_i[i] = -1;
         }
 
-        template<std::ranges::range query_t>
-        result_t search(query_t& query) const
+        // search single query with index_element<k>
+        template<size_t k>
+        result_t search(std::vector<alphabet_t>& query) const
         {
-            size_t optimal_k = query.size() + 1;
-            size_t optimal_k_i = 0;
+            return index_element_t<k>::search(query);
+        }
 
-            for (optimal_k_i; optimal_k_i < _all_ks.size(); ++optimal_k_i)
+        // search single query, index picks optimal search scheme
+        result_t search(std::vector<alphabet_t>& query) const
+        {
+            size_t optimal_k = _all_ks.at(0);
+
+            if (_all_ks.size() > 1)
             {
-                size_t k = _all_ks.at(optimal_k_i);
-                if (query.size() % k <= query.size() % optimal_k)
-                    optimal_k = k;
+                size_t optimal_k_i = 0;
+
+                for (optimal_k_i; optimal_k_i < _all_ks.size(); ++optimal_k_i)
+                {
+                    size_t k = _all_ks.at(optimal_k_i);
+                    if ((query.size() & (k - 1)) <= (query.size() & (optimal_k - 1)))   // i % n = i & i-1
+                        optimal_k = k;
+                }
             }
 
-            return call_search(query, optimal_k);
+            return (this->*_search_fns[_k_to_search_fns_i.at(optimal_k)])(query);
         }
 
-            /*
+        // search multiple queries in paralell
+        template<std::ranges::forward_range queries_t>
+        std::vector<result_t> search(queries_t&& queries, size_t n_threads = std::thread::hardware_concurrency()) const
+        {
+            if (n_threads == 0)
+                n_threads = 1;
 
-            size_t optimal_k = 0;
-            for (auto k : _all_ks)
-                if (std::labs(k - query.size()) < std::labs(k - optimal_k)) // [2]
-                    optimal_k = k;
+            auto pool = thread_pool{n_threads};
+            std::vector<std::future<void>> futures;
 
-            std::vector<position_t> result;
+            size_t size = 0;
+            for (auto& q : queries)
+            {
+                futures.emplace_back(pool.execute(this->search, q));
+                size++;
+            }
 
-            // use boolean fold expression to short-circuit execution and save a few search calls
-            (... || index_element<ks>::search_if(ks == optimal_k, query, result));
+            std::vector<result_t> output;
+            output.reserve(size);
 
-            return result;*/
+            for (auto& f : futures)
+                output.push_back(f.get());
 
+            return output;
+        }
 };
+
+template<size_t... ks, std::ranges::range text_t>
+auto make_kmer_index(text_t&& text, size_t n_threads = 1)
+{
+    assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
+    assert(n_threads > 0);
+
+    using alphabet_t = seqan3::innermost_value_type_t<text_t>;
+    using position_t = uint32_t;
+
+    return kmer_index<alphabet_t, position_t, ks...>(std::forward<text_t>(text));
+}
 
 
 /*
