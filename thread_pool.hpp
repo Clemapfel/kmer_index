@@ -18,9 +18,7 @@
 // worker threads work through them as they free up
 // supports resizing and aborting at any time
 
-namespace kmer
-{
-namespace detail
+namespace kmer::detail
 {
 
 struct thread_pool
@@ -112,7 +110,8 @@ struct thread_pool
             return std::move(future);
         }
 };
-}// end of namespace detail
+
+}// end of namespace kmer::detail
 
 // references used:
 // https://codereview.stackexchange.com/questions/221626/c17-thread-pool
@@ -147,4 +146,3 @@ namespace debug
 
 } // namespace debug
 
-} // end of namespace kmer

@@ -385,7 +385,7 @@ namespace kmer
                         ++i;
                     }
 
-                    assert(i + k -1 < std::numeric_limits<position_t>::max() && "your text is too large for this configuration. Please specify position_t = uint64_t manually")
+                    assert(i + k -1 < std::numeric_limits<position_t>::max() && "your text is too large for this configuration. Please specify position_t = uint64_t manually");
 
                     // setup last kmer
                     position_t text_size = position_t(i) + k - 1;
@@ -445,7 +445,7 @@ namespace kmer
                     n_threads = 1;
 
                 // use multiple threads to build index elements at the same time
-                auto pool = thread_pool{n_threads};
+                auto pool = detail::thread_pool{n_threads};
 
                 std::vector<std::future<void>> futures;
                 (futures.emplace_back(
@@ -517,7 +517,7 @@ namespace kmer
                 if (n_threads == 0)
                     n_threads = 1;
 
-                auto pool = thread_pool{n_threads};
+                auto pool = detail::thread_pool{n_threads};
                 std::vector<std::future<void>> futures;
 
                 size_t size = 0;

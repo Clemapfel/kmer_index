@@ -6,6 +6,8 @@
 #include <thread_pool.hpp>
 #include <cassert>
 
+namespace kmer::detail
+{
 // create threads
 void thread_pool::setup_threads(size_t n_threads)
 {
@@ -13,41 +15,40 @@ void thread_pool::setup_threads(size_t n_threads)
 
     for (size_t i = 0; i < n_threads; ++i)
     {
-        _threads.emplace_back([&]()
+        _threads.emplace_back([&]() {
+            std::unique_lock<std::mutex> queue_lock{_queue_mutex, std::defer_lock};
+
+            while (true)
             {
-                std::unique_lock<std::mutex> queue_lock{_queue_mutex, std::defer_lock};
+                queue_lock.lock();
 
-                while (true)
+                _task_cv.wait(queue_lock, [&]() -> bool {
+                    return _shutdown_asap || !_task_queue.empty() || _currently_aborting;
+                });
+
+                // shutdown : return asap
+                if (_shutdown_asap)
                 {
-                    queue_lock.lock();
-
-                    _task_cv.wait(queue_lock, [&]() -> bool {
-                      return _shutdown_asap || !_task_queue.empty() || _currently_aborting;
-                    });
-
-                    // shutdown : return asap
-                    if (_shutdown_asap)
-                    {
-                        //debug::sync_print("shutting down");
-                        return;
-                    }
-
-                    // shutdown by DTOR: finish task queue first
-                    if (_currently_aborting and _task_queue.empty())
-                    {
-                        //debug::sync_print("shutting down");
-                        return;
-                    }
-
-                    // grab task and execute
-                    auto task = std::move(_task_queue.front());
-                    _task_queue.pop();
-
-                    queue_lock.unlock();
-
-                    task->operator()();
+                    //debug::sync_print("shutting down");
+                    return;
                 }
-            });
+
+                // shutdown by DTOR: finish task queue first
+                if (_currently_aborting and _task_queue.empty())
+                {
+                    //debug::sync_print("shutting down");
+                    return;
+                }
+
+                // grab task and execute
+                auto task = std::move(_task_queue.front());
+                _task_queue.pop();
+
+                queue_lock.unlock();
+
+                task->operator()();
+            }
+        });
     }
 }
 
@@ -111,3 +112,4 @@ void thread_pool::abort()
     _shutdown_asap = false;
 
 }
+} // end of namespace kmer::detail
