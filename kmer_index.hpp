@@ -32,490 +32,529 @@
 
 namespace kmer
 {
-namespace detail
-{
-    // optimized consteval pow
-    constexpr size_t fast_pow(size_t base, size_t exp)
+    namespace detail
     {
-        int result = 1ul;
-        for (;;)
+        // optimized consteval pow
+        constexpr size_t fast_pow(size_t base, size_t exp)
         {
-            if (exp & 1ul)
-                result *= base;
-            exp >>= 1ul;
-            if (!exp)
-                break;
-            base *= base;
+            int result = 1ul;
+            for (;;)
+            {
+                if (exp & 1ul)
+                    result *= base;
+                exp >>= 1ul;
+                if (!exp)
+                    break;
+                base *= base;
+            }
+
+            return result;
+            // reference: https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
         }
 
-        return result;
-        // reference: https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
-    }
+        // represents a kmer index for a single k
+        template<seqan3::alphabet alphabet_t, typename position_t, size_t k>
+        class kmer_index_element
+        {
+            // k has to be != 0 and small enough to be representable with size_t as hash
+            static_assert(k > 0 and k < 64 / log2(seqan3::alphabet_size<alphabet_t>), "please specify a valid k");
 
-    // represents a kmer index for a single k
-    template<seqan3::alphabet alphabet_t, typename position_t, size_t k>
-    class kmer_index_element
-    {
-        static_assert(k > 0 and k < 64 / log2(seqan3::alphabet_size<alphabet_t>), "please specify a valid k");
+            private:
+                // typedefs for readability
+                using result_t = kmer_index_result<position_t>;
+                constexpr static size_t _sigma = seqan3::alphabet_size<alphabet_t>;
 
-        private:
-            // typedefs for readability
-            using result_t = kmer_index_result<position_t>;
-            constexpr static size_t _sigma = seqan3::alphabet_size<alphabet_t>;
+                // data
+                robin_hood::unordered_map<size_t, std::vector<position_t>> _data;
 
-            // data
-            robin_hood::unordered_map<size_t, std::vector<position_t>> _data;
+                // needed for subk search edge case
+                std::vector<alphabet_t> _last_kmer;
+                std::vector<std::vector<position_t>> _last_kmer_refs;
 
-            // needed for subk search edge case
-            std::vector<alphabet_t> _last_kmer;
-            std::vector<std::vector<position_t>> _last_kmer_refs;
-
-            // hash a query of arbitrary length
-            /*
-            template<typename iterator_t>
-            static size_t hash_any(iterator_t query_it, size_t size)
-            {
-                auto it = query_it;
-
-                size_t hash = 0;
-                for (size_t i = 0; i < size; ++i)
-                    hash += (seqan3::to_rank(*it++) * detail::fast_pow(_sigma, size - i - 1));
-
-                return hash;
-            }
-             */
-
-            // hash a query of length k, optimized by compiler unwrapping fold expression
-            template<typename iterator_t>
-            size_t hash_aux_aux(iterator_t query_it, size_t i) const
-            {
-                return seqan3::to_rank(*query_it) * fast_pow(_sigma, k - i - 1);
-            }
-
-            template<typename iterator_t, size_t... is>
-            size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence) const
-            {
-                return (... + hash_aux_aux(query_it++, is));
-            }
-
-            template<typename iterator_t>
-            size_t hash(iterator_t query_it) const
-            {
-                auto it = query_it;
-                return hash_aux(it, std::make_index_sequence<k>());
-            }
-
-            // get vector of positions from map
-            const std::vector<position_t>* at(size_t hash) const
-            {
-                auto it = _data.find(hash);
-
-                if (it != _data.end())
-                    return &it->second;
-                else
-                    return nullptr;
-            }
-
-            // check last kmer (needed for edge case where subk query is at the very end of the text)
-            template<typename iterator_t>
-            void check_last_kmer(iterator_t subk_begin, size_t size,
-                                 std::vector<const std::vector<position_t>*>& to_fill) const
-            {
-                for (size_t i = 1; i < k - size + 1; ++i)   // first char is covered by last kmer being in _data
+                /*
+                // hash a query of arbitrary length
+                template<typename iterator_t>
+                static size_t hash_any(iterator_t query_it, size_t size)
                 {
-                    bool equal = true;
-                    auto it = subk_begin;
+                    auto it = query_it;
 
-                    for (size_t j = i; j < i + size; ++j)
-                    {
-                        if (_last_kmer.at(j) != *it)
-                        {
-                            equal = false;
-                            break;
-                        }
-                        it++;
-                    }
+                    size_t hash = 0;
+                    for (size_t i = 0; i < size; ++i)
+                        hash += (seqan3::to_rank(*it++) * detail::fast_pow(_sigma, size - i - 1));
 
-                    if (equal)
-                    {
-                        to_fill.push_back(&_last_kmer_refs.at(i));  // returns correct position at text.size() - k + i
-                    }
+                    return hash;
                 }
-            }
+                */
 
-            // generate hashs for all kmer that have the given prefix and lookup those hashes
-            template<typename iterator_t>
-            std::vector<const std::vector<position_t>*>
-            get_position_for_all_kmer_with_prefix(iterator_t prefix_begin, size_t size) const
-            {
-                auto it = prefix_begin;
-                size_t prefix_hash = 0;
-                for (size_t i = 0; i < size; ++i)
-                    prefix_hash += seqan3::to_rank(*it++) * fast_pow(_sigma, k - i - 1);
-
-                size_t lower_bound = 0 + prefix_hash;
-                size_t upper_bound = fast_pow(_sigma, size) - (1 / _sigma) + prefix_hash; //c.f. addendum
-                size_t step_size = 1;
-
-                std::vector<const std::vector<position_t>*> output;
-
-                // bc stepsize is 1, just add number of possible hashes to lower_bound;
-                for (size_t hash = lower_bound;
-                     hash < lower_bound + fast_pow(_sigma, k - size); hash += step_size)
+                // hash a query of length k, optimized by compiler unwrapping fold expression bc k is constexpr
+                // aux_aux redundant but forces proper order of evaluation during unwrap
+                template<typename iterator_t>
+                size_t hash_aux_aux(iterator_t query_it, size_t i) const
                 {
-                    const auto* pos = at(hash);
-                    if (pos != nullptr)
-                        output.push_back(pos);
+                    return seqan3::to_rank(*query_it) * fast_pow(_sigma, k - i - 1);
                 }
 
-                check_last_kmer(prefix_begin, size, output);
-                return output;
-
-                // Addendum:
-                // To calculate set H of hashes for all kmers with suffix s
-                // i)   hash of a kmer q_0 q_1 q_2 ... q_k = sum {i=0 to k} rank(q_i) * sigma^(k - i - 1)
-                //
-                // ii)  for a suffix s_0,..., s_m , the first part of the sum is known:
-                //      h_p = sum {i= 0 to m} rank(s_i) * sigma^(k - i - 1)
-                //
-                // iii) for arbitrary suffix p_0, ..., p_(k-m-1) we observe:
-                //      min(H) = hs
-                //      by setting all p_i so that rank(p_i) = 0
-                //
-                // iv)  max(H) = hs + (hash of suffix with all p_i so that r(p_i) = maximum = sigma-1)
-                //             = hs + sum {i=k-m to i=k} (sigma-1) * sigma^(k-i-1)
-                //             = hs + sigma^m - 1/sigma
-                //
-                // v)   for two hashes from H h_1 and h_2 so that h_1 < h_2 it is true that
-                //      The minimum increase is achieved by setting the last possible char of the suffix of h_2
-                //      1 rank higher than the equivalent position of h_1. Because the input of that char to the
-                //      value of the hash is 1 * sigma^(k - k-1 - 1) = 1 we know that for all pairs off h_1, h_2 so
-                //      the difference h_2 - h_1 is minimal, it holds that h_2 - h_1 = 1
-                //
-                // vi)  thus to generate all hashes we start with min(H) = hs and stepwise add 1
-                //      until we reach max(H) = hs + sigma^m - 1/sigma
-            }
-
-        public:
-            // search any query, bevahior (and thus runtime) dependend on query length
-            virtual result_t search(std::vector<alphabet_t>& query) const
-            {
-                if (query.size() == k)
+                template<typename iterator_t, size_t... is>
+                size_t hash_aux(iterator_t query_it, std::index_sequence<is...> sequence) const
                 {
-                    const auto* pos = at(hash(query.begin()));
-                    if (pos)
-                        return result_t(pos);
+                    return (... + hash_aux_aux(query_it++, is));
+                }
+
+                template<typename iterator_t>
+                size_t hash(iterator_t query_it) const
+                {
+                    auto it = query_it;
+                    return hash_aux(it, std::make_index_sequence<k>());
+                }
+
+                // get vector of positions from map
+                const std::vector<position_t>* at(size_t hash) const
+                {
+                    auto it = _data.find(hash);
+
+                    if (it != _data.end())
+                        return &it->second;
                     else
-                        return result_t();
+                        return nullptr;
                 }
-                else if (query.size() > k)
+
+                // check last kmer (needed for edge case where subk query is at the very end of the text)
+                template<typename iterator_t>
+                void check_last_kmer(iterator_t subk_begin, size_t size,
+                                     std::vector<const std::vector<position_t>*>& to_fill) const
                 {
-                    size_t rest_n = query.size() % k;
-
-                    // get positions for nk parts
-                    std::vector<const std::vector<position_t>*> nk_positions;
-
-                    for (size_t i = 0; i < query.size() - rest_n; i += k)
+                    for (size_t i = 1; i < k - size + 1; ++i)   // first char is covered by last kmer being in _data
                     {
-                        const auto* pos = at(hash(query.begin() + i));
+                        bool equal = true;
+                        auto it = subk_begin;
 
+                        for (size_t j = i; j < i + size; ++j)
+                        {
+                            if (_last_kmer.at(j) != *it)
+                            {
+                                equal = false;
+                                break;
+                            }
+                            it++;
+                        }
+
+                        if (equal)
+                            to_fill.push_back(&_last_kmer_refs.at(i));
+                            // returns pointer to vector with correct position at text.size() - k + i
+                    }
+                }
+
+                // generate hashs for all kmer that have the given prefix and lookup those hashes
+                // used for searching queries of lenght < k, a kmer with prefix p == query has the
+                // same position as the query itself
+                template<typename iterator_t>
+                std::vector<const std::vector<position_t>*>
+                get_position_for_all_kmer_with_prefix(iterator_t prefix_begin, size_t size) const
+                {
+                    auto it = prefix_begin;
+                    size_t prefix_hash = 0;
+                    for (size_t i = 0; i < size; ++i)
+                        prefix_hash += seqan3::to_rank(*it++) * fast_pow(_sigma, k - i - 1);
+
+                    //c.f. addendum below
+                    size_t lower_bound = 0 + prefix_hash;
+                    size_t upper_bound = fast_pow(_sigma, size) - (1 / _sigma) + prefix_hash;
+                    size_t step_size = 1;
+
+                    std::vector<const std::vector<position_t>*> output;
+
+                    // bc stepsize is 1, just add number of possible hashes to lower_bound;
+                    for (size_t hash = lower_bound;
+                         hash < lower_bound + fast_pow(_sigma, k - size); hash += step_size)
+                    {
+                        const auto* pos = at(hash);
+                        if (pos != nullptr)
+                            output.push_back(pos);
+                    }
+
+                    check_last_kmer(prefix_begin, size, output);
+                    return output;
+
+                    // Addendum:
+                    // to calculat set H of all hashes with given prefix p
+                    // i)  hash of any kmer q_0, q_1, ... q_k = sum {i=0 to k} rank(q_i) * sigma^(k - i - 1)
+                    //
+                    // ii) for given prefix p_0, ..., p_m, the first part of the sum is known:
+                    //     h_p = sum {i=0 to m} rank(p_i) * sigma^(k - i - 1)
+                    //
+                    // iii) for arbitrary suffix s_0, ..., s_(k-m-1) we observe:
+                    //      min(H) = h_p    by setting all s_0 to a char that has rank 0;
+                    //
+                    //  iv) max(H) = h_p + (hash of suffix with all s_i so that rank(s_i) = maximum = sigma-1)
+                    //             = h_p + sum {i=k-m to i=k} (sigma-1) * sigma^(k-i-1)
+                    //             = h_p + sigma^m - 1/sigma
+                    //
+                    //   v) for two hashes from H h_1 and h_2 so that h_1 < h_2 it is true that
+                    //      h_1 - h_2 >= 1 as the minimum step to get from h_1 to h_2 is to set the
+                    //      last char of suffix of h_2 to be one rank higher as the last char in h_1.
+                    //      The last char contributes sigma^(k-k-1-1) = sigma^0 = 1 to the hash sum
+                    //
+                    //   Thus to generate all hashes in H we calculate the lower bound min(H) = h_p,
+                    //   the upper bound max(H) = h_p + sigma^m - 1/sigma and go stepwise by 1 from minimum
+                    //   maximum. This is to the authors knowledge the fastest way to generate all hashes in H.
+                    //   For the implementation max(H) = h_p + sigma^(k-m) is used, since min(H) = h_p and
+                    //   #H = sigma^(k-m) and every hash is 1 higher than the previous hash
+                    //   max(H) = h_p + #H = sigma^(k-m) which is one less operation than the above formula
+                }
+
+            // all functions are at least protected bc the user should only use index_element functionality through kmer_index
+            protected:
+
+                // search any query, bevahior (and thus runtime) dependend on query length
+                virtual result_t search(std::vector<alphabet_t>& query) const
+                {
+                    // for query.size() = m == k, just do a single lookup in the map
+                    if (query.size() == k)
+                    {
+                        const auto* pos = at(hash(query.begin()));
                         if (pos)
-                            nk_positions.push_back(pos);
+                            return result_t(pos);
                         else
                             return result_t();
                     }
-
-                    // precompute rest positions
-                    auto usable = detail::compressed_bitset(nk_positions.back()->size(), true);
-
-                    if (rest_n > 0)
+                    // for m > k split query into m / k (+1) parts and look up each one individually
+                    else if (query.size() > k)
                     {
-                        auto rest_results = get_position_for_all_kmer_with_prefix(query.end() - rest_n, rest_n);
+                        size_t rest_n = query.size() % k;
 
-                        size_t i = 0;
-                        for (auto pos : *nk_positions.back())
+                        // get positions for nk parts
+                        std::vector<const std::vector<position_t>*> nk_positions;
+
+                        for (size_t i = 0; i < query.size() - rest_n; i += k)
                         {
-                            bool can_be_used = false;
-                            for (const auto* res_vec : rest_results)
-                            {
-                                if (std::binary_search(res_vec->begin(), res_vec->end(), pos + k))
-                                {
-                                    can_be_used = true;
-                                    break;
-                                }
-                            }
+                            const auto* pos = at(hash(query.begin() + i));
 
-                            if (can_be_used)
-                                usable.set_1(i);
+                            if (pos)
+                                nk_positions.push_back(pos);
                             else
-                                usable.set_0(i);
-
-                            ++i;
+                                return result_t();
                         }
-                    }
 
-                    // query.size % k != 0 and query.size < 2*k
-                    if (nk_positions.size() == 1)
-                    {
-                        result_t output(nk_positions.at(0), false);
-                        for (size_t i = 0; i < nk_positions.at(0)->size(); ++i)
-                            if (usable.at(i))
-                                output.should_use(i);
+                        // precompute rest positions
+                        auto usable = detail::compressed_bitset(nk_positions.back()->size(), true);
 
-                        return output;
-                    }
-
-                    // query.size % k == 0 does not need to check rest
-                    else if (rest_n == 0)
-                    {
-                        result_t output(nk_positions.at(0), true);
-
-                        for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
+                        if (rest_n > 0)
                         {
-                            size_t previous_pos = nk_positions.front()->at(start_pos_i);
-                            bool should_use = true;
+                            auto rest_results = get_position_for_all_kmer_with_prefix(query.end() - rest_n, rest_n);
 
-                            for (size_t next_pos_i = 1; next_pos_i < nk_positions.size(); ++next_pos_i)
+                            size_t i = 0;
+                            for (auto pos : *nk_positions.back())
                             {
-                                auto* current = nk_positions.at(next_pos_i);
-
-                                if (not std::binary_search(current->begin(), current->end(), previous_pos + k))
+                                bool can_be_used = false;
+                                for (const auto* res_vec : rest_results)
                                 {
-                                    output.should_not_use(start_pos_i);
-                                    should_use = false;
-                                    break;
+                                    if (std::binary_search(res_vec->begin(), res_vec->end(), pos + k))
+                                    {
+                                        can_be_used = true;
+                                        break;
+                                    }
                                 }
-                                else
-                                    previous_pos += k;
-                            }
 
-                            if (should_use)
-                                output.should_use(start_pos_i);
+                                if (can_be_used)
+                                    usable.set_1(i);
+                                else
+                                    usable.set_0(i);
+
+                                ++i;
+                            }
                         }
 
-                        return output;
-                    }
-                        // query.size() % k != 0 and query.size() > 2*k
-                    else
-                    {
-                        result_t output(nk_positions.at(0), false);
-
-                        for (size_t start_pos_i = 0; start_pos_i < nk_positions.at(0)->size(); ++start_pos_i)
+                        // query.size % k != 0 and query.size < 2*k
+                        if (nk_positions.size() == 1)
                         {
-                            size_t previous_pos = nk_positions.front()->at(start_pos_i);
+                            result_t output(nk_positions.at(0), false);
+                            for (size_t i = 0; i < nk_positions.at(0)->size(); ++i)
+                                if (usable.at(i))
+                                    output.should_use(i);
 
-                            if (nk_positions.size() > 1)
+                            return output;
+                        }
+
+                        // query.size % k == 0 does not need to check rest
+                        else if (rest_n == 0)
+                        {
+                            result_t output(nk_positions.at(0), true);
+
+                            for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
                             {
-                                bool interrupted = false;
+                                size_t previous_pos = nk_positions.front()->at(start_pos_i);
+                                bool should_use = true;
+
                                 for (size_t next_pos_i = 1; next_pos_i < nk_positions.size(); ++next_pos_i)
                                 {
-                                    const auto* current = nk_positions.back();
-                                    auto it = std::lower_bound(current->begin(), current->end(), previous_pos += k);
+                                    auto* current = nk_positions.at(next_pos_i);
 
-                                    if (*it != previous_pos)
+                                    // check if next part has a position that is equal to the current + k
+                                    if (not std::binary_search(current->begin(), current->end(), previous_pos + k))
                                     {
-                                        interrupted = true;
+                                        output.should_not_use(start_pos_i);
+                                        should_use = false;
                                         break;
                                     }
-
-                                    // for last k part, also check precomputed rest pos
-                                    if (next_pos_i == nk_positions.size() - 1)
-                                    {
-                                        if (not usable.at(it - current->begin()))
-                                            interrupted = true;
-
-                                        break;
-                                    }
+                                    else
+                                        previous_pos += k;
                                 }
 
-                                if (interrupted)
-                                    output.should_not_use(start_pos_i);
-                                //else
-                                //output.should_use(start_pos_i);
+                                if (should_use)
+                                    output.should_use(start_pos_i);
                             }
+
+                            return output;
                         }
 
-                        return output;
+                        // query.size() % k != 0 and query.size() > 2*k
+                        else
+                        {
+                            result_t output(nk_positions.at(0), false);
+
+                            for (size_t start_pos_i = 0; start_pos_i < nk_positions.at(0)->size(); ++start_pos_i)
+                            {
+                                size_t previous_pos = nk_positions.front()->at(start_pos_i);
+
+                                if (nk_positions.size() > 1)
+                                {
+                                    bool interrupted = false;
+                                    for (size_t next_pos_i = 1; next_pos_i < nk_positions.size(); ++next_pos_i)
+                                    {
+                                        const auto* current = nk_positions.back();
+                                        auto it = std::lower_bound(current->begin(), current->end(), previous_pos += k);
+
+                                        if (*it != previous_pos)
+                                        {
+                                            interrupted = true;
+                                            break;
+                                        }
+
+                                        // for last k part, also check precomputed rest pos
+                                        if (next_pos_i == nk_positions.size() - 1)
+                                        {
+                                            if (not usable.at(it - current->begin()))
+                                                interrupted = true;
+
+                                            break;
+                                        }
+                                    }
+
+                                    if (interrupted)
+                                        output.should_not_use(start_pos_i);
+                                }
+                            }
+
+                            return output;
+                        }
+                    }
+
+                    // for query.size() < k use prefix search directly
+                    else
+                    {
+                        return result_t(get_position_for_all_kmer_with_prefix(query.begin(), query.size()), true);
                     }
                 }
 
-                else //query.size() < k
+                // CTORS
+                kmer_index_element() = default;
+
+                template<std::ranges::range text_t>
+                kmer_index_element(text_t& text)
+                        :  _last_kmer(text.end() - k, text.end()),
+                           _last_kmer_refs([this]() -> std::vector<std::vector<position_t>> {
+                               std::vector<std::vector<position_t>> output;
+
+                               for (position_t i = 0; i < _last_kmer.size(); ++i)
+                                   output.emplace_back(std::vector<position_t>{i});
+
+                               return output;
+                           }())
                 {
-                    return result_t(get_position_for_all_kmer_with_prefix(query.begin(), query.size()), true);
-                }
-            }
-
-            // ctors
-            ~kmer_index_element() = default;
-
-            kmer_index_element() = default;
-
-            template<std::ranges::range text_t>
-            kmer_index_element(text_t& text)
-                    :  _last_kmer(text.end() - k, text.end()),
-                       _last_kmer_refs([this]() -> std::vector<std::vector<position_t>> {
-                           std::vector<std::vector<position_t>> output;
-
-                           for (position_t i = 0; i < _last_kmer.size(); ++i)
-                               output.emplace_back(std::vector<position_t>{i});
-
-                           return output;
-                       }())
-            {
-                create(text);
-            }
-
-            template<std::ranges::range text_t>
-            void create(text_t& text)
-            {
-                auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
-
-                position_t i = 0;
-                for (auto h : hashes)
-                {
-                    if (_data.find(h) == _data.end())
-                        _data.emplace(h, std::vector<position_t>());
-
-                    _data[h].push_back(i);
-                    ++i;
+                    create(text);
                 }
 
-                // setup last kmer
-                position_t text_size = i + k - 1;
+                // create is a seperate function so kmer_index below can run multiple creates in paralell
+                template<std::ranges::range text_t>
+                void create(text_t& text)
+                {
+                    auto hashes = text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{k}});
 
-                _last_kmer = std::vector<alphabet_t>(text.end() - k, text.end());
+                    size_t i = 0;
+                    for (auto h : hashes)
+                    {
+                        if (_data.find(h) == _data.end())
+                            _data.emplace(h, std::vector<position_t>());
 
-                _last_kmer_refs = std::vector<std::vector<position_t>>();
+                        _data[h].push_back(i);
+                        ++i;
+                    }
 
-                for (position_t j = 0; j < _last_kmer.size(); ++j)
-                    _last_kmer_refs.emplace_back(std::vector<position_t>{j + text_size - position_t(k)});
+                    assert(i + k -1 < std::numeric_limits<position_t>::max() && "your text is too large for this configuration. Please specify position_t = uint64_t manually")
+
+                    // setup last kmer
+                    position_t text_size = position_t(i) + k - 1;
+
+                    _last_kmer = std::vector<alphabet_t>(text.end() - k, text.end());
+
+                    _last_kmer_refs = std::vector<std::vector<position_t>>();
+
+                    for (position_t j = 0; j < _last_kmer.size(); ++j)
+                        _last_kmer_refs.emplace_back(std::vector<position_t>{j + text_size - position_t(k)});
+                }
+        };
+    } // end of namespace detail
+
+    template<seqan3::alphabet alphabet_t, typename position_t, size_t... ks>
+    class kmer_index
+        : public detail::kmer_index_element<alphabet_t, position_t, ks>...
+    {
+        private:
+            // typedefs for readability
+            template<size_t k>
+            using index_element_t = detail::kmer_index_element<alphabet_t, position_t, k>;
+            using index_t = kmer_index<alphabet_t, position_t, ks...>;
+            using result_t = detail::kmer_index_result<position_t>;
+
+            // preallocate list of all ks as it is used often
+            inline const static std::vector<size_t> _all_ks = std::vector<size_t>{ks...};
+
+            // search for a specific k index_element has to be able to be called thus...
+            template<size_t k>
+            result_t call_search(std::vector<alphabet_t>& query) const
+            {
+                return static_cast<const index_element_t<k>*>(this)->index_element_t<k>::search(query);
+            }
+
+            typedef result_t(kmer_index<alphabet_t, position_t, ks...>::*element_search_fn)(
+                    std::vector<alphabet_t>&) const;
+
+            // ... setup array that holds the corresponding search call so it can be a simple lookup.
+            // This allows for RVO as during a fold expression the result would have to be handed from the
+            // index_element to this index and it's move constructor would have to be called at least once
+            const std::array<element_search_fn, sizeof...(ks)> _search_fns = {
+                    (&kmer_index<alphabet_t, position_t, ks...>::call_search<ks>)...};
+
+            // array that holds the index of _search_fns that corresponds to a specific k
+            // further modified in ctor
+            std::array<int, std::max({ks...}) + 1> _k_to_search_fns_i;
+
+        public:
+            // ctor
+            template<std::ranges::range text_t>
+            kmer_index(text_t& text, size_t n_threads = std::thread::hardware_concurrency())
+                    : index_element_t<ks>()...
+            {
+                // catch hardware concurrency failing
+                if (n_threads == 0)
+                    n_threads = 1;
+
+                // use multiple threads to build index elements at the same time
+                auto pool = thread_pool{n_threads};
+
+                std::vector<std::future<void>> futures;
+                (futures.emplace_back(
+                        pool.execute(&index_element_t<ks>::template create<text_t>,
+                                     static_cast<index_element_t<ks>*>(this),
+                                     std::ref(text))), ...);
+                // wait to finish
+                for (auto& f : futures)
+                    f.get();
+
+                // setup k_to_search_fn_i
+                size_t ks_i = 0;
+                for (size_t i = 0; i < _k_to_search_fns_i.size(); ++i)
+                    if (i == _all_ks.at(ks_i))
+                    {
+                        _k_to_search_fns_i[i] = ks_i;
+                        ks_i++;
+                    }
+                    else
+                        _k_to_search_fns_i[i] = -1;
+            }
+
+            // search single query with index_element<k> directly
+            template<size_t k>
+            result_t search(std::vector<alphabet_t>& query) const
+            {
+                return index_element_t<k>::search(query);
+            }
+
+            // search single query, index picks optimal search scheme.
+            // almost non-existent overhead compared to above search thanks to RVO through _search_fns
+            result_t search(std::vector<alphabet_t>& query) const
+            {
+                size_t optimal_k = _all_ks.at(0);
+
+                if (_all_ks.size() > 1)
+                {
+                    size_t optimal_k_i = 0;
+
+                    for (optimal_k_i; optimal_k_i < _all_ks.size(); ++optimal_k_i)
+                    {
+                        // c.f. addendum
+                        size_t k = _all_ks.at(optimal_k_i);
+                        if ((query.size() & (k - 1)) <= (query.size() & (optimal_k - 1)))   // i % n = i & i-1
+                            optimal_k = k;
+                    }
+                }
+
+                // call corresponding index_element search
+                return (this->*_search_fns[_k_to_search_fns_i.at(optimal_k)])(query);
+
+                // Addendum:
+                // The runtime for search is better the lower query.size() % k is.
+                // If query.size() % k == 0 all parts can be a simple lookup
+                // If query.size() % k != 0, prefix search has to be engaged. The number of kmers that
+                // have to be searched is proportional to k - query.size() % k (the lower the number, the less
+                // chars of the query are known and can be cut from the set of permutations)
+                //
+                // If multiple k are optimal for a given query the bigger k is preferred, assuming a fixed text size
+                // bigger k will have less results in their map entry which reduces runtime for nk search, c.f.
+                // index_element<k>::search *if (query.size() > k)
+            }
+
+            // search multiple queries in paralell
+            template<std::ranges::forward_range queries_t>
+            std::vector<result_t>
+            search(queries_t&& queries, size_t n_threads = std::thread::hardware_concurrency()) const
+            {
+                if (n_threads == 0)
+                    n_threads = 1;
+
+                auto pool = thread_pool{n_threads};
+                std::vector<std::future<void>> futures;
+
+                size_t size = 0;
+                for (auto& q : queries)
+                {
+                    futures.emplace_back(pool.execute(this->search, q));
+                    size++; // count as generic ranges don't support .size()
+                }
+
+                std::vector<result_t> output;
+                output.reserve(size);
+
+                for (auto& f : futures)
+                    output.push_back(f.get());
+
+                return output;
             }
     };
-}
 
-template<seqan3::alphabet alphabet_t, typename position_t, size_t... ks>
-class kmer_index
-    : public kmer_index_element<alphabet_t, ks, position_t>...
-{
-    private:
-        // typedefs for readability
-        template<size_t k>
-        using index_element_t = kmer_index_element<alphabet_t, k, position_t>;
-        using index_t = kmer_index<alphabet_t, position_t, ks...>;
-        using result_t = detail::kmer_index_result<position_t>;
+    // convenient creation function that only takes the ks and picks everything else on it's own
+    template<size_t... ks, std::ranges::range text_t>
+    auto make_kmer_index(text_t && text, size_t n_threads = 1)
+    {
+        assert(n_threads > 0);
 
-        inline const static std::vector<size_t> _all_ks = std::vector<size_t>{ks...};
+        using alphabet_t = seqan3::innermost_value_type_t<text_t>;
+        using position_t = uint32_t;
 
-        template<size_t k>
-        result_t call_search(std::vector<alphabet_t>& query) const
-        {
-            return static_cast<const index_element_t<k>*>(this)->index_element_t<k>::search(query);
-        }
+        return kmer_index<alphabet_t, position_t, ks...>(std::forward<text_t>(text), n_threads);
+    }
 
-        typedef result_t(kmer_index<alphabet_t, position_t, ks...>::*element_search_fn)(std::vector<alphabet_t>&) const;
-
-        const std::array<element_search_fn, sizeof...(ks)> _search_fns = {(&kmer_index<alphabet_t, position_t, ks...>::call_search<ks>)...};
-
-        std::array<int, std::max({ks...})+1> _k_to_search_fns_i;
-
-    public:
-        // ctor
-        template<std::ranges::range text_t>
-        kmer_index(text_t& text, size_t n_threads = std::thread::hardware_concurrency())
-                : index_element_t<ks>()...
-        {
-            // catch hardware concurrency failing
-            if (n_threads == 0)
-                n_threads = 1;
-
-            // use multiple threads to build index elements at the same time
-            auto pool = thread_pool{n_threads};
-
-            std::vector<std::future<void>> futures;
-            (futures.emplace_back(
-                    pool.execute(&index_element_t<ks>::template create<text_t>, static_cast<index_element_t<ks>*>(this),
-                                 std::ref(text))), ...);
-            // wait to finish
-            for (auto& f : futures)
-                f.get();
-
-            // setup k_to_search_fn_i
-            size_t ks_i = 0;
-            for (size_t i = 0; i < _k_to_search_fns_i.size(); ++i)
-                if (i == _all_ks.at(ks_i))
-                {
-                    _k_to_search_fns_i[i] = ks_i;
-                    ks_i++;
-                }
-                else
-                    _k_to_search_fns_i[i] = -1;
-        }
-
-        // search single query with index_element<k>
-        template<size_t k>
-        result_t search(std::vector<alphabet_t>& query) const
-        {
-            return index_element_t<k>::search(query);
-        }
-
-        // search single query, index picks optimal search scheme
-        result_t search(std::vector<alphabet_t>& query) const
-        {
-            size_t optimal_k = _all_ks.at(0);
-
-            if (_all_ks.size() > 1)
-            {
-                size_t optimal_k_i = 0;
-
-                for (optimal_k_i; optimal_k_i < _all_ks.size(); ++optimal_k_i)
-                {
-                    size_t k = _all_ks.at(optimal_k_i);
-                    if ((query.size() & (k - 1)) <= (query.size() & (optimal_k - 1)))   // i % n = i & i-1
-                        optimal_k = k;
-                }
-            }
-
-            return (this->*_search_fns[_k_to_search_fns_i.at(optimal_k)])(query);
-        }
-
-        // search multiple queries in paralell
-        template<std::ranges::forward_range queries_t>
-        std::vector<result_t> search(queries_t&& queries, size_t n_threads = std::thread::hardware_concurrency()) const
-        {
-            if (n_threads == 0)
-                n_threads = 1;
-
-            auto pool = thread_pool{n_threads};
-            std::vector<std::future<void>> futures;
-
-            size_t size = 0;
-            for (auto& q : queries)
-            {
-                futures.emplace_back(pool.execute(this->search, q));
-                size++;
-            }
-
-            std::vector<result_t> output;
-            output.reserve(size);
-
-            for (auto& f : futures)
-                output.push_back(f.get());
-
-            return output;
-        }
-};
-
-template<size_t... ks, std::ranges::range text_t>
-auto make_kmer_index(text_t&& text, size_t n_threads = 1)
-{
-    assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
-    assert(n_threads > 0);
-
-    using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-    using position_t = uint32_t;
-
-    return kmer_index<alphabet_t, position_t, ks...>(std::forward<text_t>(text));
-}
+}// end of namespace kmer
 
 
 /*
