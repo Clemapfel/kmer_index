@@ -2,6 +2,9 @@
 
 #pragma once
 
+
+namespace kmer
+{
 namespace detail
 {
     // runtime-optimized equivalent for std::vector<bool>

@@ -30,7 +30,10 @@
 #include "thread_pool.hpp"
 #include <compressed_bitset.hpp>
 
-//namespace detail {
+namespace kmer
+{
+namespace detail
+{
     // optimized consteval pow
     constexpr size_t fast_pow(size_t base, size_t exp)
     {
@@ -46,19 +49,18 @@
         }
 
         return result;
-
         // reference: https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
     }
 
-// represents a kmer index for a single k
-    template<seqan3::alphabet alphabet_t, size_t k, typename position_t>
+    // represents a kmer index for a single k
+    template<seqan3::alphabet alphabet_t, typename position_t, size_t k>
     class kmer_index_element
     {
-            static_assert(k > 1, "please specify a valid k");
+        static_assert(k > 0 and k < 64 / log2(seqan3::alphabet_size<alphabet_t>), "please specify a valid k");
 
         private:
             // typedefs for readability
-            using result_t = detail::kmer_index_result<position_t>;
+            using result_t = kmer_index_result<position_t>;
             constexpr static size_t _sigma = seqan3::alphabet_size<alphabet_t>;
 
             // data
@@ -389,7 +391,7 @@
                     _last_kmer_refs.emplace_back(std::vector<position_t>{j + text_size - position_t(k)});
             }
     };
-//}
+}
 
 template<seqan3::alphabet alphabet_t, typename position_t, size_t... ks>
 class kmer_index

@@ -5,11 +5,12 @@
 #include <kmer_index.hpp>
 #include <compressed_bitset.hpp>
 
-template<seqan3::alphabet, size_t, typename>
-class kmer_index_element;
+namespace kmer {
+namespace detail {
 
-namespace detail
-{
+    template<seqan3::alphabet, typename, size_t>
+    class kmer_index_element;
+
     // result type that only holds pointers to the positions inside kmer index
     template<typename position_t>
     struct kmer_index_result
@@ -18,7 +19,7 @@ namespace detail
             // iterator class that automatically jumps to next valid result
             class kmer_index_result_iterator
             {
-                friend class kmer_index_result<position_t>;
+                    friend class kmer_index_result<position_t>;
 
                 private:
                     const kmer_index_result<position_t>* _result;
@@ -30,9 +31,9 @@ namespace detail
                         if (_position_i == _last_valid_i)
                             return false;
 
-                        size_t new_i = _position_i+1;
+                        size_t new_i = _position_i + 1;
 
-                        while(new_i < _result->_bitmask.size() and _result->_bitmask.at(new_i) == false)
+                        while (new_i < _result->_bitmask.size() and _result->_bitmask.at(new_i) == false)
                             new_i++;
 
                         assert(new_i != _position_i);
@@ -46,7 +47,7 @@ namespace detail
                         if (_position_i == _first_valid_i)
                             return false;
 
-                        size_t new_i = _position_i-1;
+                        size_t new_i = _position_i - 1;
 
                         while (new_i > 0 and _result->bitmask.at(new_i) == false)
                             new_i--;
@@ -59,7 +60,7 @@ namespace detail
 
                 protected:
                     kmer_index_result_iterator(kmer_index_result<position_t>* result, bool beginning_or_end)
-                        : kmer_index_result_iterator(result)
+                            : kmer_index_result_iterator(result)
                     {
                         if (beginning_or_end)
                         {
@@ -84,11 +85,11 @@ namespace detail
 
                     // ctor
                     kmer_index_result_iterator(kmer_index_result<position_t>* result)
-                        : _result(result), _position_i(0)
+                            : _result(result), _position_i(0)
                     {
-                        size_t i= result->_bitmask.size()-1;
+                        size_t i = result->_bitmask.size() - 1;
                         for (i; i >= 0; i--)
-                            if(result->_bitmask.at(i))
+                            if (result->_bitmask.at(i))
                                 break;
 
                         _last_valid_i = i;
@@ -111,7 +112,7 @@ namespace detail
 
                     iterator_t& operator++(int i)
                     {
-                        while(i > 0)
+                        while (i > 0)
                         {
                             advance_to_next_valid_result();
                             if (_position_i == _result->size())
@@ -148,7 +149,7 @@ namespace detail
 
                     bool operator!=(iterator_t other)
                     {
-                        return not (*this == other);
+                        return not(*this == other);
                     }
 
                     value_type operator*()
@@ -253,7 +254,7 @@ namespace detail
                         if (_bitmask.at(i))
                             output.push_back(vec->at(j));
 
-                if(sort_results)
+                if (sort_results)
                     std::sort(output.begin(), output.end());
 
                 return output;
@@ -271,3 +272,4 @@ namespace detail
             }
     };
 } // end of namespace detail
+}// end of namespace kmer
