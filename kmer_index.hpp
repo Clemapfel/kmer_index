@@ -8,8 +8,6 @@
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/hash.hpp>
 #include <seqan3/range/views/kmer_hash.hpp>
-#include <seqan3/range/views/slice.hpp>
-#include <seqan3/search/configuration/max_error.hpp>
 #include <seqan3/core/type_traits/range.hpp>
 #include <seqan3/core/debug_stream.hpp>
 
@@ -18,16 +16,13 @@
 #include <cassert>
 #include <cmath>
 #include <algorithm>
-#include <unordered_set>
 #include <limits>
-#include <thread>
-#include <mutex>
 #include <unordered_map>
 
 #include <robin_hood.h>
 
-#include "kmer_index_result.hpp"
-#include "thread_pool.hpp"
+#include <kmer_index_result.hpp>
+#include <thread_pool.hpp>
 #include <compressed_bitset.hpp>
 
 namespace kmer
@@ -555,210 +550,3 @@ namespace kmer
     }
 
 }// end of namespace kmer
-
-
-/*
-
-// "multi" kmer index, specifying more than one k depending on output can drastically increase performance [1]
-template<seqan3::alphabet alphabet_t, typename position_t, size_t... ks>
-class kmer_index
-        : protected detail::kmer_index_element<alphabet_t, ks, position_t>...
-{
-    private:
-        // shorthand typedef for readability
-        template<size_t k>
-        using index_element = detail::kmer_index_element<alphabet_t, k, position_t>;
-
-        // all k used in template, used to determine which element to invoke during query searching
-        inline static auto _all_ks = std::vector<size_t>{ks...};
-        inline static auto _max_k = *(std::max_element(_all_ks.begin(), _all_ks.end()));
-
-        // search query <= k with index element with optimal k
-        std::vector<position_t> search_query_length_subk_or_k(std::vector<alphabet_t> query) const
-        {
-            assert(query.size() > 0);
-
-            size_t optimal_k = 0;
-            for (auto k : _all_ks)
-                if (std::labs(k - query.size()) < std::labs(k - optimal_k)) // [2]
-                    optimal_k = k;
-
-            std::vector<position_t> result;
-
-            // use boolean fold expression to short-circuit execution and save a few search calls
-            (... || index_element<ks>::search_if(ks == optimal_k, query, result));
-
-            return result;
-        }
-
-    public:
-        // ctor
-        template<std::ranges::range text_t>
-        kmer_index(text_t && text, size_t n_threads = std::thread::hardware_concurrency(), bool use_hashtable = true)
-            : detail::kmer_index_element<alphabet_t, ks, position_t>(use_hashtable)...
-        {
-            // catch std::hardware_concurrency failing to compute
-            if (n_threads == 0)
-                n_threads = 1;
-
-            auto pool = thread_pool{n_threads};
-
-            std::vector<std::future<void>> futures;
-
-            // use multiple threads to build index elements at the same time
-            (futures.emplace_back(pool.execute(&index_element<ks>::template create<text_t>, static_cast<index_element<ks> *>(this),
-                                               std::ref(text))), ...);
-
-            // wait to finish
-            for (auto &f : futures)
-                f.get();
-        }
-
-        // caluclate size (for debugging)
-        unsigned long long calculate_size() const
-        {
-            unsigned long long size = 0;
-
-            size += (index_element<ks>::calculate_size() + ...);
-            size += sizeof(_all_ks);
-
-            return size;
-        }
-
-        // exact search
-        std::vector<position_t> search(std::vector<alphabet_t> query) const
-        {
-            // if there's only one element, skip choosing which to use
-            if (_all_ks.size() == 1)
-                return (index_element<ks>::search(query), ...); // expands to single call
-
-            //  if search can be done with exactly one search call
-            if (query.size() <= _max_k)
-                return search_query_length_subk_or_k(query);
-
-            // else, split query and search each part with corresponding optimal index element [1]
-            else
-            {
-                // if one kmer_index has a way to call search_nk
-                std::vector<position_t> result;
-                bool possible = (... || index_element<ks>::search_if(query.size() % ks == 0, query, result));
-
-                if (possible)
-                    return result;
-
-                // find k so that has optimal conditions to search [1]
-                size_t optimal_k = query.size();
-
-                for (auto k : _all_ks)
-                    if (std::labs(query.size() % k - k) < std::labs(query.size() % optimal_k - optimal_k))
-                        optimal_k = k;
-
-                auto rest = query.size() % optimal_k;
-                std::vector<alphabet_t> part_nk{query.begin(), query.begin() + query.size() - rest};
-                std::vector<alphabet_t> part_subk{query.begin() + query.size() - rest, query.end()};
-
-                std::vector<position_t> nk_results{};
-                (... || index_element<ks>::search_if(ks == optimal_k, part_nk, nk_results));
-
-                std::vector<position_t> subk_results = search_query_length_subk_or_k(part_subk);
-
-                // merge results for first n*k parts and <k rest
-                std::vector<position_t> confirmed_positions{};
-                for (auto& pos : nk_results)
-                {
-                    if (std::find(subk_results.begin(), subk_results.end(), pos + query.size() - rest) != subk_results.end())
-                        confirmed_positions.push_back(pos);
-                }
-
-                return confirmed_positions;
-
-                // [1] search runtime is inversely proportional to r = abs(query.size() - k) c.f. index_element::search
-            }
-        }
-
-        // serach multiple queries in paralell
-        std::vector<std::vector<position_t>> search(
-                std::vector<std::vector<alphabet_t>> queries,
-                size_t n_threads = std::thread::hardware_concurrency()) const
-        {
-            using namespace seqan3;
-
-            if (n_threads == 0)
-                n_threads = 1;
-
-            auto pool = thread_pool{n_threads};
-            std::vector<std::future<std::vector<position_t>>> futures;
-
-            for (auto& q : queries)
-                futures.emplace_back(pool.execute(this->search, q));
-
-            std::vector<std::vector<position_t>> output;
-            for (auto& f : futures)
-                output.emplace_back(f.get());
-
-            return output;
-        }
-};
-
-// convenient make function that picks template params for you
-template<size_t... ks, std::ranges::range text_t>
-auto make_kmer_index(text_t&& text)
-{
-    assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
-
-    using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-    using position_t = uint32_t;
-
-    // generic size since not all ranges support .size()
-    size_t size = 0;
-    for (const auto _ : text)
-        size++;
-
-    // determine if hashtable should be used over map
-    bool use_hashtable = false; //text < 10000 or not k > 10; //TODO:: use estimate function ;
-
-    return kmer_index<alphabet_t, position_t, ks...>{
-            std::forward<text_t>(text),
-            std::thread::hardware_concurrency(),
-            use_hashtable};
-}
-
-namespace debug
-{
-    template<size_t... ks, std::ranges::range text_t>
-    auto make_kmer_index(text_t&& text, bool use_hashtable, size_t n_threads)
-    {
-        assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
-
-        using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-        using position_t = uint32_t;
-
-        // generic size since not all ranges support .size()
-        size_t size = 0;
-        for (const auto _ : text)
-            size++;
-
-        return kmer_index<alphabet_t, position_t, ks...>{std::forward<text_t>(text), n_threads, use_hashtable};
-    }
-}
-
-template<auto first, auto... ks, std::ranges::range text_t>
-auto make_kmer_index(text_t text, size_t n_threads = 1)
-{
-assert(text.size() < UINT32_MAX && "your text is too large for this configuration, please specify template parameter position_t = uint64_t manually");
-assert(n_threads > 0);
-
-using alphabet_t = seqan3::innermost_value_type_t<text_t>;
-using position_t = uint32_t;
-
-return std::conditional_t<
-        std::is_same_v<decltype(first), bool>,
-        kmer_index<alphabet_t, position_t, first, ks...>,
-        kmer_index<alphabet_t, position_t, true, first, ks...>
->{text, n_threads};
-}
- */
-
-
-
-

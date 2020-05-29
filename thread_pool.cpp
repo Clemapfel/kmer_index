@@ -3,9 +3,10 @@
 // Copyright (c) 2020 Clemens Cords. All rights reserved.
 //
 
-#include "thread_pool.hpp"
+#include <thread_pool.hpp>
 #include <cassert>
 
+// create threads
 void thread_pool::setup_threads(size_t n_threads)
 {
     assert(_threads.empty());
@@ -50,6 +51,7 @@ void thread_pool::setup_threads(size_t n_threads)
     }
 }
 
+// ctor
 thread_pool::thread_pool(size_t n_threads)
 {
     assert(n_threads > 0);
@@ -58,6 +60,7 @@ thread_pool::thread_pool(size_t n_threads)
     setup_threads(n_threads);
 }
 
+//dtor
 thread_pool::~thread_pool()
 {
     //debug::sync_print("starting dtor");
@@ -106,6 +109,5 @@ void thread_pool::abort()
         _task_queue.pop();
 
     _shutdown_asap = false;
-
 
 }

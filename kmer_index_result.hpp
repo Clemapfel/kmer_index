@@ -5,9 +5,7 @@
 #include <kmer_index.hpp>
 #include <compressed_bitset.hpp>
 
-namespace kmer
-{
-namespace detail
+namespace kmer::detail
 {
     // forward declaration
     template<seqan3::alphabet, typename, size_t>
@@ -97,7 +95,7 @@ namespace detail
                     // typedef of own type for readability
                     using iterator_t = kmer_index_result<position_t>::kmer_index_result_iterator;
 
-                    // ctor
+                    // CTOR
                     kmer_index_result_iterator(kmer_index_result<position_t>* result)
                             : _result(result), _position_i(0)
                     {
@@ -117,24 +115,33 @@ namespace detail
                             _first_valid_i = 0;
                     }
 
-                    // operators
+                    // operators: arithmetics
                     iterator_t& operator++()
                     {
                         advance_to_next_valid_result();
                         return *this;
                     }
 
-                    iterator_t& operator++(int i)
+                    iterator_t& operator+=(int i)
                     {
-                        while (i > 0)
+                        if (i > 0)
                         {
-                            advance_to_next_valid_result();
-                            if (_position_i == _result->size())
-                                break;
-
-                            i--;
+                            while (i > 0)
+                            {
+                                advance_to_next_valid_result();
+                                i--;
+                            }
+                            return *this;
                         }
-                        return *this;
+                        else
+                        {
+                            while (i < 0)
+                            {
+                                advance_to_previous_valid_result();
+                                i++;
+                            }
+                            return *this;
+                        }
                     }
 
                     iterator_t& operator--()
@@ -143,19 +150,29 @@ namespace detail
                         return *this;
                     }
 
-                    iterator_t& operator--(int i)
+                    iterator_t& operator-=(int i)
                     {
-                        while (i > 0)
+                        if (i > 0)
                         {
-                            advance_to_previous_valid_result();
-                            if (_position_i == 0)
-                                break;
-
-                            i--;
+                            while (i > 0)
+                            {
+                                advance_to_previous_valid_result();
+                                i--;
+                            }
+                            return *this;
                         }
-                        return *this;
+                        else
+                        {
+                            while (i < 0)
+                            {
+                                advance_to_next_valid_result();
+                                i++;
+                            }
+                            return this;
+                        }
                     }
 
+                    // compare
                     bool operator==(iterator_t other)
                     {
                         return this->_position_i == other._position_i and this->_result == other._result;
@@ -166,6 +183,7 @@ namespace detail
                         return not(*this == other);
                     }
 
+                    // dereference
                     value_type operator*()
                     {
                         auto result = _result->at(_position_i);
@@ -275,5 +293,4 @@ namespace detail
             }
     };
 
-} // end of namespace detail
-} // end of namespace kmer
+} // end of namespace kmer::detail

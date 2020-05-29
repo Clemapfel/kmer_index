@@ -18,11 +18,10 @@
 // worker threads work through them as they free up
 // supports resizing and aborting at any time
 
-namespace debug
+namespace kmer
 {
-    template<typename T>
-    void sync_print(T); // synchronized console stream for debugging
-}
+namespace detail
+{
 
 struct thread_pool
 {
@@ -32,7 +31,9 @@ struct thread_pool
         class _task_wrapper_base
         {
             public:
-                virtual ~_task_wrapper_base() {};
+                virtual ~_task_wrapper_base()
+                {};
+
                 virtual void operator()() = 0;
         };
 
@@ -57,7 +58,8 @@ struct thread_pool
         template<typename function_t>
         static std::unique_ptr<_task_wrapper_base> wrap(function_t&& function)
         {
-            return std::unique_ptr<_task_wrapper_base>(new _task_wrapper<function_t>(std::forward<function_t>(function)));
+            return std::unique_ptr<_task_wrapper_base>(
+                    new _task_wrapper<function_t>(std::forward<function_t>(function)));
         }
 
         // queue for storing tasks
@@ -70,15 +72,17 @@ struct thread_pool
         // worker threads
         std::vector<std::thread> _threads;
 
-        bool _currently_aborting = false;
-        bool _shutdown_asap = false;
+        std::atomic<bool> _currently_aborting = false;
+        std::atomic<bool> _shutdown_asap = false;
 
-        // fill empty _threads with threads
+        // create worker threads
         void setup_threads(size_t);
 
     public:
         ~thread_pool();
-        thread_pool(size_t n_threads = std::thread::hardware_concurrency());
+
+        // CTOR
+        explicit thread_pool(size_t n_threads = std::thread::hardware_concurrency());
 
         // pause execution, reallocate threads and restart to work through leftover queue
         void resize(size_t n_threads);
@@ -100,7 +104,7 @@ struct thread_pool
 
             // wrap packaged task operator() call in lambda and wrap lambda in task_wrapper
             // task moves so lambda (and thus _task_queue element) holds ownership of to_wrap
-            _task_queue.emplace(wrap([task(std::move(to_wrap))]() mutable {task();}));
+            _task_queue.emplace(wrap([task(std::move(to_wrap))]() mutable { task(); }));
 
             lock.unlock();
 
@@ -108,6 +112,7 @@ struct thread_pool
             return std::move(future);
         }
 };
+}// end of namespace detail
 
 // references used:
 // https://codereview.stackexchange.com/questions/221626/c17-thread-pool
@@ -141,3 +146,5 @@ namespace debug
     }
 
 } // namespace debug
+
+} // end of namespace kmer
