@@ -20,22 +20,22 @@
 #include <thread_pool.hpp>
 
 using namespace seqan3;
-using alphabet_t = dna4;
-constexpr size_t k = 5;
-constexpr size_t text_size = 10000;
+using alphabet_t = dna15;
+constexpr size_t k = 10;
+constexpr size_t text_size = 100000;
 
 void force_error(std::vector<alphabet_t> query, size_t seed)
 {
-    auto input = input_generator<dna4>(seed);
+    auto input = input_generator<alphabet_t>(seed);
     auto text = input.generate_text(text_size, {});
-    auto kmer = kmer_index<seqan3::dna4, uint32_t, 5, 6, 7>(text);
+    auto kmer = kmer::make_kmer_index<k>(text);
     auto fm = fm_index(text);
 
     std::vector<unsigned int> fm_result;
     for (auto _ : search(query, fm))
         fm_result.push_back(_.second);
 
-    auto res = kmer.search(query);
+    auto res = kmer.search<k>(query);
     auto kmer_result = res.to_vector();
 
     auto equal = fm_result == kmer_result;
@@ -58,9 +58,10 @@ void force_error(std::vector<alphabet_t> query, size_t seed)
 
 int main()
 {
-    force_error("AT"_dna4, 26);
+    force_error("Y"_dna15, 5001);
     return 0;
 
+    /*
     for (size_t i = 0; i < 10000; ++i)
     {
         auto input = input_generator<dna4>(i);
