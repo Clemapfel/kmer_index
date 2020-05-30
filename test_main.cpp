@@ -7,6 +7,8 @@
 
 #include <kmer_index.hpp>
 #include <benchmarks/input_generator.hpp>
+#include <seqan3/search/fm_index/fm_index.hpp>
+#include <seqan3/search/search.hpp>
 
 using alphabet_1 = seqan3::dna4;
 using alphabet_2 = seqan3::dna15;
@@ -16,7 +18,6 @@ constexpr size_t text_size = 100000;
 
 static size_t seed = 0;
 
-
 template<seqan3::alphabet alphabet_t, size_t k>
 void run_test()
 {
@@ -24,8 +25,8 @@ void run_test()
     {
         auto input = input_generator<alphabet_t>(seed++);
         auto text = input.generate_sequence(text_size);
-        auto kmer = make_kmer_index<k>(text);
-        auto fm = fm_index(text);
+        auto kmer = kmer::make_kmer_index<k>(text);
+        auto fm = seqan3::fm_index(text);
 
         for (size_t query_size = 1; query_size < 2*k; query_size++)
         {
@@ -33,7 +34,7 @@ void run_test()
 
             // get results as vectors
             std::vector<unsigned int> fm_result;
-            for (auto res : search(query, fm))
+            for (auto res : seqan3::search(query, fm))
                 fm_result.push_back(res.second);
 
             std::vector<unsigned int> kmer_result = kmer.search(query).to_vector();
@@ -70,14 +71,14 @@ int main()
 {
     seqan3::debug_stream << "starting test...\n";
 
+    run_test<alphabet_1, k_0>();
+    run_test<alphabet_2, k_0>();
+
     run_test<alphabet_1, k_1>();
     run_test<alphabet_2, k_1>();
 
     run_test<alphabet_1, k_2>();
     run_test<alphabet_2, k_2>();
-
-    run_test<alphabet_1, k_3>();
-    run_test<alphabet_2, k_3>();
 
     seqan3::debug_stream << "\ntest succesfull.\n";
 }

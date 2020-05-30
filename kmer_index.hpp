@@ -198,7 +198,7 @@ namespace kmer
                 }
 
             // all functions are at least protected bc the user should only use index_element functionality through kmer_index
-            protected:
+            public:
 
                 // search any query, bevahior (and thus runtime) dependend on query length
                 virtual result_t search(std::vector<alphabet_t>& query) const
