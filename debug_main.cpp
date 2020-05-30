@@ -5,6 +5,7 @@
 
 #include <kmer_index.hpp>
 #include <benchmarks/input_generator.hpp>
+#include <fast_pow.hpp>
 
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/alphabet/all.hpp>
@@ -53,7 +54,6 @@ void force_error(std::vector<alphabet_t> query, size_t seed)
         exit(1);
     else
         exit(0);
-
 }
 
 int main()

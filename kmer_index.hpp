@@ -20,33 +20,17 @@
 #include <unordered_map>
 
 #include <robin_hood.h>
+#include <fast_pow.hpp>
 
 #include <kmer_index_result.hpp>
 #include <thread_pool.hpp>
 #include <compressed_bitset.hpp>
 
+
 namespace kmer
 {
     namespace detail
     {
-        // optimized consteval pow
-        constexpr size_t fast_pow(size_t base, size_t exp)
-        {
-            int result = 1ul;
-            for (;;)
-            {
-                if (exp & 1ul)
-                    result *= base;
-                exp >>= 1ul;
-                if (!exp)
-                    break;
-                base *= base;
-            }
-
-            return result;
-            // reference: https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int
-        }
-
         // represents a kmer index for a single k
         template<seqan3::alphabet alphabet_t, typename position_t, size_t k>
         class kmer_index_element
@@ -86,7 +70,7 @@ namespace kmer
                 template<typename iterator_t>
                 size_t hash_aux_aux(iterator_t query_it, size_t i) const
                 {
-                    return seqan3::to_rank(*query_it) * fast_pow(_sigma, k - i - 1);
+                    return seqan3::to_rank(*query_it) * kmer::detail::fast_pow(_sigma, k - i - 1);
                 }
 
                 template<typename iterator_t, size_t... is>
@@ -149,18 +133,20 @@ namespace kmer
                     auto it = prefix_begin;
                     size_t prefix_hash = 0;
                     for (size_t i = 0; i < size; ++i)
+                    {
                         prefix_hash += seqan3::to_rank(*it++) * fast_pow(_sigma, k - i - 1);
+                    }
 
                     //c.f. addendum below
                     size_t lower_bound = 0 + prefix_hash;
-                    size_t upper_bound = fast_pow(_sigma, size) - (1 / _sigma) + prefix_hash;
+                    size_t upper_bound = kmer::detail::fast_pow(_sigma, size) - (1 / _sigma) + prefix_hash;
                     size_t step_size = 1;
 
                     std::vector<const std::vector<position_t>*> output;
 
                     // bc stepsize is 1, just add number of possible hashes to lower_bound;
                     for (size_t hash = lower_bound;
-                         hash < lower_bound + fast_pow(_sigma, k - size); hash += step_size)
+                         hash < lower_bound + kmer::detail::fast_pow(_sigma, k - size); hash += step_size)
                     {
                         const auto* pos = at(hash);
                         if (pos != nullptr)

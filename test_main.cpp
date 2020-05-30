@@ -14,7 +14,7 @@ using alphabet_1 = seqan3::dna4;
 using alphabet_2 = seqan3::dna15;
 
 constexpr size_t k_0 = 1, k_1 = 5, k_2 = 10;
-constexpr size_t text_size = 100000;
+constexpr size_t text_size = 1000000;
 
 static size_t seed = 0;
 
@@ -28,7 +28,7 @@ void run_test()
         auto kmer = kmer::make_kmer_index<k>(text);
         auto fm = seqan3::fm_index(text);
 
-        for (size_t query_size = 1; query_size < 2*k; query_size++)
+        for (size_t query_size = 3; query_size < 2*k; query_size++)
         {
             auto query = input.generate_sequence(query_size);
 
@@ -71,13 +71,6 @@ int main()
 {
     seqan3::debug_stream << "starting test...\n";
 
-    run_test<alphabet_1, k_0>();
-    run_test<alphabet_2, k_0>();
-
-    run_test<alphabet_1, k_1>();
-    run_test<alphabet_2, k_1>();
-
-    run_test<alphabet_1, k_2>();
     run_test<alphabet_2, k_2>();
 
     seqan3::debug_stream << "\ntest succesfull.\n";

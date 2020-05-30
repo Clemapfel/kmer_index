@@ -3,4 +3,6 @@
 // Copyright (c) 2020 Clemens Cords. All rights reserved.
 //
 
-#include <benchmarks/benchmarks.hpp
+#include <benchmarks/benchmarks.hpp>
+
+int main()
