@@ -20,6 +20,8 @@
 #include <functional>
 #include <thread_pool.hpp>
 
+#include <benchmarks/benchmarks.hpp>
+
 using namespace seqan3;
 using alphabet_t = dna15;
 constexpr size_t k = 10;
@@ -58,6 +60,10 @@ void force_error(std::vector<alphabet_t> query, size_t seed)
 
 int main()
 {
+    benchmark_input<seqan3::dna4> input(1000, 1000);
+
+    benchmark::RegisterBenchmark("test", &kmer_search<seqan3::dna4, 10>);//, input);
+
     force_error("Y"_dna15, 5001);
     return 0;
 

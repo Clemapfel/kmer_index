@@ -54,14 +54,14 @@ void register_all(int argc, char** argv)
 /* EXECUTABLE ARGUMENTS:
 --benchmark_format=console
 --benchmark_counters_tabular=true
---benchmark_out=/home/clem/Documents/Workspace/kmer_index/source/benchmarks/da_heuristic_vs_no_heuristic/raw.csv
+--benchmark_out=/srv/public/clemenscords/main_benchmark/raw.csv
 --benchmark_out_format=csv
---benchmark_repetitions=10
+--benchmark_repetitions=100
 --benchmark_report_aggregates_only=false
  */
 
 int main(int argc, char** argv)
 {
     register_all<10, 11, 12, 13, 15>(argc, argv);
-    //cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/da_heuristic_vs_no_heuristic/raw.csv");
+    cleanup_csv("/srv/public/clemenscords/main_benchmark/raw.csv");
 }

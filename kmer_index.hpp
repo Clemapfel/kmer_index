@@ -189,6 +189,8 @@ namespace kmer
                 // search any query, bevahior (and thus runtime) dependend on query length
                 virtual result_t search(std::vector<alphabet_t>& query) const
                 {
+                    assert(query.size() > 0);
+
                     // for query.size() = m == k, just do a single lookup in the map
                     if (query.size() == k)
                     {
@@ -456,7 +458,7 @@ namespace kmer
 
             // search single query with index_element<k> directly
             template<size_t k>
-            result_t search(std::vector<alphabet_t>& query) const
+            result_t single_search(std::vector<alphabet_t>& query) const
             {
                 return index_element_t<k>::search(query);
             }

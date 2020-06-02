@@ -26,7 +26,7 @@ static void single_kmer_search(benchmark::State& state, size_t text_length, size
     auto text = input.generate_sequence(text_length);
     auto queries = input.generate_queries(100000, query_length);
 
-    auto index = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
+    auto index = kmer::detail::kmer_index_element<seqan3::dna4, k, uint32_t>(text);
 
     size_t i = 0;
     for (auto _ : state)
