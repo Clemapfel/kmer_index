@@ -1,0 +1,306 @@
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Implementing and evaluation a k-mer index optimized for exact string matching
+\end_layout
+
+\begin_layout Author
+Author: Clemens Cords, FU Berlin
+\end_layout
+
+\begin_layout Abstract
+As demand for large-scale genomic sequence matching rises, so does TODO.
+ A Kmer Index optimized for only exact string matching was implemented and
+ it's performance measure with large-scale benchmarks.
+ It is shown that the runtime is heavily dependent on the size of the query
+ relative to k and the number of results of the query in the text.
+ Appropriate choice of k can vastly increase performance and should be chosen
+ as high as possible (k > 20 if the machines memory permits so) and so that
+ query.size() % k is a low as possible.
+ Finally a systematic comparison between exact search performance against
+ the FM and BI-FM index is carried out.
+ With an approriately chosen k while avoiding the queries that woudl trigger
+ the worst case, the kmer index performs up to TODO: PERCENT faster.
+ While implementation defined optimization may push the kmer index even
+ further, the author recommends usage in situations that require exact string
+ matching and have consistently predictable query sizes.
+ Furthermore a two-pronged approach of using the (bi-)fm index for approximate
+ queries and the kmer index for exact queries may proof superior to just
+ using either on their own.
+\end_layout
+
+\begin_layout Section*
+Motivation
+\end_layout
+
+\begin_layout Standard
+TODO:
+\end_layout
+
+\begin_layout Section
+Glossary & Data
+\end_layout
+
+\begin_layout Standard
+A k-mer (also known as 
+\begin_inset Quotes eld
+\end_inset
+
+q-gram
+\begin_inset Quotes erd
+\end_inset
+
+, henceforth written as 
+\begin_inset Quotes eld
+\end_inset
+
+kmer
+\begin_inset Quotes erd
+\end_inset
+
+) is any (usually) genomic sequence of length k.
+ A kmer index is constructed by iterating through the text, saving all positions
+ for the occuring kmers.
+ With a simple lookup the kmer index can return all positions of the given
+ kmer or the number of occurences.
+ To save on memory, kmers are hashed and lookup and storage use this hashed
+ form.
+ The hash used has the following formula:
+\end_layout
+
+\begin_layout LyX-Code
+let 
+\begin_inset Formula $kmer$
+\end_inset
+
+ = 
+\begin_inset Formula $(q_{0,}q_{1,}...,q_{k})$
+\end_inset
+
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+where 
+\begin_inset Formula $q_{i}\in A$
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout LyX-Code
+\begin_inset Formula $hash(kmer)$
+\end_inset
+
+ = 
+\begin_inset Formula $\sum_{i=0}^{k}$
+\end_inset
+
+
+\begin_inset Formula $rank(q_{i})\:\sigma^{k-i-1}$
+\end_inset
+
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+where 
+\begin_inset Formula $\sigma=\#A$
+\end_inset
+
+ , 
+\begin_inset Formula $rank(q_{i})\in\{0,1,...,\sigma-1\}$
+\end_inset
+
+ 
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+While not having the best performance, this hash provides adequate TODO:
+ entropy? and avoid hash collisions.
+ Furthermore the kmer index was compared against the (bi-) fm implementations
+ of seqan3 [SEQAN CITATION] which also uses the above hash for their library.
+\end_layout
+
+\begin_layout Standard
+To better understand the construction and structure of the index, consider
+ this example:
+\end_layout
+
+\begin_layout LyX-Code
+let k = 3
+\end_layout
+
+\begin_layout LyX-Code
+let text = 
+\bar under
+A C G T C G T
+\end_layout
+
+\begin_layout LyX-Code
+           A C G 
+\end_layout
+
+\begin_layout LyX-Code
+             C G T 
+\end_layout
+
+\begin_layout LyX-Code
+               G T C 
+\end_layout
+
+\begin_layout LyX-Code
+                 T C G 
+\end_layout
+
+\begin_layout LyX-Code
+           
+\bar under
+        C G T
+\end_layout
+
+\begin_layout LyX-Code
+           0 1 2 3 4 5 6 
+\end_layout
+
+\begin_layout Standard
+As the index iterates through the text, it logs the positions of the kmer,
+ if a kmer happens multiple times the position is added to the already existing
+ map.
+\end_layout
+
+\begin_layout LyX-Code
+let data = 
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+hash(ACG) =  6 | 0
+\end_layout
+
+\begin_layout LyX-Code
+hash(CGT) = 27 | 1, 4
+\end_layout
+
+\begin_layout LyX-Code
+hash(GTC) = 45 | 2
+\end_layout
+
+\begin_layout LyX-Code
+hash(TCG) = 54 | 3
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+Because the construction method has to iterate through each position of
+ the text, the complexity of this construction is 
+\begin_inset Formula $\Theta(n)$
+\end_inset
+
+ (where 
+\begin_inset Formula $n$
+\end_inset
+
+ is the number of characters in the text.
+ For performance reasons, an unordered map is chosen to represent the data
+ (c.f.
+ section <TODO> 
+\begin_inset Quotes eld
+\end_inset
+
+optimization
+\begin_inset Quotes erd
+\end_inset
+
+).
+ 
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\end_body
+\end_document
