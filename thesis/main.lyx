@@ -5,6 +5,15 @@
 \save_transient_properties true
 \origin unavailable
 \textclass article
+\begin_preamble
+\definecolor{gray}{rgb}{0.5, 0.5, 0.5}
+\definecolor{keyword}{RGB}{243, 60, 114}
+\definecolor{comment}{RGB}{0, 215, 106}
+\definecolor{background}{rgb}{0.9, 0.9, 0.9}
+
+\usepackage{listings}
+\usepackage{xparse}
+\end_preamble
 \use_default_options true
 \maintain_unincluded_children false
 \language english
@@ -13,7 +22,7 @@
 \fontencoding global
 \font_roman "default" "default"
 \font_sans "default" "default"
-\font_typewriter "default" "default"
+\font_typewriter "beramono" "default"
 \font_math "auto" "auto"
 \font_default_family default
 \use_non_tex_fonts false
@@ -27,6 +36,7 @@
 \bibtex_command default
 \index_command default
 \paperfontsize default
+\spacing single
 \use_hyperref false
 \papersize default
 \use_geometry false
@@ -61,6 +71,7 @@
 \papercolumns 1
 \papersides 1
 \paperpagestyle default
+\listings_params "keywordstyle={\bfseries \color{keyword}},commentstyle={\color{comment}},caption={Search function for exact matches for a query of size 0 < m < k $^{[1]}$},captionpos=b,backgroundcolor={\color{background}},basicstyle={\ttfamily},language={C++},numbers=left,captionpos=b,tabsize=2"
 \tracking_changes false
 \output_changes false
 \html_math_output 0
@@ -71,7 +82,8 @@
 \begin_body
 
 \begin_layout Title
-Implementing and evaluation a k-mer index optimized for exact string matching
+Implementation and performance evaluation of a k-mer index for exact string
+ matching
 \end_layout
 
 \begin_layout Author
@@ -144,7 +156,7 @@ let
 \end_inset
 
  = 
-\begin_inset Formula $(q_{0,}q_{1,}...,q_{k})$
+\begin_inset Formula $(q_{1},\,q_{2},\,...,q_{k})$
 \end_inset
 
  
@@ -165,11 +177,7 @@ where
 \end_inset
 
  = 
-\begin_inset Formula $\sum_{i=0}^{k}$
-\end_inset
-
-
-\begin_inset Formula $rank(q_{i})\:\sigma^{k-i-1}$
+\begin_inset Formula $\sum_{i=0}^{k}\:rank(q_{i})\:\sigma^{k-i-1}$
 \end_inset
 
  
@@ -290,7 +298,131 @@ optimization
  
 \end_layout
 
+\begin_layout Section
+Searching
+\end_layout
+
 \begin_layout Standard
+As will be demonstrated later on, time it takes to search a query is highly
+ variable and mostly dependent on query size.
+ Because of the nature of only being able to directly search kmers rather
+ than sequences of any length, any query needs to be broken up into parts
+ of k which can then be search independently 
+\end_layout
+
+\begin_layout Subsection
+query.size() == k
+\end_layout
+
+\begin_layout Standard
+The easiest and thus best performing <todo: citation to benchmarks> case
+ are queries of lengths exactly k.
+ For these a simple lookup can return all results at once.
+ 
+\end_layout
+
+\begin_layout LyX-Code
+\begin_inset listings
+lstparams "language={[GNU]C++},tabsize=4"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// members of kmer index
+\end_layout
+
+\begin_layout Plain Layout
+
+unordered_map<size_t, std::vector<size_t>> _data;
+\end_layout
+
+\begin_layout Plain Layout
+
+size_t hash(std::vector<query> q) {...};
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+template<std::ranges::range range_t>
+\end_layout
+
+\begin_layout Plain Layout
+
+std::vector<size_t> search_k(range_t& query)
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+	assert(query.size() == k);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+	const auto* it = _data.at(hash(query));
+\end_layout
+
+\begin_layout Plain Layout
+
+	if (it == _data.end())
+\end_layout
+
+\begin_layout Plain Layout
+
+		return std::vector<size_t>();
+\end_layout
+
+\begin_layout Plain Layout
+
+	else 
+\end_layout
+
+\begin_layout Plain Layout
+
+		return *it;
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+Search function for exact matches for a query of size k 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+{$^{[1]}$}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
 
 \end_layout
 
@@ -298,8 +430,1095 @@ optimization
 
 \end_layout
 
-\begin_layout LyX-Code
+\begin_layout Standard
+By the nature of using an unordered map, it has 
+\begin_inset Quotes eld
+\end_inset
 
+average constant-time complexity
+\begin_inset Quotes erd
+\end_inset
+
+ dependent on the number of entries of map 
+\begin_inset Formula $\#H_{text}$
+\end_inset
+
+ (where 
+\begin_inset Formula $H_{text}\coloneqq$
+\end_inset
+
+ set of different hashes occurring in text.) <TODO: citation for complexity>
+\end_layout
+
+\begin_layout Standard
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Code examples used here are only for the purpose of demonstration and may
+ not be identical to the code used in the actual implementation
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+query.size() < k
+\end_layout
+
+\begin_layout Standard
+To be able to search a query of arbitrary length the index has to be able
+ to search queries that have a length smaller than k.
+ Without modifying the structure of the index significantly one method to
+ do this is to search for all kmers that contain the query as a prefix:
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+let 
+\begin_inset Formula $query=(q_{1},\,q_{2},\,...,\,q_{m})$
+\end_inset
+
+ where 
+\begin_inset Formula $m<k$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+for an arbitrary 
+\begin_inset Formula $kmer=(s_{1},\,...,\,s_{k})$
+\end_inset
+
+ it holds true that 
+\end_layout
+
+\begin_layout Standard
+if 
+\begin_inset Formula $\forall i<m:\:q_{i}=s_{i}$
+\end_inset
+
+ then any position 
+\begin_inset Formula $pos$
+\end_inset
+
+ of 
+\begin_inset Formula $kmer$
+\end_inset
+
+ is also a position of 
+\begin_inset Formula $query$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+because the 
+\begin_inset Formula $m$
+\end_inset
+
+ characters proceeding pos are 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $s_{0},\,...,\,s_{m},\,...,\,s_{k}$
+\end_inset
+
+ and 
+\begin_inset Formula $s_{0},\,...,\,s_{m}=q_{0},\,...,\,q_{m}=query$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\noindent
+To avoid generating all kmers that contain 
+\begin_inset Formula $query$
+\end_inset
+
+ as a prefix and then hashing them, we generate the hashes directly, skipping
+ that step and increasing performance:
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+let 
+\begin_inset Formula $hash(q_{1},\,q_{1},\,...,\,q_{m})=\sum_{i=0}^{k}\:rank(q_{i})\:\sigma^{k-i-1}=h_{q}$
+\end_inset
+
+, constant
+\end_layout
+
+\begin_layout Standard
+let 
+\begin_inset Formula $H\subset\mathbb{Z}^{+}\coloneqq$
+\end_inset
+
+set of all hashes with prefix equal to query
+\end_layout
+
+\begin_layout Standard
+let 
+\begin_inset Formula $h_{min},\:h_{max}:\:\forall h_{i}\in H:\:h_{min}\leq h_{i}\leq h_{max}$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+to find 
+\begin_inset Formula $h_{min}$
+\end_inset
+
+ we choose a query in h that has the lowest possible hash
+\end_layout
+
+\begin_layout Standard
+as 
+\begin_inset Formula $h_{min}$
+\end_inset
+
+has a prefix equal to 
+\begin_inset Formula $query$
+\end_inset
+
+ it holds true that 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $hash(h_{min})\geq h_{p}$
+\end_inset
+
+ because the first m summands of the hash are given
+\end_layout
+
+\begin_layout Standard
+we choose the other summands 
+\begin_inset Formula $rank(q_{i>m})\:\sigma^{k-i-1}$
+\end_inset
+
+to all be as small as possible: 
+\begin_inset Formula $\forall q_{i}:\:rank(q_{i})=0$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+thus 
+\begin_inset Formula $h_{min}=h_{p}+\sum_{i=m}^{k}\:0*\sigma^{k-i-1}=h_{p}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+to find 
+\begin_inset Formula $h_{max}$
+\end_inset
+
+ again we know that the first m summands of the hash are given by 
+\begin_inset Formula $h_{p}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+analogously we choose the other summands to be as big as possible: 
+\begin_inset Formula $\forall q_{i}:\;rank(q_{i})=\sigma-1$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+thus 
+\begin_inset Formula $^{[2]}$
+\end_inset
+
+ it holds that 
+\begin_inset Formula $h_{max}=h_{p}+\sum_{i=m}^{k}\:(\sigma-1)\:\sigma^{k-i-1}=h_{p}+\sigma-\sigma^{-1}$
+\end_inset
+
+ because
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $\sum_{i=m}^{k}\,(\sigma-1)\:\sigma^{k-i-1}=(\sum_{i=m}^{k}\,\sigma^{k-i})-(\sum_{i=m}^{k}\,\sigma^{k-i})$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where 
+\begin_inset Formula $(\sum_{i=m}^{k}\,\sigma^{k-i})=(\sum_{i=m}^{k}\:\sigma^{k})-(\sum_{i=m}^{k}\,\frac{1}{\sigma^{i}})=(k-m)\,\sigma^{k}-(\sum_{i=m}^{k}\,\frac{1}{\sigma^{i}})=(k-m)\,\sigma^{k}-\sum_{i=m}^{k}\,\sigma^{-i}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $=(k-m)\,\sigma^{k}-\frac{\sigma^{-k}-\sigma^{1-m}}{1-\sigma}$
+\end_inset
+
+ (<citation: geometric sunm)
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $=$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+expression was simplified computationally with a program capable of symbolic
+ algebraic operations such as matlabs 
+\begin_inset Formula $simplify(expr)$
+\end_inset
+
+ as expression did not factor into the actual implementation of the index
+ because as described above using 
+\begin_inset Formula $h_{p}+\sigma^{k-m}$
+\end_inset
+
+ was far less costly performance wise
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "language={[GNU]C++},numbers=left,basicstyle={\normalsize\ttfamily},tabsize=2"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// member of kmer index
+\end_layout
+
+\begin_layout Plain Layout
+
+constexpr size_t _sigma = ...
+ // alphabet size
+\end_layout
+
+\begin_layout Plain Layout
+
+std::vector<size_t> check_last_kmer(...
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+template<std::ranges::range range_t>
+\end_layout
+
+\begin_layout Plain Layout
+
+std::vector<size_t> search_sub_k(range_t& query)
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+	size_t size = query.size();
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+	// generate bounds of set of all hashes 
+\end_layout
+
+\begin_layout Plain Layout
+
+	// for kmers that have query as prefix
+\end_layout
+
+\begin_layout Plain Layout
+
+	size_t prefix_hash = hash(query);
+\end_layout
+
+\begin_layout Plain Layout
+
+	size_t lower_bound = 0 + prefix_hash;
+\end_layout
+
+\begin_layout Plain Layout
+
+	size_t upper_bound = prefix_hash + pow(_sigma, k-size);
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\end_layout
+
+\begin_layout Plain Layout
+
+	// lookup each hash and return
+\end_layout
+
+\begin_layout Plain Layout
+
+	std::vector<size_t> output_positions;
+\end_layout
+
+\begin_layout Plain Layout
+
+	for (size_t h = lower_bound; h < upper_bound; ++h) 
+\end_layout
+
+\begin_layout Plain Layout
+
+	{
+\end_layout
+
+\begin_layout Plain Layout
+
+		for (size_t pos : _data.at(h))
+\end_layout
+
+\begin_layout Plain Layout
+
+			output_positions.push_back(pos)
+\end_layout
+
+\begin_layout Plain Layout
+
+	}
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\end_layout
+
+\begin_layout Plain Layout
+
+	// cover edge case for last kmer
+\end_layout
+
+\begin_layout Plain Layout
+
+	for (size_t pos : check_last_kmer(query))
+\end_layout
+
+\begin_layout Plain Layout
+
+		output_positions.push_back(pos);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+	return output_positions;
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+Search function for exact matches for a query of size 0 < m < k 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+$^{[1]}$
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Multi-kmer Index
+\end_layout
+
+\begin_layout Standard
+As evident from section 2, the search performance is very highly variable
+ depending on mostly the length of the query in relationship to k.
+ To investigate this further a benchmark was conducted: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename /home/clem/Documents/Workspace/kmer_index/source/benchmarks/kmer_vs_fm_over_query_size/k10_search_over_query.png
+	lyxscale 50
+	width 100text%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\shape italic
+\size small
+Graph demonstrating the highly variable search performance of the kmer index,
+ the inset graph is showing a 
+\begin_inset Quotes eld
+\end_inset
+
+zoomed in
+\begin_inset Quotes erd
+\end_inset
+
+ view of the area for query lengths 16 to 20.
+ The grey dotted lines mark query lengths for which 
+\begin_inset Formula $query\;length%\%k=0
+$
+\end_inset
+
+ 
+\begin_inset Newline newline
+\end_inset
+
+(The continous nature of the line is only for visual representative purposes
+ as all query lengths can only be unsigned integers)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Benchmark results show a predicatble pattern, the search performance is
+ at it's worst for k+1.
+ This is explained through the way the search function works, for a query
+ of length k+1 it first searches the first kmer, however to find positions
+ for the rest it has to generate the hashes for all kmers with fixed prefix
+ of one
+\end_layout
+
+\begin_layout Section
+Implementation defined Optimization
+\end_layout
+
+\begin_layout Standard
+While few of the ideas here improve the theoretical performance of the kmer
+ index, certain implementation choices contributed significantly to it having
+ a chance to outpace the fm index.
+ Picking C++ as the language of choice was an intentional decision made
+ to allow the author to have flexibility <TODO>
+\end_layout
+
+\begin_layout Subsection
+Choice of Map
+\end_layout
+
+\begin_layout Standard
+As an unordered map is the basica data structure that holds the positions
+ for kmers and quering it makes up the a bulk of the search calls performance,
+ it was important to choose the best possible performing map.
+ Both 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{std::unordered_map}
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{boost::unordered_map}
+\end_layout
+
+\end_inset
+
+ were initially tested but proved to be not performant enough.
+ After setting a baseline 
+\begin_inset Quotes eld
+\end_inset
+
+optimal
+\begin_inset Quotes erd
+\end_inset
+
+ runtime by implementing a direct adress hashmap <TODO: citation to dead
+ code> the author settled on 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{robin_hood::unordered_map}
+\end_layout
+
+\end_inset
+
+ <TODO: link blog article, link robin_hood git>.
+ Benchmarks indicated it to perform extremely well <TODO: cite benchmark>
+ to the point where the direct adress hashmap was cut from the index completely
+ and 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{robin_hood::unoredered_map}
+\end_layout
+
+\end_inset
+
+ was chosen to be the data type of choice in all situations.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+pagebreak
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Hash Implementation
+\end_layout
+
+\begin_layout Standard
+While seqan3 provides 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{seqan3::views::kmer_hash}
+\end_layout
+
+\end_inset
+
+ it is optimized for queries of length > k.
+ Instead a hash function specifically for kmers was implemented:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "language={C++},basicstyle={\ttfamily},tabsize=2"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+constexpr size_t fast_pow(size_t base, char exp) { ...
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+template<typename iterator_t>
+\end_layout
+
+\begin_layout Plain Layout
+
+size_t hash_aux(iterator_t query_it, size_t i) const 
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+	return (...
+ + to_rank(*query_it++) * fast_pow(_sigma, k-i-1);
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+template<typename iterator_t>
+\end_layout
+
+\begin_layout Plain Layout
+
+size_t hash(iterator_t query_it) const
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+	auto it = query_it;
+\end_layout
+
+\begin_layout Plain Layout
+
+	return hash_aux(it, std::make_index_sequence<k>());
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+Hash function to hash a single query of length k.
+ 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+{$^{[1]}$}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+Instead of a conventional for-loop, a fold expression was used.
+ As the query is always of length k and both k and 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ are known at compile time, this allows the compiler to partially unwrap
+ the expression and precompute 
+\begin_inset Formula $\sigma^{k-i-1}$
+\end_inset
+
+ for all 
+\begin_inset Formula $i\in\{0,\,1,\,...,\,k\}$
+\end_inset
+
+.
+ To facilitate this, a better performing <TODO: cite benchmark pow> constexpr
+ version of pow was used.
+ As the hash function is called everytime a map lookup is executed, making
+ this as optimal as possible should provide a significant performance boost.
+ 
+\end_layout
+
+\begin_layout Subsection
+Returning by Reference
+\end_layout
+
+\begin_layout Standard
+As we've seen in section <TODO>, for queries of length 
+\begin_inset Formula $m:\:m=k$
+\end_inset
+
+ the returned positions of the query are simply the entry in the map for
+ the corresponding hash.
+ However for 
+\begin_inset Formula $m:\:m>k\,\land\,m\%k=0$
+\end_inset
+
+ there may not be any entry in the map that exactly corresponds to the positions
+ of the query, while all positions for it are from the corresponding vector
+ in the map for hash of the first k characters, not all positions in the
+ vector are correct, some have to be thrown out.
+ For 
+\begin_inset Formula $m:\:m<k$
+\end_inset
+
+ there may not be a single vector in the map that represents all positions,
+ as all kmer with the prefix equal to query are valid positions, the resulting
+ positions correspond to multiple vector in the actual map.
+ Performance wise this proves problematic, copying many positions into a
+ result vector as well as allocating that result vector introduce a huge
+ overhead that is unexceptable.
+ To fix this a result class was created that simply holds the references
+ to the correct vectors as well as information about which results within
+ those are valid (as needed for the 
+\begin_inset Formula $m:\:m>k\,\land\,m\%k=0$
+\end_inset
+
+ case):
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+struct kmer_index_result 
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+	private: 
+\end_layout
+
+\begin_layout Plain Layout
+
+		class kmer_index_result_iterator {...}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+		// bool vector equivalent that 
+\end_layout
+
+\begin_layout Plain Layout
+
+		// specifies for each position in _positions
+\end_layout
+
+\begin_layout Plain Layout
+
+		// wether or not it should be used 
+\end_layout
+
+\begin_layout Plain Layout
+
+		compressed_bitvector _bitmask;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+		// pointer to positions held by 
+\end_layout
+
+\begin_layout Plain Layout
+
+		// map of kmer_index
+\end_layout
+
+\begin_layout Plain Layout
+
+		std::vector<const std::vector<size_t>*> _positions;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+		(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+	public:
+\end_layout
+
+\begin_layout Plain Layout
+
+		// CTOR
+\end_layout
+
+\begin_layout Plain Layout
+
+		kmer_index_result(...
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+		// usable as range
+\end_layout
+
+\begin_layout Plain Layout
+
+		kmer_index_result_iterator begin();
+\end_layout
+
+\begin_layout Plain Layout
+
+		kmer_index_result_iterator end();
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+// member of kmer_index: search query of any length
+\end_layout
+
+\begin_layout Plain Layout
+
+template<std::ranges::range query_t>
+\end_layout
+
+\begin_layout Plain Layout
+
+kmer_index_result search(query_t&& query);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+// in main: result simply usable as range
+\end_layout
+
+\begin_layout Plain Layout
+
+auto index = kmer_index<...>(text);
+\end_layout
+
+\begin_layout Plain Layout
+
+auto result = index.search(query);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+for (auto position : result)
+\end_layout
+
+\begin_layout Plain Layout
+
+	std::cout << result << "
+\backslash
+n";
+\end_layout
+
+\begin_layout Plain Layout
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+The kmer index returns the above defined kmer_index_result.
+ It can be used like any other range, here illustrated in 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{//main}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+The result only holds the pointers to the corresponding vectors of positions
+ inside the kmer index.
+ This allows for construction of the result to be minimal, it only needs
+ to move the pointers into 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{_positions}
+\end_layout
+
+\end_inset
+
+ and initialize 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{_bitmask}
+\end_layout
+
+\end_inset
+
+.
+ During the search call, the kmer index signals to the result which positions
+ should be used and which should be discarded, however none of them are
+ actually removed from the vectors, instead when the results is evaluated
+ later on, it only returns valid positions and skips past the ones marked
+ as invalid <TODO: cite code>.
+ This removes the need to allocate a vector of positions and improves search
+ performance dramatically while not sacrificing usability.
+ 
 \end_layout
 
 \end_body

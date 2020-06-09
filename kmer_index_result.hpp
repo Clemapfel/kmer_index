@@ -231,7 +231,7 @@ namespace kmer::detail
             {
             }
 
-            // CTOR: used by subk search
+            // CTOR: used by subk searchs
             explicit kmer_index_result(std::vector<const std::vector<position_t>*> positions, bool zero_or_one = true)
                     : _positions(positions.begin(), positions.end()),
                       _bitmask([&positions]() {

@@ -15,7 +15,7 @@
 #include <seqan3/search/search.hpp>
 
 size_t n_benchmarks_registered = 0;
-size_t seed = 0;
+size_t seed = 200;
 
 // [SEQ] exact fm search
 template<seqan3::alphabet alphabet_t>
@@ -47,9 +47,12 @@ static void fm_search(benchmark::State& state, size_t text_length, size_t query_
     state.counters["text_length"] = text_length;
     state.counters["query_length"] = query_length;
     state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
-    state.counters["error_occured"] = error_occurred;
+    state.counters["error_occurred"] = error_occurred;
 
     seed++;
+
+    if (error_occurred)
+        exit(1);
 }
 
 
@@ -83,9 +86,12 @@ static void bi_fm_search(benchmark::State& state, size_t text_length, size_t que
     state.counters["text_length"] = text_length;
     state.counters["query_length"] = query_length;
     state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
-    state.counters["error_occured"] = error_occurred;
+    state.counters["error_occurred"] = error_occurred;
 
     seed++;
+
+    if (error_occurred)
+        exit(1);
 }
 
 
@@ -120,49 +126,25 @@ static void kmer_search(benchmark::State& state, size_t text_length, size_t quer
     state.counters["query_length"] = query_length;
     state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
     state.counters["k"] = k;
-    state.counters["error_occured"] = error_occurred;
+    state.counters["error_occurred"] = error_occurred;
     seed++;
-}
-
-template<size_t k>
-void register_kmer_benchmark(size_t text_length, size_t min_query_length, size_t max_query_length)
-{
-    for (size_t query_length = min_query_length; query_length < max_query_length; ++query_length)
-    {
-        benchmark::RegisterBenchmark("kmer_search", &kmer_search<seqan3::dna4, k>, text_length, query_length);
-        n_benchmarks_registered += 1;
-    }
 }
 
 constexpr size_t text_length = 1000000;
 
-template<size_t... ks>
+template<size_t k>
 void register_all()
 {
-    (register_kmer_benchmark<ks>(text_length, ks - 2, 6*ks), ...);
-
-    /*
-    std::vector<size_t> _all_ks = {ks...};
-    size_t min_k = std::numeric_limits<size_t>::max();
-    size_t max_k = 0;
-
-    for (size_t k : _all_ks)
+    for (size_t query_length = 7; query_length <= 10*k; ++query_length)
     {
-        if (k < min_k)
-            min_k = k;
-        if (k > max_k)
-            max_k = k;
-    }
+        if (query_length % k > 10)
+            continue;
 
+        benchmark::RegisterBenchmark("kmer_search", &kmer_search<seqan3::dna4, k>, text_length, query_length);
+        benchmark::RegisterBenchmark("fm_search", &fm_search<seqan3::dna4>, text_length, query_length);
 
-    for (size_t query_length = 1; query_length < 6*max_k; query_length++)
-    {
-        if (query_length >= 149)
-            benchmark::RegisterBenchmark("fm_search", &fm_search<seqan3::dna4>, text_length, query_length);
-
-        benchmark::RegisterBenchmark("bi_fm_search", &fm_search<seqan3::dna4>, text_length, query_length);
         n_benchmarks_registered += 2;
-    }*/
+    }
 
     seqan3::debug_stream << n_benchmarks_registered << " benchmarks registered.\n";
 }
@@ -171,11 +153,10 @@ void register_all()
 
 int main(int argc, char** argv)
 {
-    register_all<17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>();
+    register_all<10>();
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
     //cleanup_csv("/srv/public/clemenscords/kmer_vs_fm/raw.csv");
-
 }

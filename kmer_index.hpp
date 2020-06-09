@@ -68,7 +68,7 @@ namespace kmer
                 // hash a query of length k, optimized by compiler unwrapping fold expression bc k is constexpr
                 // aux_aux redundant but forces proper order of evaluation during unwrap
                 template<typename iterator_t>
-                size_t hash_aux_aux(iterator_t query_it, size_t i) const
+                _size_t hash_aux_aux(iterator_t query_it, size_t i) const
                 {
                     return seqan3::to_rank(*query_it) * kmer::detail::fast_pow(_sigma, k - i - 1);
                 }
@@ -130,6 +130,15 @@ namespace kmer
                 std::vector<const std::vector<position_t>*>
                 get_position_for_all_kmer_with_prefix(iterator_t prefix_begin, size_t size) const
                 {
+                    if (fast_pow(_sigma, k-size) >= 5e5)
+                    {
+                        std::cerr << "[WARNING] lookup of query with size " << size << " with kmer for k = " << k
+                                  << "may take a long time";
+
+                        if (fast_pow(_sigma, k-size) >= 2e7)
+                            throw std::invalid_argument("invalid query, please choose a different k");
+                    }
+
                     auto it = prefix_begin;
                     size_t prefix_hash = 0;
                     for (size_t i = 0; i < size; ++i)
@@ -139,14 +148,15 @@ namespace kmer
 
                     //c.f. addendum below
                     size_t lower_bound = 0 + prefix_hash;
-                    size_t upper_bound = kmer::detail::fast_pow(_sigma, size) - (1 / _sigma) + prefix_hash;
+                    size_t n_hashes =  kmer::detail::fast_pow(_sigma, k - size);
+                    size_t upper_bound = lower_bound + n_hashes;
                     size_t step_size = 1;
 
                     std::vector<const std::vector<position_t>*> output;
 
                     // bc stepsize is 1, just add number of possible hashes to lower_bound;
                     for (size_t hash = lower_bound;
-                         hash < lower_bound + kmer::detail::fast_pow(_sigma, k - size); hash += step_size)
+                         hash < upper_bound; hash += step_size)
                     {
                         const auto* pos = at(hash);
                         if (pos != nullptr)
@@ -176,7 +186,7 @@ namespace kmer
                     //      The last char contributes sigma^(k-k-1-1) = sigma^0 = 1 to the hash sum
                     //
                     //   Thus to generate all hashes in H we calculate the lower bound min(H) = h_p,
-                    //   the upper bound max(H) = h_p + sigma^m - 1/sigma and go stepwise by 1 from minimum
+                    //   the upper bound max(H) = h_p + sigma^m - 1/sigma and go stepwis se by 1 from minimum
                     //   maximum. This is to the authors knowledge the fastest way to generate all hashes in H.
                     //   For the implementation max(H) = h_p + sigma^(k-m) is used, since min(H) = h_p and
                     //   #H = sigma^(k-m) and every hash is 1 higher than the previous hash
@@ -208,14 +218,20 @@ namespace kmer
                         // get positions for nk parts
                         std::vector<const std::vector<position_t>*> nk_positions;
 
+                        int last_hash = -1;
+
                         for (size_t i = 0; i < query.size() - rest_n; i += k)
                         {
-                            const auto* pos = at(hash(query.begin() + i));
+                            // tiny optimization: skip map query if part has the same hash
+                            size_t hash = hash(query.begin() + i);
+                            const auto* pos = (hash != last_hash ? at(hash) : nk_positions.back());
 
                             if (pos)
                                 nk_positions.push_back(pos);
                             else
                                 return result_t();
+
+                            last_hash = hash;
                         }
 
                         // precompute rest positions
@@ -295,7 +311,7 @@ namespace kmer
                         {
                             result_t output(nk_positions.at(0), false);
 
-                            for (size_t start_pos_i = 0; start_pos_i < nk_positions.at(0)->size(); ++start_pos_i)
+                            for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
                             {
                                 size_t previous_pos = nk_positions.front()->at(start_pos_i);
 
@@ -397,7 +413,6 @@ namespace kmer
             template<size_t k>
             using index_element_t = detail::kmer_index_element<alphabet_t, position_t, k>;
             using index_t = kmer_index<alphabet_t, position_t, ks...>;
-            using result_t = detail::kmer_index_result<position_t>;
 
             // preallocate list of all ks as it is used often
             inline const static std::vector<size_t> _all_ks = std::vector<size_t>{ks...};
@@ -458,7 +473,7 @@ namespace kmer
 
             // search single query with index_element<k> directly
             template<size_t k>
-            result_t single_search(std::vector<alphabet_t>& query) const
+            result_t search(std::vector<alphabet_t>& query) const
             {
                 return index_element_t<k>::search(query);
             }
@@ -477,7 +492,7 @@ namespace kmer
                     {
                         // c.f. addendum
                         size_t k = _all_ks.at(optimal_k_i);
-                        if ((query.size() & (k - 1)) <= (query.size() & (optimal_k - 1)))   // i % n = i & i-1
+                        if ((query.size() & (k - 1)) <= (query.size() & (optimal_k - 1)))   // i % n = i & n-1
                             optimal_k = k;
                     }
                 }

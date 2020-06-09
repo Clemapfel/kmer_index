@@ -20,14 +20,14 @@
 #include <functional>
 #include <thread_pool.hpp>
 
-#include <benchmarks/benchmarks.hpp>
+//#include <benchmarks/benchmarks.hpp>
 
 using namespace seqan3;
-using alphabet_t = dna15;
-constexpr size_t k = 10;
-constexpr size_t text_size = 100000;
+using alphabet_t = dna4;
+constexpr size_t k = 5;
+constexpr size_t text_size = 1000000;
 
-void force_error(std::vector<alphabet_t> query, size_t seed)
+void force_error(std::vector<alphabet_t> query, float seed)
 {
     auto input = input_generator<alphabet_t>(seed);
     auto text = input.generate_text(text_size, {});
@@ -60,22 +60,23 @@ void force_error(std::vector<alphabet_t> query, size_t seed)
 
 int main()
 {
-    benchmark_input<seqan3::dna4> input(1000, 1000);
-
-    benchmark::RegisterBenchmark("test", &kmer_search<seqan3::dna4, 10>);//, input);
-
-    force_error("Y"_dna15, 5001);
-    return 0;
-
-    /*
-    for (size_t i = 0; i < 10000; ++i)
+    size_t i = 0;
+    auto text = "ACGTCGT"_dna4;
+    for (auto hash : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{3}}))
     {
-        auto input = input_generator<dna4>(i);
+        seqan3::debug_stream << i << " | " << hash << "\n";
+        i++;
+    }
+    /*
+    for (float seed = 2100.5; seed < 2200; seed++)
+    {
+        auto input = input_generator<dna4>(seed);
         auto text = input.generate_text(text_size, {});
-        auto kmer = kmer_index_element<seqan3::dna4, k, uint32_t>(text);
+        auto kmer = kmer::make_kmer_index<k>(text);
         auto fm = fm_index(text);
 
-        for (size_t query_size : {1ul, k-2, k-1, k, k+1, k+2, 2*k, 2*k+1, 3*k, 5*k, 10*k})
+        //for (size_t query_size = 2*k; query_size < 3*k+1; ++query_size)
+        size_t query_size = 18;
         {
             auto query = input.generate_sequence(query_size);
 
@@ -87,22 +88,21 @@ int main()
 
             auto equal = fm_result == kmer_result;
 
-            if (equal)
-                seqan3::debug_stream << "TRUE ";
-            else
-            {
-                seqan3::debug_stream << "\n\nNOT EQUAL FOR QUERY " << query << " (" << query.size() << ")\n"
-                                     << "\nFM : " << fm_result << "\n\n KMER : " << kmer_result << "\n";
-                seqan3::debug_stream << "query size = " << query_size << "\nseed = " << i << "\n"
-                <<  "difference (fm - kmer) = " << int(fm_result.size()) - int(kmer_result.size()) << "\n";
+            seqan3::debug_stream //<< "\nFM : " << fm_result << "\n\n KMER : " << kmer_result << "\n"
+                    << "_____________________\n" << (equal ? "" : "NOT ") << "EQUAL FOR QUERY " << query << " (" << query.size() << ")\n";
+            seqan3::debug_stream << "seed = " << seed << "\n"
+                                 << "difference (fm - kmer) = " << int(fm_result.size()) - int(kmer_result.size())
+                                 << "\n"
+                                 << "k = " << k << "\n"
+                                 << "text_size = " << text_size << "\n";
 
-                std::vector<uint32_t> diff;
-                std::set_difference(fm_result.begin(), fm_result.end(), kmer_result.begin(), kmer_result.end(), std::inserter(diff, diff.begin()));
-                seqan3::debug_stream << diff;
-                exit(1);
-            }
+            std::vector<uint32_t> diff;
+            std::set_difference(fm_result.begin(), fm_result.end(), kmer_result.begin(), kmer_result.end(),
+                                std::inserter(diff, diff.begin()));
+            seqan3::debug_stream << diff;
         }
     }
+
 
     return 0;
 

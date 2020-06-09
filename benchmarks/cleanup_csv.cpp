@@ -12,7 +12,7 @@ void cleanup_csv(std::string path)
 
     if (file_in.fail())
     {
-        std::cerr << "Error opening file " + path + "\naborting...";
+        std::cerr << "Error opening file " + path + "\naborting...\n";
         return;
     }
 
@@ -33,7 +33,7 @@ void cleanup_csv(std::string path)
 
     if (file_out.fail())
     {
-        std::cerr << "Error opening file " + out_path + "\naborting...";
+        std::cerr << "Error opening file " + out_path + "\naborting...\n";
         return;
     }
 
@@ -62,4 +62,6 @@ void cleanup_csv(std::string path)
 
     file_in.close();
     file_out.close();
+
+    std::cout << "saved as " << out_path << "\n";
 }
