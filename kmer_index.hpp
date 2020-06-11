@@ -68,7 +68,7 @@ namespace kmer
                 // hash a query of length k, optimized by compiler unwrapping fold expression bc k is constexpr
                 // aux_aux redundant but forces proper order of evaluation during unwrap
                 template<typename iterator_t>
-                _size_t hash_aux_aux(iterator_t query_it, size_t i) const
+                size_t hash_aux_aux(iterator_t query_it, size_t i) const
                 {
                     return seqan3::to_rank(*query_it) * kmer::detail::fast_pow(_sigma, k - i - 1);
                 }

@@ -71,7 +71,7 @@
 \papercolumns 1
 \papersides 1
 \paperpagestyle default
-\listings_params "keywordstyle={\bfseries \color{keyword}},commentstyle={\color{comment}},caption={Search function for exact matches for a query of size 0 < m < k $^{[1]}$},captionpos=b,backgroundcolor={\color{background}},basicstyle={\ttfamily},language={C++},numbers=left,captionpos=b,tabsize=2"
+\listings_params "keywordstyle={\bfseries \color{keyword}},commentstyle={\color{comment}},caption={Search function for exact matches for a query of size 0 < m < k $^{[1]}$},captionpos=b,backgroundcolor={\color{background}},basicstyle={\ttfamily\small},language={C++},numbers=left,captionpos=b,tabsize=2"
 \tracking_changes false
 \output_changes false
 \html_math_output 0
@@ -986,7 +986,98 @@ Benchmark results show a predicatble pattern, the search performance is
  This is explained through the way the search function works, for a query
  of length k+1 it first searches the first kmer, however to find positions
  for the rest it has to generate the hashes for all kmers with fixed prefix
- of one
+ of one, for the given example of k = 10 this means the function has to
+ generate and lookup 
+\begin_inset Formula $\sigma^{k-query.size()}=4^{9}=262144$
+\end_inset
+
+ hashes which is very costly.
+ Note that the worst case peaks lower as the query size increases.
+ This is because during the search in section 2.3 the results for all the
+ k-long parts of the query has to be crossreferenced:
+\end_layout
+
+\begin_layout Standard
+For query 
+\begin_inset Formula $q=(q_{1},\:...,\,q_{m})$
+\end_inset
+
+ size 
+\begin_inset Formula $m:\,m=n*k+rest$
+\end_inset
+
+ with 
+\begin_inset Formula $n\in\{2,\,3,\,...\}\:\land0<r<k$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+let 
+\begin_inset Formula $p_{n}\coloneqq(q_{n},\,...,q_{2n-1})$
+\end_inset
+
+ be the 
+\begin_inset Formula $n$
+\end_inset
+
+ths k-long section of query and 
+\begin_inset Formula $\#R_{n}=r(p_{n})$
+\end_inset
+
+ the number of results for that kmer 
+\end_layout
+
+\begin_layout Standard
+then the crossreferencing (c.f.
+ line <TODO: code) takes at most 
+\begin_inset Formula $\Theta(r_{0}*r_{1}*...*r_{n}*r((q_{m-rest},\,...,\,q_{m})))$
+\end_inset
+
+ comparisons 
+\end_layout
+
+\begin_layout Standard
+where 
+\begin_inset Formula $r((q_{n*k},\,...,\,q_{m})))$
+\end_inset
+
+ is the number of result for the last part of length 
+\begin_inset Formula $rest<k$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+This is because for each resut 
+\begin_inset Formula $result_{n}\in R_{n}:n<m-rest$
+\end_inset
+
+ the code has to check if there is a result in 
+\begin_inset Formula $result_{n+1}\in R_{n+1}$
+\end_inset
+
+ so that 
+\begin_inset Formula $result_{n+1}=result_{n}+k$
+\end_inset
+
+ to confirm that that query actually occurs there.
+ 
+\end_layout
+
+\begin_layout Standard
+Because of this the performance for nk-searches scales significantly with
+ the number of results.
+ However the amortized complexity detailed above assume that the code will
+ finish every comparison while in actual implementation it will stop once
+ a position is deconfirmed.
+ By increasing the query size in a fixed size text the number of results
+ for that query will also decrease.
+ This is why the peak worst case performances for the searches becomes lower
+ as the query grows, a longer query means less results and less results
+ means the search function can abort earlier which saves runtime.
 \end_layout
 
 \begin_layout Section
@@ -1519,6 +1610,161 @@ lstinline{_bitmask}
  This removes the need to allocate a vector of positions and improves search
  performance dramatically while not sacrificing usability.
  
+\end_layout
+
+\begin_layout Section
+Addendum
+\end_layout
+
+\begin_layout Subsection
+Choosing the fastes pow
+\end_layout
+
+\begin_layout Standard
+By the nature of the hash used to hash kmers in the kmer index, exponentiation
+ (pow() in programming terms) is used everywhere, however exclusively with
+ positive integers.
+ Furthermore all pow functions need to be able to be evaluated at compile
+ time (c.f.
+ section <TODO>) It was thus imperative to choose the most optimal pow implement
+ation.
+ A benchmark was conducted for 4 different implementations and the results
+ were compared:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{trivial_pow(base,n)}
+\end_layout
+
+\end_inset
+
+: A trivial implementation calling base*base n -many times
+\end_layout
+
+\begin_layout Itemize
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{recursive_pow(base,n)}
+\end_layout
+
+\end_inset
+
+: Utilizing a recursive approach, the function calls itself recursively
+ n-many times and then evaluates each call bottom-up to then return the
+ correct result base on wether the exponent was odd or even
+\end_layout
+
+\begin_layout Itemize
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{bit_pow(base,n)}
+\end_layout
+
+\end_inset
+
+: Rather than using 
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{operator*}
+\end_layout
+
+\end_inset
+
+
+\lang english
+ for multiplication, this implementation utilizes equivalent bit operations
+ which are generally more well-optimized on modern machines
+\end_layout
+
+\begin_layout Itemize
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{switch_pow(base,n)}
+\end_layout
+
+\end_inset
+
+: Instead of using a loop, this implementation has multiple switch cases
+ with identical code, when the function is called a lookup in a constexpr
+ table produces the correct first switch case to start with and then the
+ results falls through the rest of them the correct number of times.
+ Any exponentiation that would overflow the unsigned 64-bit integer result
+ is immediately caught and 0 is returned instead.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/clem/Documents/Workspace/kmer_index/source/benchmarks/pow_vs_pow/pow_vs_pow.png
+	lyxscale 15
+	width 100text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Boxplot showing runtime (y-axis log scaled) for different pow implementations.
+ The notches represent the confidence interval around the median.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As clearly evident from the benchmarks, the approach switch_pow took vastly
+ outpaces the others and as such was used for the kmer_index implmentation
+ wherever possible.
 \end_layout
 
 \end_body

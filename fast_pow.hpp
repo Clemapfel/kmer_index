@@ -3,24 +3,97 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdlib>
 
-// copied from: https://gist.github.com/orlp/3551590 (slightly altered to be constexpr)
+// reference used: https://gist.github.com/orlp/3551590
 
 namespace kmer::detail
 {
-    // fastest pow according to pow benchmark c.f. pow_vs_pow/main.cpp
+
+    // highly optimized pow for size_t
+
+    constexpr uint8_t highest_bit_set[] =
+    {
+            0, 1, 2, 2, 3, 3, 3, 3,
+            4, 4, 4, 4, 4, 4, 4, 4,
+            5, 5, 5, 5, 5, 5, 5, 5,
+            5, 5, 5, 5, 5, 5, 5, 5,
+            6, 6, 6, 6, 6, 6, 6, 6,
+            6, 6, 6, 6, 6, 6, 6, 6,
+            6, 6, 6, 6, 6, 6, 6, 6,
+            6, 6, 6, 6, 6, 6, 6, 255, // anything past 63 is a guaranteed overflow with base > 1
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255,
+    };
+
     constexpr size_t fast_pow(size_t base, uint8_t exp)
     {
-        unsigned long result = 1;
-        while (exp > 0)
+        size_t result = 1;
+
+        // instead of loop result will fall through the switch starting at position according to highest_bit_set
+        // will skip all computation if result would overflow
+        switch (highest_bit_set[exp])
         {
-            if ((exp & 1ul) == 1)   // i % n = i & n-1
-                result = result * base;
+            case 255: // overflow
+                if (base == 1)
+                {
+                    return 1;
+                }
+                else
+                    return 0;
 
-            exp = exp >> 1ul;
-            base = base * base;
+            case 6:
+                if (exp & 1) result *= base;
+                exp >>= 1;
+                base *= base;
+
+            case 5:
+                if (exp & 1) result *= base;
+                exp >>= 1;
+                base *= base;
+
+            case 4:
+                if (exp & 1) result *= base;
+                exp >>= 1;
+                base *= base;
+
+            case 3:
+                if (exp & 1) result *= base;
+                exp >>= 1;
+                base *= base;
+
+            case 2:
+                if (exp & 1) result *= base;
+                exp >>= 1;
+                base *= base;
+
+            case 1:
+                if (exp & 1) result *= base;
+
+            default:
+                return result;
         }
-
-        return result;
     }
 }
