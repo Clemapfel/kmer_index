@@ -11,8 +11,11 @@ plot <- qplot(data_median$query_length,
               data_median$real_time,
               geom = "line",
               xlab = "query length",
-              ylab = "runtime (ns)",
-              main = "kmer index exact search runtime per query length for k = 10, text length = 1000000")
+              ylab = "runtime (ns)")
+
+plot = plot + ggtitle(label="kmer index exact search runtime per query length for k = 10, text length = 1000000",
+                      subtitle = "(5 benchmark cycles per query length, search queries randomized each call)")
+plot = plot + theme(plot.title=element_text(face="bold"))
 
 # add horizontal lines for each k
 for (i in 1:6) {
@@ -21,7 +24,6 @@ for (i in 1:6) {
 }
 
 plot <- plot + scale_x_continuous(breaks=append(9:25, seq(30, 60, 10)))
-plot <- plot + theme(plot.title = element_text(face = "bold"))
 
 # inset plot zooming in on 15:20
 data_zoomed <- data_median[data_median$query_length > 15 & data_median$query_length <= 20,]

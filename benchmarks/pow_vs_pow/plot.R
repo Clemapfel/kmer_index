@@ -21,7 +21,8 @@ plot <- qplot(name,
               xlab = "",
               ylab = "log(runtime)",
               #ylim = c(90, 230),
-              main = "runtime distribution for different pow implementations (base and exponent randomized each call)",
               fill = name)
 
+plot = plot + ggtitle(label="runtime distribution for different pow implementations", subtitle = "(base and exponent randomized each call, 100 benchmark cycles per pow implementation)")
+plot = plot + theme(plot.title=element_text(face="bold"))
 ggsave("pow_vs_pow.png", plot,  width=30, height=15, units="cm")

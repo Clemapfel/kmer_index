@@ -38,14 +38,14 @@ create_plot <- function(data, k, yscale=30, use_lab = FALSE) {
 
     temp <- data[data$k == k,]
     temp <- filter_extremes(temp,interval)
-    min = round_to_lower_10(min(temp$real_time))
+    min = round_to_nice(min(temp$real_time))
     y_seq = seq(min, min+yscale, 5)
 
     plot <- qplot(name, real_time, data=temp, fill=name, geom="boxplot", main=paste("k = ", k), xlab="")
     plot <- plot + theme(legend.position="none") + stat_summary(fun="mean", geom="point", shape=mean_point_shape, size=mean_point_size)
 
     if (use_lab) {
-        plot = plot + scale_y_continuous(labels=y_seq, breaks=y_seq, limit=c(min, min+yscale))
+        plot = plot + scale_y_continuous(name = "real time (ns)", labels=y_seq, breaks=y_seq, limit=c(min, min+yscale))
         first = FALSE
     }
     else {
@@ -66,7 +66,7 @@ interval = 0.999
 mean_point_size = 6
 mean_point_shape = 4
 
-yscale = 40;
+yscale = 35;
 
 plot5 <- create_plot(data, 5, yscale, TRUE)
 plot10 <- create_plot(data, 10, yscale)
@@ -75,9 +75,10 @@ plot20 <- create_plot(data, 20, yscale)
 plot25 <- create_plot(data, 25, yscale)
 
 plot <- grid.arrange(plot5, plot10, plot15, plot20, plot25, ncol=5,
-                     top=textGrob("hash performance for queries of length k"),
+                     top=textGrob("hash performance for queries of length k\n(100 benchmark cycles per hash implmentation, queries randomized each call)"),
                      right=legendGrob(c("mean"), pch=c(mean_point_shape)))
 
+ggsave("hash_vs_hash.png", plot, width=30, height=15, units="cm")
 
 
 

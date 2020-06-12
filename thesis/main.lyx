@@ -401,7 +401,6 @@ std::vector<size_t> search_k(range_t& query)
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-
 Search function for exact matches for a query of size k 
 \begin_inset ERT
 status open
@@ -890,7 +889,6 @@ std::vector<size_t> search_sub_k(range_t& query)
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-
 Search function for exact matches for a query of size 0 < m < k 
 \begin_inset ERT
 status open
@@ -932,23 +930,23 @@ sideways false
 status open
 
 \begin_layout Plain Layout
-\align center
 \begin_inset Graphics
 	filename /home/clem/Documents/Workspace/kmer_index/source/benchmarks/kmer_vs_fm_over_query_size/k10_search_over_query.png
-	lyxscale 50
+	lyxscale 10
 	width 100text%
 
 \end_inset
 
 
+\end_layout
+
+\begin_layout Plain Layout
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-
-\shape italic
-\size small
-Graph demonstrating the highly variable search performance of the kmer index,
- the inset graph is showing a 
+Graph demonstrating the highly variable search performance of the kmer index
+ based on query length.
+ The inset graph is showing a 
 \begin_inset Quotes eld
 \end_inset
 
@@ -956,18 +954,8 @@ zoomed in
 \begin_inset Quotes erd
 \end_inset
 
- view of the area for query lengths 16 to 20.
- The grey dotted lines mark query lengths for which 
-\begin_inset Formula $query\;length%\%k=0
-$
-\end_inset
-
- 
-\begin_inset Newline newline
-\end_inset
-
-(The continous nature of the line is only for visual representative purposes
- as all query lengths can only be unsigned integers)
+ view of the are for query length 16 to 20.
+ The grey dotted lines mark query length that are a multiple of k
 \end_layout
 
 \end_inset
@@ -1286,7 +1274,6 @@ size_t hash(iterator_t query_it) const
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-
 Hash function to hash a single query of length k.
  
 \begin_inset ERT
@@ -1617,7 +1604,7 @@ Addendum
 \end_layout
 
 \begin_layout Subsection
-Choosing the fastes pow
+Choosing the fastes Pow Implementation
 \end_layout
 
 \begin_layout Standard
@@ -1680,7 +1667,6 @@ lstinline{bit_pow(base,n)}
 \end_inset
 
 : Rather than using 
-
 \begin_inset ERT
 status open
 
@@ -1693,8 +1679,6 @@ lstinline{operator*}
 
 \end_inset
 
-
-\lang english
  for multiplication, this implementation utilizes equivalent bit operations
  which are generally more well-optimized on modern machines
 \end_layout
@@ -1765,6 +1749,317 @@ Boxplot showing runtime (y-axis log scaled) for different pow implementations.
 As clearly evident from the benchmarks, the approach switch_pow took vastly
  outpaces the others and as such was used for the kmer_index implmentation
  wherever possible.
+\end_layout
+
+\begin_layout Subsection
+Choosing the fastest Hash Implementation
+\end_layout
+
+\begin_layout Standard
+Simiarly to pow, the result of the hash function transforming a kmer into
+ a 64-bit integer is integral to the index function and optimizing it's
+ runtime as much as possible is very advantageous.
+ Two hash implementations were compared:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+constexpr uint8_t _sigma = alphabet_size<alphabet_t>;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+static size_t hash_for(iterator_t query_begin)
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+	size_t hash = 0;
+\end_layout
+
+\begin_layout Plain Layout
+
+	for (size_t i = 0; i < k; ++i)
+\end_layout
+
+\begin_layout Plain Layout
+
+		hash += to_rank(*it++) * pow(_sigma, k-i-1)
+\end_layout
+
+\begin_layout Plain Layout
+
+	return hash;
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+Trivial implementation for kmer hash utilizing a simple for loop
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+template<size_t...
+ is>
+\end_layout
+
+\begin_layout Plain Layout
+
+static size_t hash_fold_aux(iterator_t it, 
+\end_layout
+
+\begin_layout Plain Layout
+
+	std::index_sequence<is...> sequence)
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+	return (...
+ + to_rank(*it) * pow(_sigma, k-is-1))
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+static size_t hash_fold(iterator_t query_begin)
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+	return hash_fold_aux(query_begin, std::make_index_sequence<k>()
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+Implementation of hash function utilizing fold expression
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{hash_fold}
+\end_layout
+
+\end_inset
+
+ uses the fact that both k, 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ and pow are all available at compile time.
+ This allows the compiler to unwrap the fold expression and calculate all
+ factors 
+\begin_inset Formula $pow(\sigma,\,k-i-1)\,:i\in\{0,1,2,...,k\}$
+\end_inset
+
+at compile time thus increasing runtime performance.
+ To illustrate this a benchmark was conducted comparing both hash-implementation
+ for randomized kmers of length 
+\begin_inset Formula $k\in\{5,\,10,\,15,\,20,\,25\}$
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/clem/Documents/Workspace/kmer_index/source/benchmarks/hash_vs_hash/hash_vs_hash.png
+	lyxscale 10
+	width 100text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Multiple boxplots for different k showing distribution of runtime results
+ for hash implementations (y-axes have been normalized to the same scale
+ to enable valid comparison between graphs) 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Benchmarks results show that for all tested k the fold-expression implemetation
+ for the hash has superior median runtime
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Datapoints outside of the 99.9% confidence interval (correspondingly for
+ 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{hash_fold}
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{hash_for}
+\end_layout
+
+\end_inset
+
+ seperateley) have been discarded from the benchmark result times as they
+ represent random interference caused by other processes of the OS the benchmark
+ was run on.
+\end_layout
+
+\end_inset
+
+.
+ The relatively large variance in for all but 
+\begin_inset Formula $k=5$
+\end_inset
+
+ is believed to be cause interference in the benchmark environment.
+ For 
+\begin_inset Formula $k=5$
+\end_inset
+
+ 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{hash_fold}
+\end_layout
+
+\end_inset
+
+ is dramatically faster than 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{hash_for}
+\end_layout
+
+\end_inset
+
+ which may be attributed to cache-artifacts that allow the CPU to hold all
+ factors of the precalculated hash sum in the L1 cache improving access
+ times.
+ These results are indicitave that the fold implementation is more performant
+ and was thus choosen to be used by the kmer index whenever possible.
 \end_layout
 
 \end_body
