@@ -15,7 +15,7 @@ namespace kmer
     template<typename map_t, typename key_t=size_t, typename value_t=std::vector<uint32_t>>
     class map_proxy
     {
-        using inner_key_t = uint32_t;
+            using inner_value_t = uint32_t;
 
         private:
             map_t _data;
@@ -25,21 +25,21 @@ namespace kmer
         public:
             map_proxy() = default;
 
-        void insert(key_t hash, inner_key_t pos)
-        {
-            if (_data.find(hash) == _data.end())
-                _data.emplace(std::make_pair(hash, std::vector<uint32_t>()));
+            void insert(key_t hash, inner_value_t pos)
+            {
+                if (_data.find(hash) == _data.end())
+                    _data.emplace(std::make_pair(hash, std::vector<uint32_t>()));
 
-            _data[hash].push_back(pos);
-        }
+                _data[hash].push_back(pos);
+            }
 
-        const value_t* at(key_t hash)
-        {
-            if (_data.find(hash) == _data.end())
-                return &_empty;
-            else
-                return &_data.at(hash);
-        }
+            const value_t* at(key_t hash)
+            {
+                if (_data.find(hash) == _data.end())
+                    return &_empty;
+                else
+                    return &_data.at(hash);
+            }
     };
 
     using hash_t = size_t;
@@ -49,154 +49,6 @@ namespace kmer
     using boost_proxy = map_proxy<boost::unordered_map<hash_t, vec_t>>;
     using robin_hood_proxy = map_proxy<robin_hood::unordered_map<hash_t, vec_t>>;
     using abseil_proxy = map_proxy<absl::node_hash_map<hash_t, vec_t>>;
-
-    struct map_proxy
-    {
-        protected:
-            const std::vector<uint32_t> _empty{};
-
-        public:
-            virtual void insert(size_t hash, uint32_t pos) = 0;
-            virtual const std::vector<uint32_t>* at(size_t hash) = 0;
-    };
-
-    class direct_addressing_proxy : map_proxy
-    {
-        private:
-            std::vector<std::vector<uint32_t>> _data;
-            size_t _min_hash = std::numeric_limits<size_t>::max(), _max_hash = 0;
-
-        public:
-            direct_addressing_proxy()
-            {
-                _data.emplace_back();
-            }
-
-            void insert(size_t hash, uint32_t pos) override
-            {
-                // resize if necessary
-                if (hash < _min_hash)
-                {
-                    _data.insert(_data.begin(), std::labs(int(_min_hash) - int(hash)), std::vector<uint32_t>{});
-                    _min_hash = hash;
-                }
-                else if (hash > _max_hash)
-                {
-                    _data.insert(_data.end(), std::labs(int(hash) - int(_max_hash)), std::vector<uint32_t>{});
-                    _max_hash = hash;
-                }
-
-                _data[hash - _min_hash].push_back(pos);
-            }
-
-            const std::vector<uint32_t>* at(size_t hash) override
-            {
-                if (hash < _min_hash or hash > _max_hash)
-                    return &_empty;
-                else
-                    return &_data.at(hash - _min_hash);
-            }
-    };
-
-    class std_proxy : map_proxy
-    {
-        private:
-            std::unordered_map<size_t, std::vector<uint32_t>> _data;
-
-        public:
-            std_proxy() = default;
-
-            void insert(size_t hash, uint32_t pos) override
-            {
-                if (_data.find(hash) == _data.end())
-                    _data.emplace(std::make_pair(hash, std::vector<uint32_t>()));
-
-                _data[hash].push_back(pos);
-            }
-
-            const std::vector<uint32_t>* at(size_t hash) override
-            {
-                if (_data.find(hash) == _data.end())
-                    return &_empty;
-                else
-                    return &_data.at(hash);
-            }
-    };
-
-    class boost_proxy : map_proxy
-    {
-        private:
-            boost::unordered_map<size_t, std::vector<uint32_t>> _data;
-
-        public:
-            boost_proxy() = default;
-
-        void insert(size_t hash, uint32_t pos) override
-        {
-            if (_data.find(hash) == _data.end())
-                _data.emplace(std::make_pair(hash, std::vector<uint32_t>()));
-
-            _data[hash].push_back(pos);
-        }
-
-        const std::vector<uint32_t>* at(size_t hash) override
-        {
-            if (_data.find(hash) == _data.end())
-                return &_empty;
-            else
-                return &_data.at(hash);
-        }
-    };
-
-    class robin_hood_proxy : map_proxy
-    {
-        private:
-            robin_hood::unordered_map<size_t, std::vector<uint32_t>> _data;
-
-        public:
-            robin_hood_proxy() = default;
-
-            void insert(size_t hash, uint32_t pos) override
-            {
-                if (_data.find(hash) == _data.end())
-                    _data.emplace(hash, std::vector<uint32_t>());
-
-                _data[hash].push_back(pos);
-            }
-
-            const std::vector<uint32_t>* at(size_t hash) override
-            {
-                if (_data.find(hash) == _data.end())
-                    return &_empty;
-                else
-                    return &_data.at(hash);
-            }
-    };
-
-    class abseil_proxy : map_proxy
-    {
-        private:
-            absl::node_hash_map<size_t, std::vector<uint32_t>> _data;
-
-        public:
-            abseil_proxy() = default;
-
-            void insert(size_t hash, uint32_t pos) override
-            {
-                if (_data.find(hash) == _data.end())
-                    _data.emplace(hash, std::vector<uint32_t>());
-
-                _data[hash].push_back(pos);
-            }
-
-            const std::vector<uint32_t>* at(size_t hash) override
-            {
-                if (_data.find(hash) == _data.end())
-                    return &_empty;
-                else
-                    return &_data.at(hash);
-            }
-    };
 }
 
 // #################################################################
@@ -205,7 +57,7 @@ using hash_t = size_t;
 using value_t = std::vector<uint32_t>;
 
 constexpr size_t MIN_HASH = 0;
-constexpr size_t MAX_HASH = kmer::detail::fast_pow(4, 7);    // dna4 for k=exp
+constexpr size_t MAX_HASH = kmer::detail::fast_pow(4, 20);    // dna4 for k=exp
 
 size_t seed = 1234;
 
@@ -302,14 +154,18 @@ static void robin_hood_at(benchmark::State& state, size_t size)
 // main
 int main(int argc, char** argv)
 {
+    size_t n_benchmarks = 0;
+
+    /*
     // at
     for (size_t n = 0; n <= 2000000; n += 50000)
     {
-        benchmark::RegisterBenchmark("da_at", da_at, n);
-        benchmark::RegisterBenchmark("robin_hood_at", robin_hood_at, n);
-        benchmark::RegisterBenchmark("std_at", std_at, n);
+        benchmark::RegisterBenchmark("robin_hood", robin_hood_at, n);
+        benchmark::RegisterBenchmark("abseil", abseil_at, n);
+        benchmark::RegisterBenchmark("boost", boost_at, n);
+        benchmark::RegisterBenchmark("std", std_at, n);
 
-        n_benchmarks += 3;
+        n_benchmarks += 4;
     }
 
     std::cout << std::to_string(n_benchmarks) << " benchmarks registered.\n";
@@ -318,6 +174,8 @@ int main(int argc, char** argv)
     benchmark::RunSpecifiedBenchmarks();
 
     std::cout << "done.\n";
+     */
 
-    cleanup_csv("/srv/public/clemenscords/map_vs_map/raw.csv");
+    cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/map_vs_map/raw.csv");
+    return 0;
 }
