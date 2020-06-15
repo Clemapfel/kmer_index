@@ -1,42 +1,52 @@
 # Created by: clem
 # Created on: 6/12/20
 
-filter_extremes <- function(data, interval=0.975) {
+filter <- function(data, names, filter_percentage) {
 
-  # hash for
-  data_for <- data[data$name == "hash_for",]
-  mean_for <- mean(data_for$real_time)
-  stddev_for <- sd(data_for$real_time)
-  error_for <- qnorm(interval)*stddev_for/sqrt(nrow(data_for))
-  lower_for <- mean_for - error_for
-  upper_for <- mean_for + error_for
+    output <- data
+    for (name in names) {
 
-  # hash fold
-  data_fold <- data[data$name == "hash_fold",]
-  mean_fold <- mean(data_fold$real_time)
-  stddev_fold <- sd(data_fold$real_time)
-  error_fold <- qnorm(interval)*stddev_fold/sqrt(nrow(data_fold))
-  lower_fold <- mean_fold - error_fold
-  upper_fold <- mean_fold + error_fold
+      temp <- data[data$name == name,]
 
-  return(data[(data$name == "hash_for" & data$real_time < upper_for & data$real_time > lower_for)
-                |(data$name == "hash_fold" & data$real_time < upper_fold & data$real_time > lower_fold),])
+      print(nrow(temp))
+
+      mean <- mean(temp$real_time)
+      stddev <- sd(temp$real_time)
+      error <- qnorm(filter_percentage)*stddev/sqrt(nrow(temp))
+      lower_bound <- mean - error
+      upper_bound <- mean + error
+
+      output <- output[
+        (output$name == name & (output$real_time >= lower_bound & output$real_time <= upper_bound)) | output$name != name,]
+    }
+
+    return(output);
 }
 
 library(ggplot2)
 
 setwd("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/map_vs_map/")
-data <- read.csv("2020-06-12_18-36-59.csv")
-
-filter = 0.999;
+data <- read.csv("2020-06-15_14-54-21.csv")
 
 # filter out gbenchmark averages
 data_at <- data[data$name == "da_at" | data$name == "std_at" | data$name == "robin_hood_at",]
 
 plot_at <- qplot(name, real_time, data=data_at, fill=name, geom="boxplot")
-plot_at = plot_at + ggtitle(label="unordered_map::at(size_t) performance for different map implementations",
+plot_at = plot_at + ggtitle(label="unordered_map<size_t, std::vector<uint32_t>::at(size_t) performance",
                             subtitle="TODO")
 plot_at = plot_at + theme(plot.title=element_text(face="bold"))
+plot_at = plot_at + scale_fill_discrete(name = "name", labels = c("direct addressing", "robin_hood", "std"))
+
+plot_at
+
+
+
+
+
+
+
+
+
 
 data_insert <- data[data$name == "da_insert" | data$name == "std_insert" | data$name == "robin_hood_insert",]
 

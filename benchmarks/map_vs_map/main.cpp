@@ -2,12 +2,54 @@
 #include <benchmark/benchmark.h>
 #include <random>
 #include <benchmarks/cleanup_csv.hpp>
-#include <unordered_map>
-#include <robin_hood.h>
 #include <fast_pow.hpp>
+#include <iostream>
+
+#include <robin_hood.h>
+#include <unordered_map>
+#include <absl/container/node_hash_map.h>
+#include <boost/unordered_map.hpp>
 
 namespace kmer
 {
+    template<typename map_t, typename key_t=size_t, typename value_t=std::vector<uint32_t>>
+    class map_proxy
+    {
+        using inner_key_t = uint32_t;
+
+        private:
+            map_t _data;
+
+            const value_t _empty{};
+
+        public:
+            map_proxy() = default;
+
+        void insert(key_t hash, inner_key_t pos)
+        {
+            if (_data.find(hash) == _data.end())
+                _data.emplace(std::make_pair(hash, std::vector<uint32_t>()));
+
+            _data[hash].push_back(pos);
+        }
+
+        const value_t* at(key_t hash)
+        {
+            if (_data.find(hash) == _data.end())
+                return &_empty;
+            else
+                return &_data.at(hash);
+        }
+    };
+
+    using hash_t = size_t;
+    using vec_t = std::vector<uint32_t>;
+
+    using std_proxy = map_proxy<std::unordered_map<hash_t, vec_t>>;
+    using boost_proxy = map_proxy<boost::unordered_map<hash_t, vec_t>>;
+    using robin_hood_proxy = map_proxy<robin_hood::unordered_map<hash_t, vec_t>>;
+    using abseil_proxy = map_proxy<absl::node_hash_map<hash_t, vec_t>>;
+
     struct map_proxy
     {
         protected:
@@ -81,6 +123,31 @@ namespace kmer
             }
     };
 
+    class boost_proxy : map_proxy
+    {
+        private:
+            boost::unordered_map<size_t, std::vector<uint32_t>> _data;
+
+        public:
+            boost_proxy() = default;
+
+        void insert(size_t hash, uint32_t pos) override
+        {
+            if (_data.find(hash) == _data.end())
+                _data.emplace(std::make_pair(hash, std::vector<uint32_t>()));
+
+            _data[hash].push_back(pos);
+        }
+
+        const std::vector<uint32_t>* at(size_t hash) override
+        {
+            if (_data.find(hash) == _data.end())
+                return &_empty;
+            else
+                return &_data.at(hash);
+        }
+    };
+
     class robin_hood_proxy : map_proxy
     {
         private:
@@ -88,6 +155,31 @@ namespace kmer
 
         public:
             robin_hood_proxy() = default;
+
+            void insert(size_t hash, uint32_t pos) override
+            {
+                if (_data.find(hash) == _data.end())
+                    _data.emplace(hash, std::vector<uint32_t>());
+
+                _data[hash].push_back(pos);
+            }
+
+            const std::vector<uint32_t>* at(size_t hash) override
+            {
+                if (_data.find(hash) == _data.end())
+                    return &_empty;
+                else
+                    return &_data.at(hash);
+            }
+    };
+
+    class abseil_proxy : map_proxy
+    {
+        private:
+            absl::node_hash_map<size_t, std::vector<uint32_t>> _data;
+
+        public:
+            abseil_proxy() = default;
 
             void insert(size_t hash, uint32_t pos) override
             {
@@ -115,14 +207,13 @@ using value_t = std::vector<uint32_t>;
 constexpr size_t MIN_HASH = 0;
 constexpr size_t MAX_HASH = kmer::detail::fast_pow(4, 7);    // dna4 for k=exp
 
-constexpr size_t N_LEAFS = 1000000;
-
 size_t seed = 1234;
 
-// direct addressing
-static void std_insertion(benchmark::State& state)
+static void std_at(benchmark::State& state, size_t size)
 {
     state.counters["seed"] = seed;
+    state.counters["size"] = size;
+    state.counters["max_hash"] = MAX_HASH;
 
     kmer::std_proxy map;
     std::uniform_int_distribution<size_t> hash_dist(MIN_HASH, MAX_HASH);
@@ -131,27 +222,7 @@ static void std_insertion(benchmark::State& state)
     std::mt19937 engine(seed++);
 
     // fill first
-    for (size_t i = 0; i < N_LEAFS; ++i)
-        map.insert(hash_dist(engine), pos_dist(engine));
-
-    for (auto _ : state)
-    {
-        map.insert(hash_dist(engine), pos_dist(engine));
-    }
-}
-
-static void std_at(benchmark::State& state)
-{
-    state.counters["seed"] = seed;
-
-    kmer::std_proxy map;
-    std::uniform_int_distribution<size_t> hash_dist(MIN_HASH, MAX_HASH);
-    std::uniform_int_distribution<uint32_t> pos_dist(0, std::numeric_limits<uint32_t>::max() - 2);
-
-    std::mt19937 engine(seed++);
-
-    // fill first
-    for (size_t i = 0; i < N_LEAFS; ++i)
+    for (size_t i = 0; i < size; ++i)
         map.insert(hash_dist(engine), pos_dist(engine));
 
     for (auto _ : state)
@@ -160,39 +231,20 @@ static void std_at(benchmark::State& state)
     }
 }
 
-// direct addressing
-static void da_insertion(benchmark::State& state)
+static void abseil_at(benchmark::State& state, size_t size)
 {
     state.counters["seed"] = seed;
+    state.counters["size"] = size;
+    state.counters["max_hash"] = MAX_HASH;
 
-    kmer::direct_addressing_proxy map;
+    kmer::abseil_proxy map;
     std::uniform_int_distribution<size_t> hash_dist(MIN_HASH, MAX_HASH);
     std::uniform_int_distribution<uint32_t> pos_dist(0, std::numeric_limits<uint32_t>::max() - 2);
 
     std::mt19937 engine(seed++);
 
     // fill first
-    for (size_t i = 0; i < N_LEAFS; ++i)
-        map.insert(hash_dist(engine), pos_dist(engine));
-
-    for (auto _ : state)
-    {
-        map.insert(hash_dist(engine), pos_dist(engine));
-    }
-}
-
-static void da_at(benchmark::State& state)
-{
-    state.counters["seed"] = seed;
-
-    kmer::std_proxy map;
-    std::uniform_int_distribution<size_t> hash_dist(MIN_HASH, MAX_HASH);
-    std::uniform_int_distribution<uint32_t> pos_dist(0, std::numeric_limits<uint32_t>::max() - 2);
-
-    std::mt19937 engine(seed++);
-
-    // fill first
-    for (size_t i = 0; i < N_LEAFS; ++i)
+    for (size_t i = 0; i < size; ++i)
         map.insert(hash_dist(engine), pos_dist(engine));
 
     for (auto _ : state)
@@ -201,10 +253,33 @@ static void da_at(benchmark::State& state)
     }
 }
 
-// robin hood
-static void robin_hood_insertion(benchmark::State& state)
+static void boost_at(benchmark::State& state, size_t size)
 {
     state.counters["seed"] = seed;
+    state.counters["size"] = size;
+    state.counters["max_hash"] = MAX_HASH;
+
+    kmer::boost_proxy map;
+    std::uniform_int_distribution<size_t> hash_dist(MIN_HASH, MAX_HASH);
+    std::uniform_int_distribution<uint32_t> pos_dist(0, std::numeric_limits<uint32_t>::max() - 2);
+
+    std::mt19937 engine(seed++);
+
+    // fill first
+    for (size_t i = 0; i < size; ++i)
+        map.insert(hash_dist(engine), pos_dist(engine));
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(map.at(hash_dist(engine)));
+    }
+}
+
+static void robin_hood_at(benchmark::State& state, size_t size)
+{
+    state.counters["seed"] = seed;
+    state.counters["size"] = size;
+    state.counters["max_hash"] = MAX_HASH;
 
     kmer::robin_hood_proxy map;
     std::uniform_int_distribution<size_t> hash_dist(MIN_HASH, MAX_HASH);
@@ -213,27 +288,7 @@ static void robin_hood_insertion(benchmark::State& state)
     std::mt19937 engine(seed++);
 
     // fill first
-    for (size_t i = 0; i < N_LEAFS; ++i)
-        map.insert(hash_dist(engine), pos_dist(engine));
-
-    for (auto _ : state)
-    {
-        map.insert(hash_dist(engine), pos_dist(engine));
-    }
-}
-
-static void robin_hood_at(benchmark::State& state)
-{
-    state.counters["seed"] = seed;
-
-    kmer::std_proxy map;
-    std::uniform_int_distribution<size_t> hash_dist(MIN_HASH, MAX_HASH);
-    std::uniform_int_distribution<uint32_t> pos_dist(0, std::numeric_limits<uint32_t>::max() - 2);
-
-    std::mt19937 engine(seed++);
-
-    // fill first
-    for (size_t i = 0; i < N_LEAFS; ++i)
+    for (size_t i = 0; i < size; ++i)
         map.insert(hash_dist(engine), pos_dist(engine));
 
     for (auto _ : state)
@@ -242,21 +297,27 @@ static void robin_hood_at(benchmark::State& state)
     }
 }
 
-//./MAP_BENCHMARK_k10 --benchmark_format=console --benchmark_out=/srv/public/clemenscords/map_vs_map/raw.csv --benchmark_out_format=csv --benchmark_repetitions=100 --benchmark_report_aggregates_only=false
+//./MAP_BENCHMARK_K10 --benchmark_format=console --benchmark_out=/srv/public/clemenscords/map_vs_map/raw.csv --benchmark_out_format=csv --benchmark_repetitions=10 --benchmark_report_aggregates_only=false
 
 // main
 int main(int argc, char** argv)
 {
-    benchmark::RegisterBenchmark("da_insert", da_insertion);
-    benchmark::RegisterBenchmark("robin_hood_insert", robin_hood_insertion);
-    benchmark::RegisterBenchmark("std_insert", std_insertion);
+    // at
+    for (size_t n = 0; n <= 2000000; n += 50000)
+    {
+        benchmark::RegisterBenchmark("da_at", da_at, n);
+        benchmark::RegisterBenchmark("robin_hood_at", robin_hood_at, n);
+        benchmark::RegisterBenchmark("std_at", std_at, n);
 
-    benchmark::RegisterBenchmark("da_at", da_at);
-    benchmark::RegisterBenchmark("robin_hood_at", robin_hood_at);
-    benchmark::RegisterBenchmark("std_at", std_at);
+        n_benchmarks += 3;
+    }
+
+    std::cout << std::to_string(n_benchmarks) << " benchmarks registered.\n";
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
-    cleanup_csv("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/map_vs_map/raw.csv");
+    std::cout << "done.\n";
+
+    cleanup_csv("/srv/public/clemenscords/map_vs_map/raw.csv");
 }
