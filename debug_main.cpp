@@ -58,8 +58,51 @@ void force_error(std::vector<alphabet_t> query, float seed)
         exit(0);
 }
 
+template<size_t... ks>
+size_t pick_right_k(size_t query_size)
+{
+    auto _all_ks = std::vector<size_t>{ks...};
+    std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool {return a > b;});
+
+    size_t optimal_k = _all_ks.at(0);
+
+    if (_all_ks.size() > 1)
+    {
+        size_t optimal_k_i = 0;
+
+        for (optimal_k_i; optimal_k_i < _all_ks.size(); ++optimal_k_i)
+        {
+            // c.f. addendum
+            size_t k = _all_ks.at(optimal_k_i);
+            if (query_size % k == 0)
+            {
+                optimal_k = k;
+                break;
+            }
+            else if (query_size == k-1 or query_size == k-2)
+            {
+                optimal_k = k;
+                break;
+            }
+            else if (query_size % k <= query_size % optimal_k) // i % n = i & n-1
+            {
+                optimal_k = k;
+            }
+        }
+    }
+
+    return optimal_k;
+}
+
 int main()
 {
+
+    for (size_t q = 3; q < 40; ++q)
+    {
+        seqan3::debug_stream << "query " << q << " : picked " << pick_right_k<5, 7, 11>(q) << "\n";
+    }
+
+    /*
     size_t i = 0;
     auto text = "ACGTCGT"_dna4;
     for (auto hash : text | seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{3}}))

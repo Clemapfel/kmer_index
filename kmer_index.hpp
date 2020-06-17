@@ -133,7 +133,7 @@ namespace kmer
                     if (fast_pow(_sigma, k-size) >= 5e5)
                     {
                         std::cerr << "[WARNING] lookup of query with size " << size << " with kmer for k = " << k
-                                  << "may take a long time";
+                                  << " may take a long time\n";
 
                         if (fast_pow(_sigma, k-size) >= 2e7)
                             throw std::invalid_argument("invalid query, please choose a different k");
@@ -223,15 +223,15 @@ namespace kmer
                         for (size_t i = 0; i < query.size() - rest_n; i += k)
                         {
                             // tiny optimization: skip map query if part has the same hash
-                            size_t hash = hash(query.begin() + i);
-                            const auto* pos = (hash != last_hash ? at(hash) : nk_positions.back());
+                            size_t h = hash(query.begin() + i);
+                            const auto* pos = (h != last_hash ? at(h) : nk_positions.back());
 
                             if (pos)
                                 nk_positions.push_back(pos);
                             else
                                 return result_t();
 
-                            last_hash = hash;
+                            last_hash = h;
                         }
 
                         // precompute rest positions
@@ -413,9 +413,10 @@ namespace kmer
             template<size_t k>
             using index_element_t = detail::kmer_index_element<alphabet_t, position_t, k>;
             using index_t = kmer_index<alphabet_t, position_t, ks...>;
+            using result_t = detail::kmer_index_result<position_t>;
 
             // preallocate list of all ks as it is used often
-            inline const static std::vector<size_t> _all_ks = std::vector<size_t>{ks...};
+            inline static std::vector<size_t> _all_ks = std::vector<size_t>{ks...};
 
             // search for a specific k index_element has to be able to be called thus...
             template<size_t k>
@@ -460,15 +461,16 @@ namespace kmer
                     f.get();
 
                 // setup k_to_search_fn_i
-                size_t ks_i = 0;
-                for (size_t i = 0; i < _k_to_search_fns_i.size(); ++i)
-                    if (i == _all_ks.at(ks_i))
-                    {
-                        _k_to_search_fns_i[i] = ks_i;
-                        ks_i++;
-                    }
-                    else
-                        _k_to_search_fns_i[i] = -1;
+                std::fill(_k_to_search_fns_i.begin(), _k_to_search_fns_i.end(), -1);
+                size_t i = 0;
+                for (size_t k : _all_ks)
+                {
+                    _k_to_search_fns_i[k] = i;
+                    ++i;
+                }
+
+                // sort all_ks so bigger ks can be prioritized in search
+                std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool {return a > b;});
             }
 
             // search single query with index_element<k> directly
@@ -492,7 +494,12 @@ namespace kmer
                     {
                         // c.f. addendum
                         size_t k = _all_ks.at(optimal_k_i);
-                        if ((query.size() & (k - 1)) <= (query.size() & (optimal_k - 1)))   // i % n = i & n-1
+                        if (query.size() == k-1 or query.size() == k-2)
+                        {
+                            optimal_k = k;
+                            break;
+                        }
+                        else if ((query.size() & (k - 1)) <= (query.size() & (optimal_k - 1)))   // i % n = i & n-1
                             optimal_k = k;
                     }
                 }

@@ -25,10 +25,11 @@ void run_test()
     {
         auto input = input_generator<alphabet_t>(seed++);
         auto text = input.generate_sequence(text_size);
-        auto kmer = kmer::make_kmer_index<k>(text);
+        auto single_kmer = kmer::make_kmer_index<k>(text);
+        auto multi_kmer = kmer::make_kmer_index<k, k+1, k+2>(text);
         auto fm = seqan3::fm_index(text);
 
-        for (size_t query_size = 3; query_size < 2*k; query_size++)
+        for (size_t query_size = k-5; query_size < 2*k; query_size++)
         {
             auto query = input.generate_sequence(query_size);
 
@@ -37,23 +38,24 @@ void run_test()
             for (auto res : seqan3::search(query, fm))
                 fm_result.push_back(res.second);
 
-            std::vector<unsigned int> kmer_result = kmer.search(query).to_vector();
+            std::vector<unsigned int> single_kmer_result = single_kmer.search(query).to_vector();
+            std::vector<unsigned int> multi_kmer_result = multi_kmer.search(query).to_vector();
 
             // compare
-            bool equal = fm_result == kmer_result;
+            bool equal = (fm_result == single_kmer_result) and (fm_result == multi_kmer_result);
 
             if (not equal)
             {
-                seqan3::debug_stream << "NOT EQUAL FOR " << "\nQUERY " << query << " (" << query.size() << ")\n"
-                                     << "\nFM : " << fm_result << "\n\n KMER : " << kmer_result << "\n";
+                seqan3::debug_stream << "NOT EQUAL FOR " << "\nQUERY " << query << " (" << query.size() << ")\n";
                 seqan3::debug_stream << "query size = " << query.size() << "\nseed = " << seed << "\n"
-                                     << "difference (fm - kmer) = " << int(fm_result.size()) - int(kmer_result.size())
-                                     << "\n";
+                                     << "difference (fm - single) = " << int(fm_result.size()) - int(single_kmer_result.size()) << "\n"
+                                     << "difference (fm - multi) = " << int(fm_result.size()) - int(multi_kmer_result.size()) << "\n";
 
-                std::vector<uint32_t> diff;
-                std::set_difference(fm_result.begin(), fm_result.end(), kmer_result.begin(), kmer_result.end(),
+                /*
+                std::vector<uint32_t> single_diff;
+                std::set_difference(fm_result.begin(), fm_result.end(), single_kmer_result.begin(), single_kmer_result.end(),
                                     std::inserter(diff, diff.begin()));
-                seqan3::debug_stream << diff;
+                seqan3::debug_stream << diff;*/
 
                 exit(1);
             }
@@ -72,6 +74,8 @@ int main()
     seqan3::debug_stream << "starting test...\n";
 
     run_test<alphabet_2, k_2>();
+    run_test<alphabet_2, k_1>();
+    run_test<alphabet_2, k_0>();
 
     seqan3::debug_stream << "\ntest succesfull.\n";
 }
