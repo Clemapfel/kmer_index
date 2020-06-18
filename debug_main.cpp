@@ -74,17 +74,13 @@ size_t pick_right_k(size_t query_size)
         {
             // c.f. addendum
             size_t k = _all_ks.at(optimal_k_i);
-            if (query_size % k == 0)
+            if ((query_size & (k-1)) == 0)
             {
                 optimal_k = k;
                 break;
             }
-            else if (query_size == k-1 or query_size == k-2)
-            {
-                optimal_k = k;
-                break;
-            }
-            else if (query_size % k <= query_size % optimal_k) // i % n = i & n-1
+
+            if ((query_size & (k-1)) > (query_size & (optimal_k-1))) // i % n = i & n-1
             {
                 optimal_k = k;
             }
@@ -99,7 +95,8 @@ int main()
 
     for (size_t q = 3; q < 40; ++q)
     {
-        seqan3::debug_stream << "query " << q << " : picked " << pick_right_k<5, 7, 11>(q) << "\n";
+        size_t k = pick_right_k<5, 7, 11>(q);
+        seqan3::debug_stream << "query " << q << " : picked " << k << "(mod = " << q % k << "\n";
     }
 
     /*

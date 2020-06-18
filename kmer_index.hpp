@@ -484,22 +484,22 @@ namespace kmer
             // almost non-existent overhead compared to above search thanks to RVO through _search_fns
             result_t search(std::vector<alphabet_t>& query) const
             {
+                // pick best k to search with
                 size_t optimal_k = _all_ks.at(0);
 
                 if (_all_ks.size() > 1)
                 {
-                    size_t optimal_k_i = 0;
+                    size_t i = 0;
 
-                    for (optimal_k_i; optimal_k_i < _all_ks.size(); ++optimal_k_i)
+                    for (i; i < _all_ks.size(); ++i)
                     {
-                        // c.f. addendum
-                        size_t k = _all_ks.at(optimal_k_i);
-                        if (query.size() == k-1 or query.size() == k-2)
+                        size_t k = _all_ks.at(i);
+                        if ((query.size() & (k-1)) == 0) // i % n = i & n-1
                         {
                             optimal_k = k;
                             break;
                         }
-                        else if ((query.size() & (k - 1)) <= (query.size() & (optimal_k - 1)))   // i % n = i & n-1
+                        else if ((query.size() & (k - 1)) > (query.size() & (optimal_k - 1)))
                             optimal_k = k;
                     }
                 }
