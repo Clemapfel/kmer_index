@@ -135,8 +135,8 @@ namespace kmer
                         std::cerr << "[WARNING] lookup of query with size " << size << " with kmer for k = " << k
                                   << " may take a long time\n";
 
-                        if (fast_pow(_sigma, k-size) >= 2e7)
-                            throw std::invalid_argument("invalid query, please choose a different k");
+                        //if (fast_pow(_sigma, k-size) >= 2e7)
+                            //throw std::invalid_argument("invalid query, please choose a different k");
                     }
 
                     auto it = prefix_begin;

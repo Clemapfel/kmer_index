@@ -8,6 +8,7 @@
 #include <iostream>
 #include <algorithm>
 
+/*
 // pick best multiple k (TODO: make constexpr)
 std::vector<size_t> choose_best_k(
         std::vector<size_t> interval, // [in] vector of query sizes
@@ -64,4 +65,4 @@ std::vector<size_t> choose_best_k(
         output.push_back(k_and_score.at(i).first);
 
     return output;
-}
+}*/
