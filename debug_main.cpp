@@ -19,9 +19,48 @@
 #include <future>
 #include <functional>
 #include <thread_pool.hpp>
+#include <choose_best_k.hpp>
+
+int main()
+{
+    // why spike at : 15, 16, 34, 51, 71, 121
+    constexpr size_t n = 200;
+
+    std::vector<size_t> _all_ks = {21, 17, 15, 13, 10};
+    std::array<size_t, n> _optimal_k;
+    for (size_t query_size = 0; query_size < _optimal_k.size(); ++query_size)
+    {
+        // pick best k to search with
+        size_t optimal_k = _all_ks.front();
+
+        if (_all_ks.size() > 1)
+        {
+            for (size_t k : _all_ks)
+            {
+               if (query_size % k == 0)
+               {
+                   optimal_k = k;
+                   break;
+               }
+               // the next highest multiple of k is as close to query_size as possible
+               else if ((ceil(query_size / float(k))*k - query_size) < (ceil(query_size / float(optimal_k))*optimal_k - query_size))
+                   optimal_k = k;
+            }
+        }
+
+        _optimal_k[query_size] = optimal_k;
+    }
+
+    for (size_t i = 0; i < n; ++i)
+    {
+        seqan3::debug_stream << i << " | " << _optimal_k[i] << "\n";
+    }
+}
+
 
 //#include <benchmarks/benchmarks.hpp>
 
+/*
 using namespace seqan3;
 using alphabet_t = dna4;
 constexpr size_t k = 5;
@@ -168,6 +207,6 @@ int main()
     //seqan3::debug_stream << result_test << "\n";
 
     //seqan3::debug_stream << "kmer_old : " << result_true.size() << "\nkmer_new : " << result_test.size() << "\nfm : " << fm_result.size();
-    */
-}
 
+}
+*/

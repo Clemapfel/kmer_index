@@ -1184,6 +1184,7 @@ As evident from section 2, the search performance is very highly variable
 
 \begin_layout Standard
 \begin_inset Float figure
+placement H
 wide false
 sideways false
 status open
@@ -1228,103 +1229,213 @@ zoomed in
 \end_layout
 
 \begin_layout Standard
-Benchmark results show a predicatble pattern, the search performance is
- at it's worst for k+1.
- This is explained through the way the search function works, for a query
- of length k+1 it first searches the first kmer, however to find positions
- for the rest it has to generate the hashes for all kmers with fixed prefix
- of one, for the given example of k = 10 this means the function has to
- generate and lookup 
-\begin_inset Formula $\sigma^{k-query.size()}=4^{9}=262144$
+Benchmark results show a predicatble pattern, substantiating everything
+ explained in <TODO: section 2>: Worst case performance is at 
+\begin_inset Formula $k+1$
 \end_inset
 
- hashes which is very costly.
- Note that the worst case peaks lower as the query size increases.
- This is because during the search in section 2.3 the results for all the
- k-long parts of the query has to be crossreferenced:
+ (because that is where 
+\begin_inset Formula $k-(k\mod m)$
+\end_inset
+
+ is maximal, c.f.
+ <TODO: lemma 3>).
+ The peaks of the worst case lower as the query size increases because given
+ a fixed text size, the number of results for longer queries is statistically
+ likely to be lower which means the 
+\begin_inset Formula $m>k$
+\end_inset
+
+ search can 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{break}
 \end_layout
 
-\begin_layout Standard
-For query 
-\begin_inset Formula $q=(q_{1},\:...,\,q_{m})$
 \end_inset
 
- size 
-\begin_inset Formula $m:\,m=n*k+rest$
+ out of the crossreferencing loop discussed in <TODO: section> earlier.
+ To mitigate these peaks, the kmer index was extended to hold the position
+ data for multiple k (henceforth referred to as 
+\begin_inset Quotes eld
 \end_inset
 
- with 
-\begin_inset Formula $n\in\{2,\,3,\,...\}\:\land0<r<k$
+multi-kmer index
+\begin_inset Quotes erd
 \end_inset
 
+).
  
 \end_layout
 
 \begin_layout Standard
-let 
-\begin_inset Formula $p_{n}\coloneqq(q_{n},\,...,q_{2n-1})$
-\end_inset
+\begin_inset listings
+inline false
+status open
 
- be the 
-\begin_inset Formula $n$
-\end_inset
+\begin_layout Plain Layout
 
-ths k-long section of query and 
-\begin_inset Formula $\#R_{n}=r(p_{n})$
-\end_inset
-
- the number of results for that kmer 
+// regular "single" kmer index
 \end_layout
 
-\begin_layout Standard
-then the crossreferencing (c.f.
- line <TODO: code) takes at most 
-\begin_inset Formula $\Theta(r_{0}*r_{1}*...*r_{n}*r((q_{m-rest},\,...,\,q_{m})))$
-\end_inset
+\begin_layout Plain Layout
 
- comparisons 
+template<size_t k>         
 \end_layout
 
-\begin_layout Standard
-where 
-\begin_inset Formula $r((q_{n*k},\,...,\,q_{m})))$
-\end_inset
+\begin_layout Plain Layout
 
- is the number of result for the last part of length 
-\begin_inset Formula $rest<k$
-\end_inset
+class kmer_index_element { (...)
+\end_layout
 
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+// multi-kmer index
+\end_layout
+
+\begin_layout Plain Layout
+
+template<size_t...
+ ks>
+\end_layout
+
+\begin_layout Plain Layout
+
+class kmer_index : protected kmer_index_element<ks>...
  
 \end_layout
 
-\begin_layout Standard
-This is because for each resut 
-\begin_inset Formula $result_{n}\in R_{n}:n<m-rest$
-\end_inset
+\begin_layout Plain Layout
 
- the code has to check if there is a result in 
-\begin_inset Formula $result_{n+1}\in R_{n+1}$
-\end_inset
-
- so that 
-\begin_inset Formula $result_{n+1}=result_{n}+k$
-\end_inset
-
- to confirm that that query actually occurs there.
- 
+{ 
 \end_layout
 
-\begin_layout Standard
-Because of this the performance for nk-searches scales significantly with
- the number of results.
- However the amortized complexity detailed above assume that the code will
- finish every comparison while in actual implementation it will stop once
- a position is deconfirmed.
- By increasing the query size in a fixed size text the number of results
- for that query will also decrease.
- This is why the peak worst case performances for the searches becomes lower
- as the query grows, a longer query means less results and less results
- means the search function can abort earlier which saves runtime.
+\begin_layout Plain Layout
+
+// multi-k search function
+\end_layout
+
+\begin_layout Plain Layout
+
+result_t search(std::vector<alphabet_t> query) 
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+	// pick optimal k for query
+\end_layout
+
+\begin_layout Plain Layout
+
+	std::vector<size_t> all_ks = {ks...};
+\end_layout
+
+\begin_layout Plain Layout
+
+	size_t optimal_k = all_ks.at(0);
+\end_layout
+
+\begin_layout Plain Layout
+
+	size_t m = query.size();
+\end_layout
+
+\begin_layout Plain Layout
+
+	for (size_t k : all_ks) 
+\end_layout
+
+\begin_layout Plain Layout
+
+	{
+\end_layout
+
+\begin_layout Plain Layout
+
+		if (m % k == 0) {
+\end_layout
+
+\begin_layout Plain Layout
+
+			optimal_k = k; 
+\end_layout
+
+\begin_layout Plain Layout
+
+			break;
+\end_layout
+
+\begin_layout Plain Layout
+
+		}
+\end_layout
+
+\begin_layout Plain Layout
+
+		else if ((m % k) > (m % optimal_k))
+\end_layout
+
+\begin_layout Plain Layout
+
+			optimal_k = k;
+\end_layout
+
+\begin_layout Plain Layout
+
+	}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+	// use the correct index element 
+\end_layout
+
+\begin_layout Plain Layout
+
+	return kmer_index_element<optimal_k>::search(query);//*
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+C++-like *Pseudocode demonstrating multiple inheritance and behavior of
+ search function for multi-kmer index
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section

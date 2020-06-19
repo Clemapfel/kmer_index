@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/hash.hpp>
 #include <seqan3/range/views/kmer_hash.hpp>
@@ -438,6 +439,33 @@ namespace kmer
             // further modified in ctor
             std::array<int, std::max({ks...}) + 1> _k_to_search_fns_i;
 
+            // precalculate what ks to use based on query length (2000 is maximum common read length)
+            inline static constexpr size_t _query_size_range = 2000;
+            std::array<size_t, _query_size_range> _optimal_k;
+
+            size_t choose_best_k_for_query_size(size_t query_size) const
+            {
+                // pick best k to search with
+                size_t optimal_k = _all_ks.front(); // _all_ks need to be sorted highest to lowest
+
+                if (_all_ks.size() > 1)
+                {
+                    for (size_t k : _all_ks)
+                    {
+                        if (query_size % k == 0)
+                        {
+                            optimal_k = k;
+                            break;
+                        }
+                        // the next highest multiple of k > query_size is as close to query_size as possible
+                        else if ((std::ceil(query_size / float(k))*k - query_size) < (std::ceil(query_size / float(optimal_k))*optimal_k - query_size))
+                            optimal_k = k;
+                    }
+                }
+
+                return optimal_k;
+            }
+
         public:
             // ctor
             template<std::ranges::range text_t>
@@ -471,6 +499,9 @@ namespace kmer
 
                 // sort all_ks so bigger ks can be prioritized in search
                 std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool {return a > b;});
+
+                for (size_t query_size = 0; query_size < _optimal_k.size(); ++query_size)
+                    _optimal_k[query_size] = choose_best_k_for_query_size(query_size);
             }
 
             // search single query with index_element<k> directly
@@ -481,42 +512,15 @@ namespace kmer
             }
 
             // search single query, index picks optimal search scheme.
-            // almost non-existent overhead compared to above search thanks to RVO through _search_fns
+            // no overhead thanks to RVO
             result_t search(std::vector<alphabet_t>& query) const
             {
-                // pick best k to search with
-                size_t optimal_k = _all_ks.at(0);
-
-                if (_all_ks.size() > 1)
-                {
-                    size_t i = 0;
-
-                    for (i; i < _all_ks.size(); ++i)
-                    {
-                        size_t k = _all_ks.at(i);
-                        if ((query.size() & (k-1)) == 0) // i % n = i & n-1
-                        {
-                            optimal_k = k;
-                            break;
-                        }
-                        else if ((query.size() & (k - 1)) > (query.size() & (optimal_k - 1)))
-                            optimal_k = k;
-                    }
-                }
-
                 // call corresponding index_element search
-                return (this->*_search_fns[_k_to_search_fns_i.at(optimal_k)])(query);
-
-                // Addendum:
-                // The runtime for search is better the lower query.size() % k is.
-                // If query.size() % k == 0 all parts can be a simple lookup
-                // If query.size() % k != 0, prefix search has to be engaged. The number of kmers that
-                // have to be searched is proportional to k - query.size() % k (the lower the number, the less
-                // chars of the query are known and can be cut from the set of permutations)
-                //
-                // If multiple k are optimal for a given query the bigger k is preferred, assuming a fixed text size
-                // bigger k will have less results in their map entry which reduces runtime for nk search, c.f.
-                // index_element<k>::search *if (query.size() > k)
+                // optimal k for common queries (read length <= 2000) pre-computed
+                if (query.size() < _query_size_range)
+                    return (this->*_search_fns[_k_to_search_fns_i.at(_optimal_k.at(query.size()))])(query);
+                else
+                    return (this->*_search_fns[_k_to_search_fns_i.at(choose_best_k_for_query_size(query.size()))])(query);
             }
 
             // search multiple queries in paralell

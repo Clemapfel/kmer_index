@@ -8,24 +8,23 @@
 #include <iostream>
 #include <algorithm>
 
-/*
 // pick best multiple k (TODO: make constexpr)
+template<seqan3::alphabet alphabet_t, std::ranges::range range_t>
 std::vector<size_t> choose_best_k(
-        std::vector<size_t> interval, // [in] vector of query sizes
+        range_t interval,             // [in] vector of query sizes
         size_t n_k = 4                // [in] number of k to choose
 )
 {
     std::vector<std::pair<size_t, size_t>> k_and_score;
 
-    // primes inversely ordered so loop prioritizes high k
-    for (size_t k : {25, 23, 20, 19, 17, 14, 13, 11})
-        k_and_score.emplace_back(std::make_pair(k, 0));
+    //if (alphabet_t <)
 
-    size_t not_covered = 0;
+    // inversely ordered so loop prioritizes high k
+    for (size_t k : {29, 27, 25, 23, 21, 19, 17, 13, 11, 10})
+        k_and_score.emplace_back(std::make_pair(k, 0));
 
     for (size_t i : interval)
     {
-        bool found = false;
         for (auto& p : k_and_score)
         {
             size_t k = p.first;
@@ -34,35 +33,28 @@ std::vector<size_t> choose_best_k(
             if (i % k == 0)
             {
                 p.second += 3;
-                found = true;
                 break;
             }
             // good case: p = n*k - 1 or -2
-            else if (k - (i % k) < 3)
+            else if (k - (i % k) <= 3)
             {
-                p.second += 3 - (k - (i % k));
-                found = true;
+                p.second += 4 - (k - (i % k));
                 break;
             }
             // try to find a better one
             else
                 continue;
         }
-
-        if (not found)
-            not_covered++;
-        }
     }
 
     std::sort(k_and_score.begin(), k_and_score.end(),
             [](auto a, auto b) -> bool {return a.second > b.second;});
 
-    std::cout << "(k, score): " << std::to_string(stdk_and_score) << "\n";
-    std::cout << "not covered: " << std::to_string(not_covered) << "/" << std::to_string(interval.size()) << "\n";
+    seqan3::debug_stream << "(k, score): " << k_and_score << "\n";
 
     std::vector<size_t> output;
     for (size_t i = 0; i < n_k; ++i)
         output.push_back(k_and_score.at(i).first);
 
     return output;
-}*/
+}
