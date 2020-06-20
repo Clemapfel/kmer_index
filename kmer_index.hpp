@@ -504,13 +504,6 @@ namespace kmer
                     _optimal_k[query_size] = choose_best_k_for_query_size(query_size);
             }
 
-            // search single query with index_element<k> directly
-            template<size_t k>
-            result_t search(std::vector<alphabet_t>& query) const
-            {
-                return index_element_t<k>::search(query);
-            }
-
             // search single query, index picks optimal search scheme.
             // no overhead thanks to RVO
             result_t search(std::vector<alphabet_t>& query) const
@@ -553,7 +546,7 @@ namespace kmer
 
     // convenient creation function that only takes the ks and picks everything else on it's own
     template<size_t... ks, std::ranges::range text_t>
-    auto make_kmer_index(text_t && text, size_t n_threads = 1)
+    auto make_kmer_index(text_t && text, size_t n_threads = std::thread::hardware_concurrency())
     {
         assert(n_threads > 0);
 

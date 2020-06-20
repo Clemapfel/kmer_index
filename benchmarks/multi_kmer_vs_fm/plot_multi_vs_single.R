@@ -14,7 +14,7 @@ data_fm = data_fm_single[data_fm_single$name == "fm_median",]
 q_lines = ggplot() + geom_line(data=data_single, mapping=aes(x=query_length, y=real_time, color="kmer_index<10>"))
 q_lines = q_lines + geom_line(data=data_multi, mapping=aes(x=query_length, y=real_time, color="kmer_index<10, 13, 15, 17>"))
 #q_lines = q_lines + geom_smooth(data=data_fm, mapping=aes(x=query_length, y=real_time, color="seqan3::fm-index"))
-y_lim = 4000; #max(data_single$real_time)
+y_lim = max(data_multi$real_time)
 q_lines = q_lines + scale_x_continuous(breaks=seq(0, 200, 10)) + coord_cartesian(ylim=c(0, y_lim), xlim=c(5, 150))
 q_lines
 ######################

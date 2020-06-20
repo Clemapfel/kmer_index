@@ -175,7 +175,7 @@ void register_all()
 {
     for (size_t query_length = 7; query_length <= 200; ++query_length)
     {
-        benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 10, 13, 15, 17, 21>, text_length, query_length);
+        benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 10, 11, 13, 15, 17, 21, 23>, text_length, query_length);
         //benchmark::RegisterBenchmark("single_kmer", &single_kmer_search<seqan3::dna4, 10>, text_length, query_length);
         //benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4>, text_length, query_length);
 

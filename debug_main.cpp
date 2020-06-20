@@ -23,10 +23,22 @@
 
 int main()
 {
+    input_generator<seqan3::dna4> input(1234);
+    auto text = input.generate_sequence(1e6);
+
+    auto index = kmer::make_kmer_index<10, 11, 13, 15, 17, 21, 23>(text);
+
+    for (size_t i = 7; i < 40; ++i)
+    {
+        auto query = input.generate_sequence(i);
+        index.search(query);
+    }
+
+    /*
     // why spike at : 15, 16, 34, 51, 71, 121
     constexpr size_t n = 200;
 
-    std::vector<size_t> _all_ks = {21, 17, 15, 13, 10};
+    std::vector<size_t> _all_ks = {27, 25, 23, 21, 17, 15, 13, 10};
     std::array<size_t, n> _optimal_k;
     for (size_t query_size = 0; query_size < _optimal_k.size(); ++query_size)
     {
@@ -55,6 +67,7 @@ int main()
     {
         seqan3::debug_stream << i << " | " << _optimal_k[i] << "\n";
     }
+     */
 }
 
 
