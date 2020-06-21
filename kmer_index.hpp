@@ -133,11 +133,13 @@ namespace kmer
                 {
                     if (fast_pow(_sigma, k-size) >= 5e5)
                     {
-                        std::cerr << "[WARNING] lookup of query with size " << size << " with kmer for k = " << k
+                        std::cerr << "[WARNING] lookup of query with size " << size << " with kmer_index for k = " << k
                                   << " may take a long time\n";
 
-                        //if (fast_pow(_sigma, k-size) >= 2e7)
-                            //throw std::invalid_argument("invalid query, please choose a different k");
+                        if (fast_pow(_sigma, k-size) > 1e7)
+                        {
+                            throw std::invalid_argument("query size too low for specified k");
+                        }
                     }
 
                     auto it = prefix_begin;
@@ -491,7 +493,7 @@ namespace kmer
                 // setup k_to_search_fn_i
                 std::fill(_k_to_search_fns_i.begin(), _k_to_search_fns_i.end(), -1);
                 size_t i = 0;
-                for (size_t k : _all_ks)
+                for (size_t k : std::vector<size_t>{ks...})
                 {
                     _k_to_search_fns_i[k] = i;
                     ++i;
@@ -500,7 +502,7 @@ namespace kmer
                 // sort all_ks so bigger ks can be prioritized in search
                 std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool {return a > b;});
 
-                for (size_t query_size = 0; query_size < _optimal_k.size(); ++query_size)
+                for (size_t query_size = 1; query_size < _optimal_k.size(); ++query_size)
                     _optimal_k[query_size] = choose_best_k_for_query_size(query_size);
             }
 
@@ -513,7 +515,8 @@ namespace kmer
                 if (query.size() < _query_size_range)
                     return (this->*_search_fns[_k_to_search_fns_i.at(_optimal_k.at(query.size()))])(query);
                 else
-                    return (this->*_search_fns[_k_to_search_fns_i.at(choose_best_k_for_query_size(query.size()))])(query);
+                    return (this->*_search_fns[_k_to_search_fns_i.at(choose_best_k_for_query_size(query.size()))])(
+                            query);
             }
 
             // search multiple queries in paralell

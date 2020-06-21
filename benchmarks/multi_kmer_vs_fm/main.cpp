@@ -1,5 +1,5 @@
 //
-// Created by clem on 5/30/20.
+// Created by clem on 6/20/20.
 // Copyright (c) 2020 Clemens Cords. All rights reserved.
 //
 #include <kmer_index.hpp>
@@ -14,63 +14,53 @@
 #include <seqan3/search/fm_index/bi_fm_index.hpp>
 #include <seqan3/search/search.hpp>
 
-#include "choose_best_k.hpp"
 #include <numeric>
 #include <random>
 
 size_t n_benchmarks_registered = 0;
 size_t seed = 200;
+size_t text_length = 1000000;
 
 // [SEQ] exact fm search
 template<seqan3::alphabet alphabet_t>
-static void fm_search(benchmark::State& state, size_t text_length, size_t query_length)
+static void fm_search(benchmark::State& state, size_t query_length, const std::vector<alphabet_t>& text)
 {
     state.counters["seed"] = seed;
 
-    bool error_occurred = false;
-    try
-    {
-        input_generator<alphabet_t> input(seed);
-        auto text = input.generate_sequence(text_length);
-        auto queries = input.generate_queries(100000, query_length);
+    input_generator<alphabet_t> input(seed);
+    auto queries = input.generate_queries(100000, query_length);
 
-        auto index = seqan3::fm_index(text);
+    auto index = seqan3::fm_index(text);
 
-        size_t i = 0;
-        for (auto _ : state)
-        {
-            benchmark::DoNotOptimize(seqan3::search(queries.at(i), index));
-            i = i < queries.size() - 1 ? i + 1 : 0;
-        }
-    }
-    catch (...)
+    size_t i = 0;
+    for (auto _ : state)
     {
-        error_occurred = true;
+        benchmark::DoNotOptimize(seqan3::search(queries.at(i), index));
+        i = i < queries.size() - 1 ? i + 1 : 0;
     }
 
     state.counters["text_length"] = text_length;
     state.counters["query_length"] = query_length;
     state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
-    state.counters["error_occurred"] = error_occurred;
 
     seed++;
 }
 
-// [SEQ] single kmer search
 template<seqan3::alphabet alphabet_t, size_t k>
-static void single_kmer_search(benchmark::State& state, size_t text_length, size_t query_length)
+static void single_kmer_search(
+        benchmark::State& state,
+        size_t query_length,
+        kmer::kmer_index<alphabet_t, uint32_t, k> index)
 {
     state.counters["seed"] = seed;
+
+    input_generator<alphabet_t> input(seed);
+    auto text = input.generate_sequence(text_length);
+    auto queries = input.generate_queries(100000, query_length);
 
     bool error_occurred = false;
     try
     {
-        input_generator<alphabet_t> input(seed);
-        auto text = input.generate_sequence(text_length);
-        auto queries = input.generate_queries(100000, query_length);
-
-        auto index = kmer::make_kmer_index<k>(text);
-
         size_t i = 0;
         for (auto _ : state)
         {
@@ -78,7 +68,7 @@ static void single_kmer_search(benchmark::State& state, size_t text_length, size
             i = i < queries.size() - 1 ? i + 1 : 0;
         }
     }
-    catch (...)
+    catch (std::invalid_argument& exc)
     {
         error_occurred = true;
     }
@@ -86,61 +76,27 @@ static void single_kmer_search(benchmark::State& state, size_t text_length, size
     state.counters["text_length"] = text_length;
     state.counters["query_length"] = query_length;
     state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
-    state.counters["error_occurred"] = error_occurred;
     state.counters["k_0"] = k;
+    state.counters["valid"] = not error_occurred;
+
     seed++;
 }
 
-// [SEQ] exact single kmer search
-template<seqan3::alphabet alphabet_t, size_t k>
-static void kmer_search(benchmark::State& state, size_t text_length, size_t query_length)
-{
-    state.counters["seed"] = seed;
-
-    bool error_occurred = false;
-    try
-    {
-        input_generator<alphabet_t> input(seed);
-        auto text = input.generate_sequence(text_length);
-        auto queries = input.generate_queries(100000, query_length);
-
-        auto index = kmer::make_kmer_index<k>(text);
-
-        size_t i = 0;
-        for (auto _ : state)
-        {
-            benchmark::DoNotOptimize(index.search<k>(queries.at(i)));
-            i = i < queries.size() - 1 ? i + 1 : 0;
-        }
-    }
-    catch (...)
-    {
-        error_occurred = true;
-    }
-
-    state.counters["text_length"] = text_length;
-    state.counters["query_length"] = query_length;
-    state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
-    state.counters["k"] = k;
-    state.counters["error_occured"] = error_occurred;
-    seed++;
-}
-
-// [SEQ] multi kmer search
 template<seqan3::alphabet alphabet_t, size_t... ks>
-static void multi_kmer_search(benchmark::State& state, size_t text_length, size_t query_length)
+static void multi_kmer_search(
+        benchmark::State& state,
+        size_t query_length,
+        kmer::kmer_index<alphabet_t, uint32_t, ks...> index)
 {
     state.counters["seed"] = seed;
+
+    input_generator<alphabet_t> input(seed);
+    auto text = input.generate_sequence(text_length);
+    auto queries = input.generate_queries(100000, query_length);
 
     bool error_occurred = false;
     try
     {
-        input_generator<alphabet_t> input(seed);
-        auto text = input.generate_sequence(text_length);
-        auto queries = input.generate_queries(100000, query_length);
-
-        auto index = kmer::make_kmer_index<ks...>(text);
-
         size_t i = 0;
         for (auto _ : state)
         {
@@ -148,7 +104,7 @@ static void multi_kmer_search(benchmark::State& state, size_t text_length, size_
             i = i < queries.size() - 1 ? i + 1 : 0;
         }
     }
-    catch (...)
+    catch (std::invalid_argument& exc)
     {
         error_occurred = true;
     }
@@ -156,30 +112,35 @@ static void multi_kmer_search(benchmark::State& state, size_t text_length, size_
     state.counters["text_length"] = text_length;
     state.counters["query_length"] = query_length;
     state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
-    state.counters["error_occurred"] = error_occurred;
 
     std::vector<size_t> _all_ks = {ks...};
-    size_t i = 0;
+    size_t j = 0;
     for (auto k : _all_ks)
     {
-        state.counters["k_" + std::to_string(i)] = k;
-        i++;
+        state.counters["k_" + std::to_string(j)] = k;
+        j++;
     }
+    state.counters["valid"] = not error_occurred;
 
     seed++;
 }
-
-constexpr size_t text_length = 1000000;
 
 void register_all()
 {
+    auto input = input_generator<seqan3::dna4>(seed);
+    const auto text = input.generate_sequence(text_length);
+
+    auto multi_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17>(text, std::thread::hardware_concurrency());
+    auto single_kmer = kmer::make_kmer_index<10>(text, std::thread::hardware_concurrency());
+    auto fm = seqan3::fm_index(text);
+
     for (size_t query_length = 7; query_length <= 200; ++query_length)
     {
-        benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 10, 11, 13, 15, 17, 21, 23>, text_length, query_length);
-        //benchmark::RegisterBenchmark("single_kmer", &single_kmer_search<seqan3::dna4, 10>, text_length, query_length);
-        //benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4>, text_length, query_length);
+        benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 10, 11, 13, 15, 17>, query_length, multi_kmer);
+        benchmark::RegisterBenchmark("single_kmer", &single_kmer_search<seqan3::dna4, 10>, query_length, single_kmer);
+        benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4>, query_length, text);
 
-        n_benchmarks_registered += 1;
+        n_benchmarks_registered += 3;
     }
 
     seqan3::debug_stream << n_benchmarks_registered << " benchmarks registered.\n";
@@ -195,5 +156,5 @@ int main(int argc, char** argv)
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
-    //cleanup_csv("/srv/public/clemenscords/multi_kmer/multi_only_raw.csv");
+    cleanup_csv("/srv/public/clemenscords/multi_kmer/raw.csv");
 }
