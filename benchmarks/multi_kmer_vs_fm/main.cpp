@@ -126,6 +126,8 @@ void register_all()
     const auto single_kmer = kmer::make_kmer_index<15>(text, 1);
     auto fm = seqan3::fm_index(text);
 
+    std::cout << "building finished.\n";
+
     for (size_t query_length = 7; query_length <= 200; ++query_length)
     {
         benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 10, 11, 13, 15, 17, 19, 21, 23, 25, 27>, query_length, multi_kmer);
@@ -135,7 +137,7 @@ void register_all()
         n_benchmarks_registered += 3;
     }
 
-    seqan3::debug_stream << n_benchmarks_registered << " benchmarks registered.\n";
+    std::cout << std::to_string(n_benchmarks_registered) << " benchmarks registered.\n";
 }
 
 //nohup ./MULTI_KMER_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/multi_kmer/raw.csv --benchmark_out_format=csv --benchmark_repetitions=3 --benchmark_report_aggregates_only=false
@@ -147,5 +149,5 @@ int main(int argc, char** argv)
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
-    cleanup_csv("/srv/public/clemenscords/multi_kmer/raw.csv");
+    cleanup_csv("/srv/public/clemenscords/multi_kmer/final_raw.csv");
 }
