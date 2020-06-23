@@ -545,7 +545,7 @@ namespace kmer
     {
         assert(n_threads > 0);
 
-        using alphabet_t = seqan3::innermost_value_type_t<text_t>;
+        using alphabet_t = seqan3::range_innermost_value_t<text_t>;
         using position_t = uint32_t;
 
         return kmer_index<alphabet_t, position_t, ks...>(std::forward<text_t>(text), n_threads);
