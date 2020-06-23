@@ -20,9 +20,40 @@
 #include <functional>
 #include <thread_pool.hpp>
 #include <choose_best_k.hpp>
+#include <thread_pool.hpp>
 
+std::atomic<size_t> seed = 200;
+size_t text_length = 1000000;
 int main()
 {
+    auto input = input_generator<seqan3::dna4>(seed);
+    const auto text = input.generate_sequence(text_length);
+
+    //auto multi_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17>(text, std::thread::hardware_concurrency());
+    auto single_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17>(text, 1);
+
+    kmer::detail::thread_pool pool(2);
+
+    auto lmbd = [&]() {
+        debug::sync_print("starting test loop\n");
+        while (true) {
+            auto input = input_generator<seqan3::dna4>(seed++);
+            for (size_t i = 5; i < 50; ++i) {
+                auto query = input.generate_sequence(i);
+                try {
+                    single_kmer.search(input.generate_sequence(i));
+                } catch (...) {
+                    seqan3::debug_stream << "error for query : " << query << "\n";
+                    exit(1);
+                }
+            }
+        }
+    };
+
+    for (size_t n = 0; n < 4; ++n)
+        pool.execute(lmbd);
+}
+    /*
     using namespace seqan3;
 
     // why spike at : 15, 16, 34, 51, 71, 121

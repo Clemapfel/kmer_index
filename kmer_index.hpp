@@ -51,21 +51,6 @@ namespace kmer
                 std::vector<alphabet_t> _last_kmer;
                 std::vector<std::vector<position_t>> _last_kmer_refs;
 
-                /*
-                // hash a query of arbitrary length
-                template<typename iterator_t>
-                static size_t hash_any(iterator_t query_it, size_t size)
-                {
-                    auto it = query_it;
-
-                    size_t hash = 0;
-                    for (size_t i = 0; i < size; ++i)
-                        hash += (seqan3::to_rank(*it++) * detail::fast_pow(_sigma, size - i - 1));
-
-                    return hash;
-                }
-                */
-
                 // hash a query of length k, optimized by compiler unwrapping fold expression bc k is constexpr
                 // aux_aux redundant but forces proper order of evaluation during unwrap
                 template<typename iterator_t>
@@ -519,6 +504,13 @@ namespace kmer
                             query);
             }
 
+            result_t search(std::vector<alphabet_t>&& query) const
+            {
+                auto hold = query;
+                return search(hold);
+            }
+
+            /*
             // search multiple queries in paralell
             template<std::ranges::forward_range queries_t>
             std::vector<result_t>
@@ -544,7 +536,7 @@ namespace kmer
                     output.push_back(f.get());
 
                 return output;
-            }
+            }*/
     };
 
     // convenient creation function that only takes the ks and picks everything else on it's own
