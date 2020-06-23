@@ -122,6 +122,8 @@ void register_all()
     auto input = input_generator<seqan3::dna4>(seed);
     const auto text = input.generate_sequence(text_length);
 
+    std::cout << "starting building\n";
+
     const auto multi_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17, 19, 21, 23, 25, 27>(text, std::thread::hardware_concurrency());
     const auto single_kmer = kmer::make_kmer_index<15>(text, 1);
     auto fm = seqan3::fm_index(text);
