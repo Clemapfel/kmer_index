@@ -28,30 +28,10 @@ int main()
 {
     auto input = input_generator<seqan3::dna4>(seed);
     const auto text = input.generate_sequence(text_length);
+    auto single_kmer = kmer::make_kmer_index<10>(text, 1);
 
-    //auto multi_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17>(text, std::thread::hardware_concurrency());
-    auto single_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17>(text, 1);
-
-    kmer::detail::thread_pool pool(2);
-
-    auto lmbd = [&]() {
-        debug::sync_print("starting test loop\n");
-        while (true) {
-            auto input = input_generator<seqan3::dna4>(seed++);
-            for (size_t i = 5; i < 50; ++i) {
-                auto query = input.generate_sequence(i);
-                try {
-                    single_kmer.search(input.generate_sequence(i));
-                } catch (...) {
-                    seqan3::debug_stream << "error for query : " << query << "\n";
-                    exit(1);
-                }
-            }
-        }
-    };
-
-    for (size_t n = 0; n < 4; ++n)
-        pool.execute(lmbd);
+    while(true)
+        single_kmer.search(input.generate_sequence(7));
 }
     /*
     using namespace seqan3;

@@ -116,12 +116,19 @@ static void multi_kmer_search(
 
 void register_all()
 {
+
+}
+
+//nohup ./MULTI_KMER_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/multi_kmer/raw.csv --benchmark_out_format=csv --benchmark_repetitions=3 --benchmark_report_aggregates_only=false
+int main(int argc, char** argv)
+{
+
     auto input = input_generator<seqan3::dna4>(seed);
     const auto text = input.generate_sequence(text_length);
 
     std::cout << "starting building\n";
 
-    const auto multi_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17, 19, 21, 23, 25, 27>(text, std::thread::hardware_concurrency());
+    const auto multi_kmer = kmer::make_kmer_index<7, 10, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>(text, std::thread::hardware_concurrency());
     const auto single_kmer = kmer::make_kmer_index<15>(text, 1);
     auto fm = seqan3::fm_index(text);
 
@@ -129,7 +136,7 @@ void register_all()
 
     for (size_t query_length = 7; query_length <= 200; ++query_length)
     {
-        benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 10, 11, 13, 15, 17, 19, 21, 23, 25, 27>, query_length, &multi_kmer);
+        benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 7, 10, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>, query_length, &multi_kmer);
         benchmark::RegisterBenchmark("single_kmer", &single_kmer_search<seqan3::dna4, 15>, query_length, &single_kmer);
         benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4>, query_length, text);
 
@@ -137,14 +144,8 @@ void register_all()
     }
 
     std::cout << std::to_string(n_benchmarks_registered) << " benchmarks registered.\n";
-}
 
-//nohup ./MULTI_KMER_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/multi_kmer/raw.csv --benchmark_out_format=csv --benchmark_repetitions=3 --benchmark_report_aggregates_only=false
-int main(int argc, char** argv)
-{
-
-    register_all();
-
+    // start
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
