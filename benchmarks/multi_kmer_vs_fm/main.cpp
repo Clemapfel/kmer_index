@@ -48,7 +48,7 @@ template<seqan3::alphabet alphabet_t, size_t k>
 static void single_kmer_search(
         benchmark::State& state,
         size_t query_length,
-        kmer::kmer_index<alphabet_t, uint32_t, k> index)
+        kmer::kmer_index<alphabet_t, uint32_t, k>& index)
 {
     state.counters["seed"] = seed;
 
@@ -80,7 +80,7 @@ template<seqan3::alphabet alphabet_t, size_t... ks>
 static void multi_kmer_search(
         benchmark::State& state,
         size_t query_length,
-        kmer::kmer_index<alphabet_t, uint32_t, ks...> index)
+        kmer::kmer_index<alphabet_t, uint32_t, ks...>& index)
 {
     state.counters["seed"] = seed;
 
@@ -122,14 +122,14 @@ void register_all()
     auto input = input_generator<seqan3::dna4>(seed);
     const auto text = input.generate_sequence(text_length);
 
-    auto multi_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17, 19>(text, std::thread::hardware_concurrency());
-    auto single_kmer = kmer::make_kmer_index<10>(text, 1);
+    auto multi_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17, 19, 21, 23, 25, 27>(text, std::thread::hardware_concurrency());
+    auto single_kmer = kmer::make_kmer_index<15>(text, 1);
     auto fm = seqan3::fm_index(text);
 
     for (size_t query_length = 7; query_length <= 200; ++query_length)
     {
-        benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 10, 11, 13, 15, 17, 19>, query_length, multi_kmer);
-        benchmark::RegisterBenchmark("single_kmer", &single_kmer_search<seqan3::dna4, 10>, query_length, single_kmer);
+        benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 10, 11, 13, 15, 17, 19, 20, 21, 23, 25, 27>, query_length, multi_kmer);
+        benchmark::RegisterBenchmark("single_kmer", &single_kmer_search<seqan3::dna4, 15>, query_length, single_kmer);
         benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4>, query_length, text);
 
         n_benchmarks_registered += 3;
