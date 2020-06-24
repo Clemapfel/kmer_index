@@ -16,6 +16,7 @@
 
 #include <numeric>
 #include <random>
+#include <memory>
 
 size_t n_benchmarks_registered = 0;
 size_t seed = 200;
@@ -23,7 +24,7 @@ size_t text_length = 100*1e6;
 
 // [SEQ] exact fm search
 template<seqan3::alphabet alphabet_t, typename index_t>
-static void fm_search(benchmark::State& state, size_t query_length, const index_t* index)
+static void fm_search(benchmark::State& state, size_t query_length,const index_t* index)
 {
     state.counters["seed"] = seed;
 
@@ -111,43 +112,31 @@ static void multi_kmer_search(
 
     seed++;
 }
-
-void register_all()
-{
-
-}
-
 //nohup ./MULTI_KMER_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/multi_kmer/raw.csv --benchmark_out_format=csv --benchmark_repetitions=3 --benchmark_report_aggregates_only=false
 int main(int argc, char** argv)
 {
-
     auto input = input_generator<seqan3::dna4>(seed);
     auto text = input.generate_sequence(text_length);
 
-    std::cout << "starting building\n";
-
-    const auto multi_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>(text, std::thread::hardware_concurrency());
-    const auto single_kmer = kmer::make_kmer_index<15>(text, 1);
-    auto fm = seqan3::fm_index(text);
-
-    text.clear(); // clear memory
-
-    std::cout << "building finished.\n";
-
-    for (size_t query_length = 7; query_length <= 200; ++query_length)
+    for (size_t text_size : {1e3, 1e5, 1e6, 1e7})
     {
-        benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 10, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>, query_length, &multi_kmer);
-        benchmark::RegisterBenchmark("single_kmer", &single_kmer_search<seqan3::dna4, 15>, query_length, &single_kmer);
-        benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4, decltype(fm)>, query_length, &fm);
+        const auto multi_kmer = kmer::make_kmer_index<10, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>(text, std::thread::hardware_concurrency());
+        auto fm = seqan3::fm_index(text);
 
-        n_benchmarks_registered += 3;
+        text.clear(); // clear memory
+
+        for (size_t query_length = 120; query_length <= 180; ++query_length)
+        {
+            benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, 10, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>, query_length>(multi_kmer});
+            benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4, decltype(fm)>, query_length, fm);
+
+            n_benchmarks_registered += 2;
+        }
+
+        // start)
+        benchmark::Initialize(&argc, argv);
+        benchmark::RunSpecifiedBenchmarks();
     }
 
-    std::cout << std::to_string(n_benchmarks_registered) << " benchmarks registered.\n";
-
-    // start
-    benchmark::Initialize(&argc, argv);
-    benchmark::RunSpecifiedBenchmarks();
-
-    cleanup_csv("/srv/public/clemenscords/multi_kmer/final_raw.csv");
+    cleanup_csv("/srv/public/clemenscords/multi_kmer/multi_text_raw.csv");
 }

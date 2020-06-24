@@ -102,7 +102,7 @@ namespace detail
             // popcount
             size_t count_bits_equal_to(bool b) const
             {
-                // TODO: do new x86 std::popcount for first integers
+                // TODO: do new x86 std::popcount
                 size_t n_ones = 0;
 
                 for (size_t i = 0; i < _n_bits; ++i)

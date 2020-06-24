@@ -26,12 +26,17 @@ std::atomic<size_t> seed = 200;
 size_t text_length = 1000000;
 int main()
 {
+
+
+
     auto input = input_generator<seqan3::dna4>(seed);
     const auto text = input.generate_sequence(text_length);
-    auto single_kmer = kmer::make_kmer_index<10>(text, 1);
+    auto single_kmer = kmer::make_kmer_index<10, 12>(text, 1);
 
-    while(true)
-        single_kmer.search(input.generate_sequence(7));
+    for (auto it = single_kmer.template begin<10>(), it != single_kmer.template end<10>(), it++)
+    {
+        seqan3::debug_stream <<
+    }
 }
     /*
     using namespace seqan3;
