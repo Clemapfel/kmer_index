@@ -16,7 +16,7 @@
 
 size_t seed = 200;
 
-// [SEQ] fm search
+// [SEQ] seqan3 fm search
 template<seqan3::alphabet alphabet_t, typename index_t>
 static void fm_search(benchmark::State& state, size_t query_length, size_t text_length, const index_t* index)
 {
@@ -72,8 +72,6 @@ static void multi_kmer_search(benchmark::State& state, size_t query_length, size
     state.counters["valid"] = not error_occurred;
 
     seed++;
-
-    std::cout << "\n";
 }
 
 // benchmark shows that one multi_kmer can handle more than just the exact k given

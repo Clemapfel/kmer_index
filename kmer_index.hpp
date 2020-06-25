@@ -180,6 +180,11 @@ namespace kmer
                     //   #H = sigma^(k-m) and every hash is 1 higher than the previous hash
                     //   max(H) = h_p + #H = sigma^(k-m) which is one less operation than the above formula
                 }
+            protected:
+                const auto& get_data()
+                {
+                    return _data;
+                }
 
             // all functions are at least protected bc the user should only use index_element functionality through kmer_index
             public:
@@ -472,6 +477,14 @@ namespace kmer
             static std::vector<size_t> get_ks()
             {
                 return _all_ks;
+            }
+
+            // expose data (for example to get kmer multiplicity or set of all kmers)
+            template<size_t k>
+            const auto& get_data() const
+            {
+                assert(std::search(_all_ks.begin(), _all_ks.end(), k) != _all_ks.end());
+                static_cast<const index_element_t<k>*>(this)->index_element_t<k>::get_data();
             }
 
             // ctor
