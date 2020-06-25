@@ -26,18 +26,12 @@ std::atomic<size_t> seed = 200;
 size_t text_length = 1000000;
 int main()
 {
-
-    auto input = input_generator<seqan3::dna4>(seed);
-    const auto text = input.generate_sequence(text_length);
-    auto single_kmer = kmer::make_kmer_index<10>(text, 1);
-}
-    /*
     using namespace seqan3;
 
     // why spike at : 15, 16, 34, 51, 71, 121
-    constexpr size_t n = 200;
+    constexpr size_t n = 30;
 
-    std::vector<size_t> _all_ks = {10, 11, 13, 15, 17, 21, 23};
+    std::vector<size_t> _all_ks = {7, 9, 11, 13, 15, 17, 19, 21, 23, 25};
     std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool {return a > b;});
 
     std::array<size_t, n> _optimal_k;
@@ -50,14 +44,27 @@ int main()
         {
             for (size_t k : _all_ks)
             {
-               if (query_size % k == 0)
-               {
-                   optimal_k = k;
-                   break;
-               }
-               // the next highest multiple of k is as close to query_size as possible
-               else if ((ceil(query_size / float(k))*k - query_size) < (ceil(query_size / float(optimal_k))*optimal_k - query_size))
-                   optimal_k = k;
+                // for actual kmers, prioritze absolute distance rather than divisibility
+                if (query_size < 31)
+                {
+                    if (query_size <= k and (k - query_size < optimal_k - query_size))
+                    {
+                        optimal_k = k;
+                        continue;
+                    }
+                }
+                // for long queries divisibility is more important, also prefer higher k to lower k if mod is equal
+                else
+                {
+                    if (query_size % k == 0)
+                    {
+                        optimal_k = k;
+                        break;
+                    }
+                    else if ((ceil(query_size / float(k)) * k - query_size) <
+                             (ceil(query_size / float(optimal_k)) * optimal_k - query_size))
+                        optimal_k = k;
+                }
             }
         }
 

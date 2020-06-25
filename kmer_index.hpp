@@ -439,14 +439,28 @@ namespace kmer
                 {
                     for (size_t k : _all_ks)
                     {
-                        if (query_size % k == 0)
+                        // for actual kmers, prioritze absolute distance rather than divisibility
+                        if (query_size < 31)
                         {
-                            optimal_k = k;
-                            break;
+                            if (query_size <= k and (k - query_size < optimal_k - query_size))
+                            {
+                                optimal_k = k;
+                                continue;
+                            }
                         }
-                        // the next highest multiple of k > query_size is as close to query_size as possible
-                        else if ((std::ceil(query_size / float(k))*k - query_size) < (std::ceil(query_size / float(optimal_k))*optimal_k - query_size))
-                            optimal_k = k;
+                        // for long queries divisibility is more important
+                        // sorting to descending order prioritizes higher k (with inherently fewer results)
+                        else
+                        {
+                            if (query_size % k == 0)
+                            {
+                                optimal_k = k;
+                                break;
+                            }
+                            else if ((ceil(query_size / float(k)) * k - query_size) <
+                                     (ceil(query_size / float(optimal_k)) * optimal_k - query_size))
+                                optimal_k = k;
+                        }
                     }
                 }
 
@@ -459,7 +473,6 @@ namespace kmer
             {
                 return _all_ks;
             }
-
 
             // ctor
             template<std::ranges::range text_t>
