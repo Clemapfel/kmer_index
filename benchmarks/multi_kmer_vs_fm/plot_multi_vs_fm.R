@@ -18,7 +18,7 @@ plot = plot + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=data
 #plot = plot + geom_hline(mapping=aes(yintercept=mean(data_fm$real_time, na.rm=TRUE), color="fm_index"))
 #plot = plot + geom_hline(mapping=aes(yintercept=mean(data_multi$real_time, na.rm=TRUE), color="multi-kmer index"))
 plot <- plot + geom_line(data = data_fm, mapping=aes(query_length, real_time, color="fm_index")) + geom_smooth(method="lm", data=data_fm, mapping=aes(query_length, real_time, color="fm_index"), size=2);
-plot <- plot + coord_cartesian(ylim=c(min(data_multi$real_time), max(data_fm$real_time)), xlim=c(10, 191))
+plot <- plot + coord_cartesian(ylim=c(min(data_multi$real_time), max(data_fm$real_time)), xlim=c(0, 30))
 plot <- plot + scale_y_continuous(breaks=seq(0, 10000, 500), name="runtime (ns)") + scale_x_continuous(breaks=seq(0, 200, 10), name="query length")
 plot <- plot + ggtitle(label="exact search performance", subtitle="queries randomized each call, 10 benchmarks cycles per query length")
 plot

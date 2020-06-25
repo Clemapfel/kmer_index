@@ -27,16 +27,9 @@ size_t text_length = 1000000;
 int main()
 {
 
-
-
     auto input = input_generator<seqan3::dna4>(seed);
     const auto text = input.generate_sequence(text_length);
-    auto single_kmer = kmer::make_kmer_index<10, 12>(text, 1);
-
-    for (auto it = single_kmer.template begin<10>(), it != single_kmer.template end<10>(), it++)
-    {
-        seqan3::debug_stream <<
-    }
+    auto single_kmer = kmer::make_kmer_index<10>(text, 1);
 }
     /*
     using namespace seqan3;

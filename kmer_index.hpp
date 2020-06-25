@@ -454,6 +454,13 @@ namespace kmer
             }
 
         public:
+            // expose ks
+            static std::vector<size_t> get_ks()
+            {
+                return _all_ks;
+            }
+
+
             // ctor
             template<std::ranges::range text_t>
             kmer_index(text_t& text, size_t n_threads = std::thread::hardware_concurrency())
