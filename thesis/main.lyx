@@ -1,5 +1,5 @@
-#LyX 2.2 created this file. For more info see http://www.lyx.org/
-\lyxformat 508
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
 \begin_document
 \begin_header
 \save_transient_properties true
@@ -33,6 +33,8 @@ theorems-ams-chap-bytype
 \font_osf false
 \font_sf_scale 100 100
 \font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
 \graphics default
 \default_output_format default
 \output_sync 0
@@ -62,6 +64,7 @@ theorems-ams-chap-bytype
 \suppress_date false
 \justification true
 \use_refstyle 1
+\use_minted 0
 \index Index
 \shortcut idx
 \color #008000
@@ -70,7 +73,10 @@ theorems-ams-chap-bytype
 \tocdepth 3
 \paragraph_separation indent
 \paragraph_indentation default
-\quotes_language english
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
 \papercolumns 1
 \papersides 1
 \paperpagestyle default
@@ -94,7 +100,49 @@ Author: Clemens Cords, FU Berlin
 \end_layout
 
 \begin_layout Abstract
-As demand for large-scale genomic sequence matching rises, so does TODO.
+As demand for large-scale genomic sequence matching rises so does the ability
+ to efficiently get the positions or number of occurences for an exact query
+ of length k called kmer.
+ A kmer index optimized for this purposes was implemented and it's performance
+ evaluated.
+ The implementation is capable of searching kmers with an abitrary k specified
+ at run-time, utilizes parallization for faster construction time and it's
+ internal structure can be further customized to achieve greater performance.
+ The exact nature of the implementation-defined optimizations is explained
+ and it's performance benchmarked.
+ Results indicate that for the purposed of searching for positions of kmers
+ it performs up to 2 times faster for the commonly used 
+\begin_inset Formula $k\in\{3,...,30\}$
+\end_inset
+
+ than the fm-index regardless of text size.
+ Further comparison for queries of greater length is made, it is observed
+ that although the kmer index may perform better in some cases, it's performance
+ is highly dependend on the text size and query length.
+ Soft guidelines are formulated in what cases the kmer index may outperform
+ the fm-index.
+ It is concluded that the kmer index is to be always preferred for any exact-str
+ing matching for kmers of length 
+\begin_inset Formula $k<30$
+\end_inset
+
+, for greater 
+\begin_inset Formula $k$
+\end_inset
+
+it's inconsistency doesn't lend it to general-purpose use however if with
+ further features this inconsistency can be reduced it may proof to achieve
+ better performance for those cases aswell.
+ 
+\end_layout
+
+\begin_layout Section*
+Motivation
+\end_layout
+
+\begin_layout Standard
+TODO:As demand for large-scale genomic sequence matching rises, so does
+ TODO.
  A Kmer Index optimized for only exact string matching was implemented and
  it's performance measure with large-scale benchmarks.
  It is shown that the runtime is heavily dependent on the size of the query
@@ -112,14 +160,6 @@ As demand for large-scale genomic sequence matching rises, so does TODO.
  Furthermore a two-pronged approach of using the (bi-)fm index for approximate
  queries and the kmer index for exact queries may proof superior to just
  using either on their own.
-\end_layout
-
-\begin_layout Section*
-Motivation
-\end_layout
-
-\begin_layout Standard
-TODO:
 \end_layout
 
 \begin_layout Section
@@ -1423,7 +1463,6 @@ result_t search(std::vector<alphabet_t> query)
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-
 C++-like *Pseudocode demonstrating multiple inheritance and behavior of
  search function for multi-kmer index
 \end_layout
@@ -2423,6 +2462,19 @@ Given the kmers inconsistent nature, picking the best possible k has a large
  While with a single k this is hard to do, given the option to have any
  number of k raises the question of how many and which to pick.
  
+\end_layout
+
+\begin_layout Section
+Conclusion & Outlook
+\end_layout
+
+\begin_layout Subsection
+Further Features
+\end_layout
+
+\begin_layout Standard
+if size_t can be replaced with longer ints, optimal performance can be achieved
+ for greater k.
 \end_layout
 
 \end_body
