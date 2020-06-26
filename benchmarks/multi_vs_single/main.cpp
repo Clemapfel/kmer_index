@@ -83,10 +83,10 @@ int main(int argc, char** argv)
     auto input = input_generator<seqan3::dna4>(seed);
     auto text = input.generate_sequence(text_length);
 
-    auto multi_kmer = kmer::make_kmer_index<5, 7, 9, 11, 13, 15, 17, 19, 21>(text);
+    auto multi_kmer = kmer::make_kmer_index<5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29>(text);
     auto fm = seqan3::fm_index(text);
 
-    for (size_t query_length = 4; query_length <= 21; ++query_length)
+    for (size_t query_length = 4; query_length <= 31; ++query_length)
     {
         benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, decltype(multi_kmer)>, query_length, text_length, &multi_kmer);
         benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4, decltype(fm)>, query_length, text_length, &fm);
