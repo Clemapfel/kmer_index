@@ -78,17 +78,17 @@ static void kmer_search(benchmark::State& state, size_t query_length, size_t tex
 template<size_t k>
 void register_kmer(size_t text_length)
 {
-    benchmark::RegisterBenchmark("kmer", &kmer_search<seqan3::dna4, k>, k, text_length);
+    benchmark::RegisterBenchmark("kmer_single", &kmer_search<seqan3::dna4, k>, k, text_length);
 }
 
 
 template<size_t... ks>
 void register_all()
 {
-    for (size_t text_length : {1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9})
+    for (size_t text_length : {1e9, 1e10})
     {
         (register_kmer<ks>(text_length), ...);
-        (benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4>, ks, text_length), ...);
+        (benchmark::RegisterBenchmark("single_kmer", &fm_search<seqan3::dna4>, ks, text_length), ...);
     }
 }
 
