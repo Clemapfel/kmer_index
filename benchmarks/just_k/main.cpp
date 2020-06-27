@@ -85,7 +85,7 @@ void register_kmer(size_t text_length)
 template<size_t... ks>
 void register_all()
 {
-    for (size_t text_length : {1e2, 1e3})
+    for (size_t text_length : {1e7, 1e8, 1e9, 1e10})
     {
         (register_kmer<ks>(text_length), ...);
         (benchmark::RegisterBenchmark("single_kmer", &fm_search<seqan3::dna4>, ks, text_length), ...);
