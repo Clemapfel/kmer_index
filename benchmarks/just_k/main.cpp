@@ -81,7 +81,6 @@ void register_kmer(size_t text_length)
     benchmark::RegisterBenchmark("kmer_single", &kmer_search<seqan3::dna4, k>, k, text_length);
 }
 
-
 template<size_t... ks>
 void register_all()
 {
@@ -91,6 +90,7 @@ void register_all()
         (benchmark::RegisterBenchmark("single_kmer", &fm_search<seqan3::dna4>, ks, text_length), ...);
     }
 }
+//nohup ./JUST_K_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/just_k/1e7_to_1e10_raw.csv --benchmark_out_format=csv --benchmark_repetitions=100 --benchmark_report_aggregates_only=false
 
 int main(int argc, char** argv)
 {

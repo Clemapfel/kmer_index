@@ -116,7 +116,7 @@ namespace kmer
                 std::vector<const std::vector<position_t>*>
                 get_position_for_all_kmer_with_prefix(iterator_t prefix_begin, size_t size) const
                 {
-                    if (fast_pow(_sigma, k-size) >= 5e5)
+                    if (fast_pow(_sigma, k-size) >= 5e5)addendum below
                     {
                         std::cerr << "[WARNING] lookup of query with size " << size << " with kmer_index for k = " << k
                                   << " may take a long time\n";
@@ -134,7 +134,7 @@ namespace kmer
                         prefix_hash += seqan3::to_rank(*it++) * fast_pow(_sigma, k - i - 1);
                     }
 
-                    //c.f. addendum below
+                    //c.f. paper section 2.2
                     size_t lower_bound = 0 + prefix_hash;
                     size_t n_hashes =  kmer::detail::fast_pow(_sigma, k - size);
                     size_t upper_bound = lower_bound + n_hashes;
@@ -153,32 +153,6 @@ namespace kmer
 
                     check_last_kmer(prefix_begin, size, output);
                     return output;
-
-                    // Addendum:
-                    // to calculat set H of all hashes with given prefix p
-                    // i)  hash of any kmer q_0, q_1, ... q_k = sum {i=0 to k} rank(q_i) * sigma^(k - i - 1)
-                    //
-                    // ii) for given prefix p_0, ..., p_m, the first part of the sum is known:
-                    //     h_p = sum {i=0 to m} rank(p_i) * sigma^(k - i - 1)
-                    //
-                    // iii) for arbitrary suffix s_0, ..., s_(k-m-1) we observe:
-                    //      min(H) = h_p    by setting all s_0 to a char that has rank 0;
-                    //
-                    //  iv) max(H) = h_p + (hash of suffix with all s_i so that rank(s_i) = maximum = sigma-1)
-                    //             = h_p + sum {i=k-m to i=k} (sigma-1) * sigma^(k-i-1)
-                    //             = h_p + sigma^m - 1/sigma
-                    //
-                    //   v) for two hashes from H h_1 and h_2 so that h_1 < h_2 it is true that
-                    //      h_1 - h_2 >= 1 as the minimum step to get from h_1 to h_2 is to set the
-                    //      last char of suffix of h_2 to be one rank higher as the last char in h_1.
-                    //      The last char contributes sigma^(k-k-1-1) = sigma^0 = 1 to the hash sum
-                    //
-                    //   Thus to generate all hashes in H we calculate the lower bound min(H) = h_p,
-                    //   the upper bound max(H) = h_p + sigma^m - 1/sigma and go stepwis se by 1 from minimum
-                    //   maximum. This is to the authors knowledge the fastest way to generate all hashes in H.
-                    //   For the implementation max(H) = h_p + sigma^(k-m) is used, since min(H) = h_p and
-                    //   #H = sigma^(k-m) and every hash is 1 higher than the previous hash
-                    //   max(H) = h_p + #H = sigma^(k-m) which is one less operation than the above formula
                 }
             protected:
                 const auto& get_data()

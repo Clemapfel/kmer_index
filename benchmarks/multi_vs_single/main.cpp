@@ -87,7 +87,7 @@ int main(int argc, char** argv)
     auto single_kmer = kmer::make_kmer_index<10>(text);
     auto fm = seqan3::fm_index(text);
 
-    for (size_t query_length = 28; query_length <= 50; ++query_length)
+    for (size_t query_length = 4; query_length <= 50; ++query_length)
     {
         benchmark::RegisterBenchmark("multi_kmer", &multi_kmer_search<seqan3::dna4, decltype(multi_kmer)>, query_length, text_length, &multi_kmer);
         benchmark::RegisterBenchmark("single_kmer", &multi_kmer_search<seqan3::dna4, decltype(single_kmer)>, query_length, text_length, &single_kmer);
