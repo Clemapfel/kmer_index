@@ -104,14 +104,14 @@ void register_10e8(const std::vector<seqan3::dna4>& text)
     (benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4>, ks, text), ...);
 
 }
-//nohup ./JUST_K_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/just_k/1e7_to_1e10_raw.csv --benchmark_out_format=csv --benchmark_repetitions=100 --benchmark_report_aggregates_only=false
+//nohup ./JUST_K_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/just_k/1e7_to_1e10_raw.csv --benchmark_out_format=csv --benchmark_repetitions=15 --benchmark_report_aggregates_only=false
 
 int main(int argc, char** argv)
 {
     //register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>();
 
     auto input = input_generator<seqan3::dna4>(seed);
-    const auto text = input.generate_sequence(10e8);
+    const auto text = input.generate_sequence(10e10);
 
     register_10e8<20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(text);
 
