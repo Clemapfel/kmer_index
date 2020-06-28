@@ -22,12 +22,11 @@ size_t seed = 200;
 
 // fm
 template<seqan3::alphabet alphabet_t>
-static void fm_search(benchmark::State& state, size_t query_length, size_t text_length)
+static void fm_search(benchmark::State& state, size_t query_length, const std::vector<seqan3::dna4>& text)
 {
     state.counters["seed"] = seed;
 
     auto input = input_generator<seqan3::dna4>(seed);
-    auto text = input.generate_sequence(text_length);
     auto index = seqan3::fm_index(text);
 
     size_t i = 0;
@@ -36,7 +35,7 @@ static void fm_search(benchmark::State& state, size_t query_length, size_t text_
         benchmark::DoNotOptimize(search(input.generate_sequence(query_length), index));
     }
 
-    state.counters["text_length"] = text_length;
+    state.counters["text_length"] = text.size();
     state.counters["query_length"] = query_length;
     state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
 
@@ -45,11 +44,10 @@ static void fm_search(benchmark::State& state, size_t query_length, size_t text_
 
 // kmer
 template<seqan3::alphabet alphabet_t, size_t k>
-static void kmer_search(benchmark::State& state, size_t query_length, size_t text_length)
+static void kmer_search(benchmark::State& state, size_t query_length, const std::vector<seqan3::dna4>& text)
 {
     state.counters["seed"] = seed;
     auto input = input_generator<seqan3::dna4>(seed);
-    auto text = input.generate_sequence(text_length);
     auto index = kmer::make_kmer_index<k>(text);
 
     bool error_occurred = false;
@@ -66,7 +64,7 @@ static void kmer_search(benchmark::State& state, size_t query_length, size_t tex
         error_occurred = true;
     }
 
-    state.counters["text_length"] = text_length;
+    state.counters["text_length"] = text.size();
     state.counters["query_length"] = query_length;
     state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
     state.counters["k"] = k;
@@ -75,6 +73,7 @@ static void kmer_search(benchmark::State& state, size_t query_length, size_t tex
     seed++;
 }
 
+/*
 template<size_t k>
 void register_kmer(size_t text_length)
 {
@@ -89,12 +88,32 @@ void register_all()
         (register_kmer<ks>(text_length), ...);
         (benchmark::RegisterBenchmark("single_kmer", &fm_search<seqan3::dna4>, ks, text_length), ...);
     }
+}*/
+
+template<size_t k>
+void register_kmer(const std::vector<seqan3::dna4>& text)
+{
+    benchmark::RegisterBenchmark("kmer_single", &kmer_search<seqan3::dna4, k>, k, text);
+}
+
+
+template<size_t... ks>
+void register_10e8(const std::vector<seqan3::dna4>& text)
+{
+    (register_kmer<ks>(text), ...);
+    (benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4>, ks, text), ...);
+
 }
 //nohup ./JUST_K_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/just_k/1e7_to_1e10_raw.csv --benchmark_out_format=csv --benchmark_repetitions=100 --benchmark_report_aggregates_only=false
 
 int main(int argc, char** argv)
 {
-    register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>();
+    //register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>();
+
+    auto input = input_generator<seqan3::dna4>(seed);
+    const auto text = input.generate_sequence(10e8);
+
+    register_10e8<20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(text);
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();

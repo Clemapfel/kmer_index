@@ -1317,11 +1317,14 @@ Multi-kmer Index
 \end_layout
 
 \begin_layout Standard
-As evident from section 2, the search performance is highly variable depending
- on mostly the length of the query in relationship to kin the query and
- thus also on the text size itself.
- As well as the number of results for each kmer .
- To investigate this further a benchmark was conducted: 
+To further investigate the behavior the three Lemmas in section 2 imply,
+ a benchmark was conducted.
+ For a kmer index with 
+\begin_inset Formula $k=10$
+\end_inset
+
+, queries starting at 6 all the way up to 60 were searched and the search
+ calls duration to return was measured:
 \end_layout
 
 \begin_layout Standard
@@ -1333,8 +1336,8 @@ status open
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /home/clem/Workspace/kmer_index/source/benchmarks/kmer_vs_fm_over_query_size/k10_search_over_query.png
-	lyxscale 10
+	filename /home/clem/Workspace/kmer_index/source/benchmarks/multi_vs_single/single_only.png
+	lyxscale 30
 	width 100text%
 
 \end_inset
@@ -1346,8 +1349,8 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-Graph demonstrating the highly variable search performance of the kmer index
- based on query length.
+Benchmark results searching queries of length 6 to 50 with a kmer index
+ for k = 10.
  The inset graph is showing a 
 \begin_inset Quotes eld
 \end_inset
@@ -1357,222 +1360,455 @@ zoomed in
 \end_inset
 
  view of the are for query length 16 to 20.
- The grey dotted lines mark query length that are a multiple of k
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-Benchmark results show a predicatble pattern, substantiating everything
- explained in <TODO: section 2>: Worst case performance is at 
-\begin_inset Formula $k+1$
-\end_inset
-
- (because that is where 
-\begin_inset Formula $k-(k\mod m)$
-\end_inset
-
- is maximal, c.f.
- <TODO: lemma 3>).
- The peaks of the worst case lower as the query size increases because given
- a fixed text size, the number of results for longer queries is statistically
- likely to be lower which means the 
-\begin_inset Formula $m>k$
-\end_inset
-
- search can 
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-lstinline{break}
-\end_layout
-
-\end_inset
-
- out of the crossreferencing loop discussed in <TODO: section> earlier.
- To mitigate these peaks, the kmer index was extended to hold the position
- data for multiple k (henceforth referred to as 
-\begin_inset Quotes eld
-\end_inset
-
-multi-kmer index
-\begin_inset Quotes erd
-\end_inset
-
-).
+ The grey dotted lines mark query length that are a multiple of k.
  
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+The results show a predicatble pattern substantiating the above mentioned
+ lemmas.
+ Optimal performance happens for query sizes 
+\begin_inset Formula $m:\:m\mod k=0$
+\end_inset
+
+ (Lemma #1).
+ While queries of length 
+\begin_inset Formula $(n*k)-1,\,(n*k)-2:\:n\in{1,2,...}$
+\end_inset
+
+still show acceptable performance the higher 
+\begin_inset Formula $k-m$
+\end_inset
+
+ the worse the search function performs (Lemma #2).
+ For queries of length 
+\begin_inset Formula $(n*k)+1$
+\end_inset
+
+ performance becomes unusable showing a runtime increase of up to 5e7 times
+ compared to best-case performance.
+ Not that the peaks at 
+\begin_inset Formula $(n*k)+1$
+\end_inset
+
+ reduce in severity as query length increases.
+ This is because with the query length increasing so does the number of
+ results for the query.
+ As stated in Lemma #3, this allows the kmer index to abort the search call
+ early reducing runtime.
+ To achieve a more general-purpose performance, let's look at the similarly
+ conducted benchmark for a kmer index with multiple k.
+ As 
+\begin_inset Formula $(n*k)+1$
+\end_inset
+
+is the worst case, adding a 
+\begin_inset Formula $k_{2}=k_{1}+1$
+\end_inset
+
+ seems reasonable however since as we've seen performance for 
+\begin_inset Formula $(n*k)-2$
+\end_inset
+
+ is still decent enough so to preserve memory we choose 
+\begin_inset Formula $k_{2}=k_{1}+2$
+\end_inset
+
+.
+ This then means that the new worst case is 
+\begin_inset Formula $(n*k_{2})+1$
+\end_inset
+
+, and so on.
+ To cover the widest possible region, the 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ are thus chosen as 
+\begin_inset Formula $k_{0}=5,\,k_{1}=k_{0}+2,\,...,\,k_{last}=29$
+\end_inset
+
+.
+ 29 is the highest reasonable k as we are limited by the number of bits
+ for the integer used for the hashes
+\begin_inset Formula $³$
+\end_inset
+
+.
+ Comparing the results, it is obvious how having multiple k can have a huge
+ impact:
+\end_layout
+
 \begin_layout Standard
-\begin_inset listings
-inline false
+\begin_inset Float figure
+wide false
+sideways false
 status open
 
 \begin_layout Plain Layout
+i
+\begin_inset Graphics
+	filename /home/clem/Workspace/kmer_index/source/benchmarks/multi_vs_single/multi_vs_single.png
+	lyxscale 40
+	width 100text%
 
-// regular "single" kmer index
-\end_layout
+\end_inset
 
-\begin_layout Plain Layout
-
-template<size_t k>         
-\end_layout
-
-\begin_layout Plain Layout
-
-class kmer_index_element { (...)
-\end_layout
-
-\begin_layout Plain Layout
 
 \end_layout
 
 \begin_layout Plain Layout
-
-// multi-kmer index
-\end_layout
-
-\begin_layout Plain Layout
-
-template<size_t...
- ks>
-\end_layout
-
-\begin_layout Plain Layout
-
-class kmer_index : protected kmer_index_element<ks>...
- 
-\end_layout
-
-\begin_layout Plain Layout
-
-{ 
-\end_layout
-
-\begin_layout Plain Layout
-
-// multi-k search function
-\end_layout
-
-\begin_layout Plain Layout
-
-result_t search(std::vector<alphabet_t> query) 
-\end_layout
-
-\begin_layout Plain Layout
-
-{
-\end_layout
-
-\begin_layout Plain Layout
-
-	// pick optimal k for query
-\end_layout
-
-\begin_layout Plain Layout
-
-	std::vector<size_t> all_ks = {ks...};
-\end_layout
-
-\begin_layout Plain Layout
-
-	size_t optimal_k = all_ks.at(0);
-\end_layout
-
-\begin_layout Plain Layout
-
-	size_t m = query.size();
-\end_layout
-
-\begin_layout Plain Layout
-
-	for (size_t k : all_ks) 
-\end_layout
-
-\begin_layout Plain Layout
-
-	{
-\end_layout
-
-\begin_layout Plain Layout
-
-		if (m % k == 0) {
-\end_layout
-
-\begin_layout Plain Layout
-
-			optimal_k = k; 
-\end_layout
-
-\begin_layout Plain Layout
-
-			break;
-\end_layout
-
-\begin_layout Plain Layout
-
-		}
-\end_layout
-
-\begin_layout Plain Layout
-
-		else if ((m % k) > (m % optimal_k))
-\end_layout
-
-\begin_layout Plain Layout
-
-			optimal_k = k;
-\end_layout
-
-\begin_layout Plain Layout
-
-	}
-\end_layout
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\begin_layout Plain Layout
-
-	// use the correct index element 
-\end_layout
-
-\begin_layout Plain Layout
-
-	return kmer_index_element<optimal_k>::search(query);//*
-\end_layout
-
-\begin_layout Plain Layout
-
-}
-\end_layout
-
-\begin_layout Plain Layout
-
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-C++-like *Pseudocode demonstrating multiple inheritance and behavior of
- search function for multi-kmer index
+Search Performance for multi-kmer and single kmer index
 \end_layout
 
 \end_inset
 
 
 \end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Even thought the multi-kmer index does not cover every single k, covering
+ it so that for every query length 
+\begin_inset Formula $m$
+\end_inset
+
+ there's a k so that 
+\begin_inset Formula $k=m\lor k=m+1$
+\end_inset
+
+ still decent performance.
+ Not how at query length 10 the single kmer index is faster (c.f.
+ the red vertical line in the above figure).
+ This illlustrates the slight difference in performance between 
+\begin_inset Formula $k=m$
+\end_inset
+
+ (which is true for the single kmer index for 
+\begin_inset Formula $m=10$
+\end_inset
+
+) and 
+\begin_inset Formula $k=m+1$
+\end_inset
+
+(which is true for the multi kmer index).
+ Due to the same reason the multi kmer performance sort of zig-zags with
+ it's peaks at uncovered k and it lows at directly covered k.
+ Note further how past 33 the multi kmer indices performance starts spiking.
+ This is because the k is limited to at most 31 numbers past 31 can't be
+ covered optimally.
+ The spike at 40 owes to the fact that the multi kmer does not have 
+\begin_inset Formula $k=10$
+\end_inset
+
+ and thus have to cover 40 with 
+\begin_inset Formula $k=11$
+\end_inset
+
+(44) which is outside the 
+\begin_inset Formula $m-k<=3$
+\end_inset
+
+ range mentioned above.
+ The spike at 47 is because 47 is a prime and thus not divisible by any
+ possible 
+\begin_inset Formula $k$
+\end_inset
+
+.
+ This is true for all primes past 31 and illustrates well the kmer indices
+ inherent weakness of some query lengths having poor performance while others
+ perform very well.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+At this point to put the absolute values of these results into perspective,
+ a comparison between seqan3's fm-index
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Note that for exact string matching there's is no relevant performance differenc
+e for the fm- and bi-fm-index <TODO: citation>
+\end_layout
+
+\end_inset
+
+ and the above used multi-kmer index was conducted.
+ These results are from the same benchmark session as the above graphs to
+ assure comparability:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/clem/Workspace/kmer_index/source/benchmarks/multi_vs_single/multi_vs_fm.png
+	lyxscale 40
+	width 100text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Search performance of the multi kmer index and the fm index.
+ The results where linearly fitted using values inside 
+\begin_inset Formula $x=[5,33]$
+\end_inset
+
+ (designated here by the rectangular are of darker grey background)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Results indicate that the kmer index is faster for all k.
+ Even for query lengths 
+\begin_inset Formula $m=k+1$
+\end_inset
+
+the kmer index outperforms the fm-index by large margin and it is reasonable
+ to assume that depending on the text an even lower number of k could still
+ provide a significant performance boost.
+ To investigate this further, similar benchmarks were conducted for different
+ text sizes and the average decrease in runtime
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+speedup = 
+\begin_inset Formula $1-mean_{k=3}^{31}(t_{fm}/(t_{fm<k>}-t_{kmer<k>}))$
+\end_inset
+
+ where 
+\begin_inset Formula $t_{fm<i>}<\,t_{kmer<i>}$
+\end_inset
+
+ are the search time performance of the corresponding index for searching
+ a query of size i
+\end_layout
+
+\end_inset
+
+ was measured:
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Tabular
+<lyxtabular version="3" rows="7" columns="2">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+text size
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+average speedup
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $10³$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+88.99%
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $10⁴$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+88.95%
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $10⁵$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+90.05%
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $10⁶$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+91.13%
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $10⁷$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $10⁸$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
 
 \end_inset
 

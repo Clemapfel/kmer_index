@@ -116,7 +116,7 @@ namespace kmer
                 std::vector<const std::vector<position_t>*>
                 get_position_for_all_kmer_with_prefix(iterator_t prefix_begin, size_t size) const
                 {
-                    if (fast_pow(_sigma, k-size) >= 5e5)addendum below
+                    if (fast_pow(_sigma, k-size) >= 5e5)
                     {
                         std::cerr << "[WARNING] lookup of query with size " << size << " with kmer_index for k = " << k
                                   << " may take a long time\n";
