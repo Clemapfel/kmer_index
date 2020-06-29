@@ -6,10 +6,8 @@
 library(ggplot2)
 
 setwd("/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/")
-data <- read.csv("final_1k_3k_2020-06-24T00-13-32+02-00.csv")
+data <- read.csv("new_2020-06-29T19-30-50+02-00.csv")
 data_fm = data[data$name == "fm_median",]
-
-#data <- read.csv("TODO:")
 data_multi = data[data$name == "multi_kmer_median",]
 
 plot_diff <- ggplot()

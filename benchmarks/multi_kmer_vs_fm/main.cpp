@@ -85,8 +85,6 @@ static void multi_kmer_search(
 //nohup ./MULTI_KMER_VS_FM_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/multi_vs_fm/raw.csv --benchmark_out_format=csv --benchmark_repetitions=3 --benchmark_report_aggregates_only=false
 int main(int argc, char** argv)
 {
-
-    // 1e7
     size_t text_length = 1e8;
     auto input = input_generator<seqan3::dna4>(seed);
     auto text = input.generate_sequence(text_length);
@@ -106,5 +104,5 @@ int main(int argc, char** argv)
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
 
-    cleanup_csv("/srv/public/clemenscords/multi_vs_fm/raw.csv");
+    cleanup_csv("/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/new_raw.csv");
 }

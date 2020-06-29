@@ -411,6 +411,13 @@ namespace kmer
 
             size_t choose_best_k_for_query_size(size_t query_size) const
             {
+                using hash_t = size_t;
+                size_t highest_possible_k = 1
+                while(detail::fast_pow(_sigma, i) < std::numeric_limits<size_t>::max())
+                {
+                    highest_possible_k++;
+                }
+
                 // pick best k to search with
                 size_t optimal_k = _all_ks.front(); // _all_ks need to be sorted highest to lowest
 
@@ -419,7 +426,7 @@ namespace kmer
                     for (size_t k : _all_ks)
                     {
                         // for actual kmers, prioritze absolute distance rather than divisibility
-                        if (query_size < 31)
+                        if (query_size < highest_possible_k)
                         {
                             if (query_size <= k and (k - query_size < optimal_k - query_size))
                             {

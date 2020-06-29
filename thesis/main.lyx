@@ -1467,7 +1467,8 @@ i
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-Search Performance for multi-kmer and single kmer index
+Search Performance for multi-kmer and single kmer index (for a text size
+ of 1e6 as these results are from the same benchmark session as Figure 1)
 \end_layout
 
 \end_inset
@@ -1561,8 +1562,8 @@ e for the fm- and bi-fm-index <TODO: citation>
 \end_inset
 
  and the above used multi-kmer index was conducted.
- These results are from the same benchmark session as the above graphs to
- assure comparability:
+ These results were taken from the same benchmark session as the above graphs
+ to ensure comparability:
 \end_layout
 
 \begin_layout Standard
@@ -1606,7 +1607,7 @@ Search performance of the multi kmer index and the fm index.
 \end_layout
 
 \begin_layout Standard
-Results indicate that the kmer index is faster for all k.
+These results indicate that the kmer index is faster for all k.
  Even for query lengths 
 \begin_inset Formula $m=k+1$
 \end_inset
@@ -1621,20 +1622,24 @@ status open
 
 \begin_layout Plain Layout
 speedup = 
-\begin_inset Formula $1-mean_{k=3}^{31}(t_{fm}/(t_{fm<k>}-t_{kmer<k>}))$
+\begin_inset Formula $1-mean_{k=3}^{31}(t_{fm<k>}/(t_{fm<k>}-t_{kmer<k>}))$
 \end_inset
 
  where 
-\begin_inset Formula $t_{fm<i>}<\,t_{kmer<i>}$
+\begin_inset Formula $t_{fm<i>}\geq\,t_{kmer<i>}$
 \end_inset
 
- are the search time performance of the corresponding index for searching
- a query of size i
+ are the search time performance of the corresponding fm-index, kmer_index<i>
+ for searching a query of size i
 \end_layout
 
 \end_inset
 
- was measured:
+ compared to a kmer index with optimal coverage 
+\begin_inset Formula $(k=m)$
+\end_inset
+
+was measured:
 \end_layout
 
 \begin_layout Standard
@@ -1815,16 +1820,26 @@ average speedup
 
 \end_layout
 
+\begin_layout Standard
+Results indicate that the kmer index faster regardless of text size.
+ The speedup actually increases slightly with higher text size which is
+ also reflected in Figure 3, note how the linear model for the fm index
+ has a slightly steeper incline that the one for the kmer index.
+ While the reason for this is not immediately obvious, it may be due to
+ implementation-defined behavior on the fm-indices
+\end_layout
+
 \begin_layout Section
 Implementation defined Optimization
 \end_layout
 
 \begin_layout Standard
-While few of the ideas here improve the theoretical performance of the kmer
- index, certain implementation choices contributed significantly to it having
- a chance to outpace the fm index.
- Picking C++ as the language of choice was an intentional decision made
- to allow the author to have flexibility <TODO>
+While the kmer brings inherent theoretical advantages with it, the implementatio
+n owes it's comparatively good performance to the specific way things are
+ implemented.
+ C++20 was the language of choice for the implementation, not only to assure
+ compability with the seqan3 library but also to allow for more granularity
+ <TODO>
 \end_layout
 
 \begin_layout Subsection
@@ -1832,37 +1847,69 @@ Returning by Reference
 \end_layout
 
 \begin_layout Standard
-As we've seen in section <TODO>, for queries of length 
+As described in Section 2 depending on the length 
+\begin_inset Formula $m$
+\end_inset
+
+ of the query the positions may or may not be the contents of a single vector
+ in the indices map (
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{
+\backslash
+_data}
+\end_layout
+
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Itemize
+For 
 \begin_inset Formula $m:\:m=k$
 \end_inset
 
- the returned positions of the query are simply the entry in the map for
- the corresponding hash.
- However for 
-\begin_inset Formula $m:\:m>k\,\land\,m\%k=0$
+ all occurences of the query are identical to the entry in the indices map
+ at the corresponding hash (c.f.
+ Section 2.1)
+\end_layout
+
+\begin_layout Itemize
+For 
+\begin_inset Formula $m:\:m>k$
 \end_inset
 
- there may not be any entry in the map that exactly corresponds to the positions
- of the query, while all positions for it are from the corresponding vector
- in the map for hash of the first k characters, not all positions in the
- vector are correct, some have to be thrown out.
- For 
-\begin_inset Formula $m:\:m<k$
+ all occurences of the query are a subset of the positions of the first
+ kmer prefix of the query (c.f.
+ Section 2.3)
+\end_layout
+
+\begin_layout Itemize
+For 
+\begin_inset Formula $m:\ m<k$
 \end_inset
 
- there may not be a single vector in the map that represents all positions,
- as all kmer with the prefix equal to query are valid positions, the resulting
- positions correspond to multiple vector in the actual map.
- Performance wise this proves problematic, copying many positions into a
- result vector as well as allocating that result vector introduce a huge
- overhead that is unexceptable.
- To fix this a result class was created that simply holds the references
- to the correct vectors as well as information about which results within
- those are valid (as needed for the 
-\begin_inset Formula $m:\:m>k\,\land\,m\%k=0$
-\end_inset
+ the occurences will usually not be contained to a single entry in the map
+ at all.
+ As multiple kmers (all that have the query as it's prefix) are searched
+ per query the results for the query will be made of multiple entries in
+ the indices map
+\end_layout
 
- case):
+\begin_layout Standard
+The trivial way to solve the problem of unifying occurences is to copy the
+ correct positions to a vector and return that, this is highly inefficient
+ as creating the new vector and potential copying tens of thousands of numbers
+ into it ever search call would introduce an unacceptable performance overhead.
+ Instead a custom result type was implemented that is able to unify entries
+ in the map by reference, that is rather than creating a new vector it simply
+ holds a reference to an already existing entry in the index:
 \end_layout
 
 \begin_layout Standard
@@ -1872,12 +1919,11 @@ status open
 
 \begin_layout Plain Layout
 
-struct kmer_index_result 
+struct kmer_index_result {
 \end_layout
 
 \begin_layout Plain Layout
 
-{
 \end_layout
 
 \begin_layout Plain Layout
@@ -1991,26 +2037,7 @@ struct kmer_index_result
 
 \begin_layout Plain Layout
 
-// member of kmer_index: search query of any length
-\end_layout
-
-\begin_layout Plain Layout
-
-template<std::ranges::range query_t>
-\end_layout
-
-\begin_layout Plain Layout
-
-kmer_index_result search(query_t&& query);
-\end_layout
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\begin_layout Plain Layout
-
-// in main: result simply usable as range
+// usage in main.cpp: result simply usable as range
 \end_layout
 
 \begin_layout Plain Layout
@@ -2045,7 +2072,42 @@ n";
 
 \begin_layout Plain Layout
 The kmer index returns the above defined kmer_index_result.
- It can be used like any other range, here illustrated in 
+ It can be used like any other range
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The result can hold references to multiple vectors to cover both 
+\begin_inset Formula $m=k$
+\end_inset
+
+ and 
+\begin_inset Formula $m<k$
+\end_inset
+
+ queries.
+ For 
+\begin_inset Formula $m>k$
+\end_inset
+
+ it furthermore has a vector of booleans specifying wether or not the results
+ at position i of the vector of positions from inside the indices map is
+ valid.
+ While for 
+\begin_inset Formula $m>k$
+\end_inset
+
+ the index marks each positions for the other cases this vector is simply
+ initialized as all 
 \begin_inset ERT
 status open
 
@@ -2053,58 +2115,17 @@ status open
 
 
 \backslash
-lstinline{//main}
+lstinline{true}
 \end_layout
 
 \end_inset
 
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-The result only holds the pointers to the corresponding vectors of positions
- inside the kmer index.
- This allows for construction of the result to be minimal, it only needs
- to move the pointers into 
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-lstinline{_positions}
-\end_layout
-
-\end_inset
-
- and initialize 
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-lstinline{_bitmask}
-\end_layout
-
-\end_inset
-
-.
- During the search call, the kmer index signals to the result which positions
- should be used and which should be discarded, however none of them are
- actually removed from the vectors, instead when the results is evaluated
- later on, it only returns valid positions and skips past the ones marked
- as invalid <TODO: cite code>.
- This removes the need to allocate a vector of positions and improves search
- performance dramatically while not sacrificing usability.
+ and not altered at any point.
+ When the result is iterated through the results iterator will simply skip
+ positions marked as invalid and continue to the next.
+ This allows very little overhead for construction and return of the result
+ and eliminates most of the runtime overhead that would be introduced if
+ the index returned by value.
  
 \end_layout
 
@@ -2113,15 +2134,68 @@ Choosing the fastes Pow Implementation
 \end_layout
 
 \begin_layout Standard
-By the nature of the hash used to hash kmers in the kmer index, exponentiation
- (pow() in programming terms) is used everywhere, however exclusively with
- positive integers.
- Furthermore all pow functions need to be able to be evaluated at compile
- time (c.f.
- section <TODO>) It was thus imperative to choose the most optimal pow implement
-ation.
- A benchmark was conducted for 4 different implementations and the results
- were compared:
+By the nature of the hash used to hash kmers, exponentiation (henceforth
+ referred to as 
+\begin_inset Quotes eld
+\end_inset
+
+pow
+\begin_inset Quotes erd
+\end_inset
+
+ in reference to the commonly used 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{std::pow}
+\end_layout
+
+\end_inset
+
+) is used every search call, sometimes multiple times.
+ The nature of the kmer hash also introduces the need for the pow to be
+ able to be evaluated at compile time (
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{constexpr}
+\end_layout
+
+\end_inset
+
+
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+or 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{consteval}
+\end_layout
+
+\end_inset
+
+ available since C++20 if applicable
+\end_layout
+
+\end_inset
+
+ and it also is exclusively used with unsigned integers.
+ Four different implementations of pows were tested and benchmarked:
 \end_layout
 
 \begin_layout Itemize
@@ -2153,9 +2227,9 @@ lstinline{recursive_pow(base,n)}
 
 \end_inset
 
-: Utilizing a recursive approach, the function calls itself recursively
- n-many times and then evaluates each call bottom-up to then return the
- correct result base on wether the exponent was odd or even
+: Utilizing a recursive approach, this function calls itself recursively
+ n-many times and then evaluates each call from the inside out to then return
+ the correct result base on wether the exponent was odd or even
 \end_layout
 
 \begin_layout Itemize
@@ -2171,21 +2245,8 @@ lstinline{bit_pow(base,n)}
 
 \end_inset
 
-: Rather than using 
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-lstinline{operator*}
-\end_layout
-
-\end_inset
-
- for multiplication, this implementation utilizes equivalent bit operations
- which are generally more well-optimized on modern machines
+: Utilizes bit-operations which are generally more well-optimized on most
+ modern machines
 \end_layout
 
 \begin_layout Itemize
@@ -2219,7 +2280,7 @@ status open
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/clem/Workspace/kmer_index/source/benchmarks/pow_vs_pow/pow_vs_pow.png
-	lyxscale 15
+	lyxscale 40
 	width 100text%
 
 \end_inset
@@ -2231,9 +2292,7 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-Boxplot showing runtime (y-axis log scaled) for different pow implementations.
- The notches represent the confidence interval around the median.
- 
+Boxplot showing runtime for different pow implementations
 \end_layout
 
 \end_inset
@@ -2251,9 +2310,9 @@ Boxplot showing runtime (y-axis log scaled) for different pow implementations.
 \end_layout
 
 \begin_layout Standard
-As clearly evident from the benchmarks, the approach switch_pow took vastly
- outpaces the others and as such was used for the kmer_index implmentation
- wherever possible.
+Results indicate that the implementation utilizing the fall-through switch
+ is definitevely faster than the other implmentations and was thus used
+ for the index whenever possible.
 \end_layout
 
 \begin_layout Subsection
@@ -2261,10 +2320,8 @@ Choosing the fastest Hash Implementation
 \end_layout
 
 \begin_layout Standard
-Simiarly to pow, the result of the hash function transforming a kmer into
- a 64-bit integer is integral to the index function and optimizing it's
- runtime as much as possible is very advantageous.
- Two hash implementations were compared:
+Armed with the fastest possible pow the speed of the complete hash function
+ was addressed:
 \end_layout
 
 \begin_layout Standard
@@ -2450,7 +2507,7 @@ status open
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/clem/Workspace/kmer_index/source/benchmarks/hash_vs_hash/hash_vs_hash.png
-	lyxscale 10
+	lyxscale 40
 	width 100text%
 
 \end_inset
@@ -2462,9 +2519,9 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-Multiple boxplots for different k showing distribution of runtime results
- for hash implementations (y-axes have been normalized to the same scale
- to enable valid comparison between graphs) 
+Multiple boxplots showing distribution of runtime results for hash implementatio
+ns for differet k (y-axes have been normalized to the same scale to enable
+ valid comparison between graphs) 
 \end_layout
 
 \end_inset
@@ -2482,8 +2539,7 @@ Multiple boxplots for different k showing distribution of runtime results
 \end_layout
 
 \begin_layout Standard
-Benchmarks results show that for all tested k the fold-expression implemetation
- for the hash has superior median runtime
+Results
 \begin_inset Foot
 status open
 
@@ -2523,7 +2579,7 @@ lstinline{hash_for}
 
 \end_inset
 
-.
+indicate that using the fold expression does increase performance..
  The relatively large variance in for all but 
 \begin_inset Formula $k=5$
 \end_inset
@@ -2561,9 +2617,22 @@ lstinline{hash_for}
 
  which may be attributed to cache-artifacts that allow the CPU to hold all
  factors of the precalculated hash sum in the L1 cache improving access
- times.
- These results are indicitave that the fold implementation is more performant
- and was thus choosen to be used by the kmer index whenever possible.
+ times and thus runtime.
+ As such 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{hash_fold}
+\end_layout
+
+\end_inset
+
+ was used wherever possible.
+ 
 \end_layout
 
 \begin_layout Subsection
@@ -2584,22 +2653,8 @@ lstinline{unordered_map}
 
 \end_inset
 
- with the keys as 64-bit hashes and the value a vector of text positions,
- ( 
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-lstinline{std::vector<uint32_t}
-\end_layout
-
-\end_inset
-
- by default) is the data structure used to assess the data inside the kmer
- index, choosing the most performant map implementation is of vital importance.
+ is the data structure used to assess the data inside the kmer index choosing
+ the most performant map implementation is of vital importance.
  As 
 \begin_inset ERT
 status open
@@ -2614,7 +2669,7 @@ lstinline{std::unordered_map}
 \end_inset
 
  did not proof sufficient enough, other maps were tested and evaluated specifica
-lly for the context of use in a kmer index (that is with the key type 
+lly for the context of use in a kmer index (that is with key type 
 \begin_inset ERT
 status open
 
@@ -2640,7 +2695,7 @@ lstinline{std::vector<uint32_t>}
 
 \end_inset
 
-.
+).
  Tested were
 \end_layout
 
@@ -2691,8 +2746,8 @@ lstinline{absl::node_hash_map}
 
 \end_inset
 
- from Googles' Abseil <TODO: https://abseil.io/docs/cpp/guides/container#abslnode
-_hash_map-and-abslnode_hash_set
+ from Googles Abseil <TODO: https://abseil.io/docs/cpp/guides/container#abslnode_
+hash_map-and-abslnode_hash_set
 \end_layout
 
 \begin_layout Itemize
@@ -2731,7 +2786,7 @@ lstinline{at(size_t hash)}
 
  function.
  Only retrieval was tested here since after construction no insertion takes
- places during searching with the kmer index.
+ places in the context of the kmer index.
 \end_layout
 
 \begin_layout Standard
@@ -2743,7 +2798,7 @@ status open
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/clem/Workspace/kmer_index/source/benchmarks/map_vs_map/map_vs_map.png
-	lyxscale 10
+	lyxscale 40
 	width 100text%
 
 \end_inset
@@ -2773,7 +2828,7 @@ search performance for different map implementations
 \end_layout
 
 \begin_layout Standard
-As clearly evident, 
+Results indicate that 
 \begin_inset ERT
 status open
 
@@ -2786,48 +2841,212 @@ lstinline{robin_hood::unordered_map}
 
 \end_inset
 
- outperformed every other map tested and was as such used in the kmer index
- whenever possible.
+ outperformed every other map tested irregardless of the number of elements
+ contained and was as such used as the central data structure for the kmer
+ index.
+ A direct-addressing approach was also tested <TODO: cite addendum> and
+ while it improved runtime slightly it scaled exceptionally badly with higher
+ k and demanded too much memory to be deemed worth the complexity compared
+ to having just 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{robin_hood::unordered_map}
 \end_layout
 
-\begin_layout Subsection
-Choosing the right k(s)
-\end_layout
+\end_inset
 
-\begin_layout Standard
-Given the kmers inconsistent nature, picking the best possible k has a large
- impact on the search performance.
- While with a single k this is hard to do, given the option to have any
- number of k raises the question of how many and which to pick.
- 
+.
 \end_layout
 
 \begin_layout Section
-Conclusion & Outlook
-\end_layout
-
-\begin_layout Subsection
-Further Features
-\end_layout
-
-\begin_layout Subsubsection
-mix k-results for different ks to cover rest optimally
-\end_layout
-
-\begin_layout Subsubsection
-compress map to cover all k
+Outlook
 \end_layout
 
 \begin_layout Standard
-each map takes #kmer * sizeof(hash_t) + text_size * position_t
+While the kmer index already provides adequate performance and speedup for
+ the common use case of 
+\begin_inset Formula $k\in\{3,4,...,30\}$
+\end_inset
+
+ further features may improve performance and make it generally more consistent
+ run-time wise for a bigger interval of query-sizes.
 \end_layout
 
-\begin_layout Subsubsection
-(each map takes #kmers * 64 for the keys + uint32_t * text_size for positions.
+\begin_layout Subsection
+>64-bit Hash
 \end_layout
 
-\begin_layout Subsubsection
-sizeof(hash_t) > 64
+\begin_layout Standard
+As mentioned above the type for the Hashes is currently 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{uint64_t}
+\end_layout
+
+\end_inset
+
+ (as provided by <cstdint>).
+ 64 bit integers were chosen because the standard library does not currently
+ support >64bit integers natively and seqan3s kmer hash also uses them.
+ However the size of the integer type for the hash is arbitrary and expanding
+ it to 128 or 256bit would drastically improve the maximum k that can still
+ be search with the overall faster 
+\begin_inset Formula $m=k$
+\end_inset
+
+ search function.
+ Almost all modern systems support 128bit integer operations and abstracting
+ the kmer index to use for example integers of up to 1024bit from boosts
+ 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{<multiprecision/cpp_int.hpp>
+\end_layout
+
+\end_inset
+
+ could proof valuable, even if these types introduce a small overhead compared
+ to 64bit.
+ Note that currently used pow implementation (c.f.
+ section 4.2) works exclusively for 64bit unsigned integers however it is
+ feasible to substitue it with a betters suited if slightly slower pow to
+ allow for arbitrary hash sizes.
+\end_layout
+
+\begin_layout Subsection
+Multi Kmer Index Compression 
+\end_layout
+
+\begin_layout Standard
+As discussed in section 3, using multiple k for the same index vastly increases
+ the search performance for a broad variety of queries.
+ Ideally we would want to just choose every possible k however memory limitation
+s make this difficult.
+ The kmer index from section 3 
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+for 
+\begin_inset Formula $k={5,7,9,11,13,15,17,19,21,23,25,27,29}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+ offered decent coverage but for a text size of 1e6 already occupied about
+ 60gb of memory.
+ While this is not unfeasable for stronger machines, as each map uses about
+ 
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{H.size() * 64 + text.size() * sizeof(position_t)}
+\end_layout
+
+\end_inset
+
+
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ (where H is the set of all pairwise different hashes that occure in the
+ text) many bytes which means for bigger text such as an entire genome using
+ all ks is all but impossible.
+ To remedy this it could be possible to implement a way to compress the
+ single-k indices contained in the multi-k index.
+ Each index contains all positions of the text in it's map which means in
+ a multi-k index with 5 ks, the individual indices contain 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{(5-1)*text.size() * sizeof(position_t)}
+\end_layout
+
+\end_inset
+
+ many redundant entries in the form of the vectors of positions for each
+ hash.
+ If a version of the kmer index is implemented that only contains all the
+ texts positions once while still allowing for comparative runtime performance,
+ an all-purpose kmer index could be proposed that simply holds information
+ for all possible ks.
+ To allow for optimal runtime and no overhead introduced by the compression
+ the current implementation of the kmer index does not have this feature.
+\end_layout
+
+\begin_layout Subsection
+General Purpose Exact String Matching
+\end_layout
+
+\begin_layout Standard
+The kmer index is able to search sequences of arbitrary lengths.
+ While the original intention was to cover multiple k theoretically any
+ sequence without errors could be searched.
+ To investigate the possiblity of the application a benchmark was conducted
+ that compared search time for longer queries:
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Section
+Conclusion
+\end_layout
+
+\begin_layout Standard
+The kmer index in it's current implementation provides enough of a performance
+ boost for the common usage case of searching exact queries of realtively
+ short length to be recommend for adoption in genome-sequence processing.
+ 
 \end_layout
 
 \end_body
