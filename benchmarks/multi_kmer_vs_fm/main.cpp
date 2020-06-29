@@ -87,7 +87,7 @@ int main(int argc, char** argv)
 {
 
     // 1e7
-    size_t text_length = 1e7;
+    size_t text_length = 1e8;
     auto input = input_generator<seqan3::dna4>(seed);
     auto text = input.generate_sequence(text_length);
 
