@@ -407,17 +407,11 @@ namespace kmer
 
             // precalculate what ks to use based on query length (2000 is maximum common read length)
             inline static constexpr size_t _query_size_range = 2000;
+            inline static size_t _max_possible_k = 32;
             std::array<size_t, _query_size_range> _optimal_k;
 
             size_t choose_best_k_for_query_size(size_t query_size) const
             {
-                using hash_t = size_t;
-                size_t highest_possible_k = 1
-                while(detail::fast_pow(_sigma, i) < std::numeric_limits<size_t>::max())
-                {
-                    highest_possible_k++;
-                }
-
                 // pick best k to search with
                 size_t optimal_k = _all_ks.front(); // _all_ks need to be sorted highest to lowest
 
@@ -426,7 +420,7 @@ namespace kmer
                     for (size_t k : _all_ks)
                     {
                         // for actual kmers, prioritze absolute distance rather than divisibility
-                        if (query_size < highest_possible_k)
+                        if (query_size < _max_possible_k)
                         {
                             if (query_size <= k and (k - query_size < optimal_k - query_size))
                             {
@@ -500,6 +494,18 @@ namespace kmer
 
                 // sort all_ks so bigger ks can be prioritized in search
                 std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool {return a > b;});
+
+                /*
+                using hash_t = size_t;
+                size_t sigma = seqan3::alphabet_size<alphabet_t>;
+
+                _max_possible_k = 1;
+                while(detail::fast_pow(sigma, _max_possible_k) < std::numeric_limits<hash_t>::max())
+                {
+                    _max_possible_k++;
+                }
+
+                std::cout << "max _k " << _max_possible_k << "\n";*/
 
                 for (size_t query_size = 1; query_size < _optimal_k.size(); ++query_size)
                     _optimal_k[query_size] = choose_best_k_for_query_size(query_size);
