@@ -21,21 +21,20 @@ size_t n_benchmarks_registered = 0;
 size_t seed = 200;
 
 // fm
-template<seqan3::alphabet alphabet_t>
-static void fm_search(benchmark::State& state, size_t query_length, const std::vector<seqan3::dna4>* text)
+template<seqan3::alphabet alphabet_t, typename index_t>
+static void fm_search(benchmark::State& state, size_t query_length, const index_t* index, size_t text_size)
 {
     state.counters["seed"] = seed;
 
     auto input = input_generator<seqan3::dna4>(seed);
-    auto index = seqan3::fm_index(*text);
 
     size_t i = 0;
     for (auto _ : state)
     {
-        benchmark::DoNotOptimize(search(input.generate_sequence(query_length), index));
+        benchmark::DoNotOptimize(search(input.generate_sequence(query_length), *index));
     }
 
-    state.counters["text_length"] = text->size();
+    state.counters["text_length"] = text_size;
     state.counters["query_length"] = query_length;
     state.counters["alphabet_size"] = seqan3::alphabet_size<alphabet_t>;
 
@@ -97,11 +96,11 @@ void register_kmer(const std::vector<seqan3::dna4>* text)
 }
 
 
-template<size_t... ks>
-void register_10e8(const std::vector<seqan3::dna4>* text)
+template<size_t... ks, typename index_t>
+void register_10e8(const std::vector<seqan3::dna4>* text, const index_t* index)
 {
     (register_kmer<ks>(text), ...);
-    (benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4>, ks, text), ...);
+    (benchmark::RegisterBenchmark("fm", &fm_search<seqan3::dna4, index_t>, ks, index, text->size()), ...);
 
 }
 //nohup ./JUST_K_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/just_k/1e7_to_1e10_raw.csv --benchmark_out_format=csv --benchmark_repetitions=15 --benchmark_report_aggregates_only=false
@@ -111,11 +110,15 @@ int main(int argc, char** argv)
     //register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>();
 
     auto input = input_generator<seqan3::dna4>(seed);
-    const auto text_1 = input.generate_sequence(1e8);
-    register_10e8<20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(&text_1);
 
+    const auto text_1 = input.generate_sequence(1e8);
+    const auto fm_1 = seqan3::fm_index(text_1);
+    register_10e8<20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, decltype(fm_1)>(&text_1, &fm_1);
+
+    /*
     const auto text_2 = input.generate_sequence(1e9);
-    register_10e8<20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(&text_2);
+    const auto fm_2 = seqan3::fm_index(text_2);
+    register_10e8<20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, decltype(fm_2)>(&text_2, &fm_2);*/
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();

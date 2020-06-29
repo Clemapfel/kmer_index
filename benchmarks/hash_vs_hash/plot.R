@@ -56,7 +56,7 @@ create_plot <- function(data, k, yscale=30, use_lab = FALSE) {
 
 }
 
-setwd("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/hash_vs_hash/")
+setwd("/home/clem/Workspace/kmer_index/source/benchmarks/hash_vs_hash/")
 data_raw <- read.csv("2020-06-11_16-15-36.csv", stringsAsFactors = FALSE)
 
 # filter out gbenchmark averages
@@ -75,7 +75,7 @@ plot20 <- create_plot(data, 20, yscale)
 plot25 <- create_plot(data, 25, yscale)
 
 plot <- grid.arrange(plot5, plot10, plot15, plot20, plot25, ncol=5,
-                     top=textGrob("hash performance for queries of length k\n(100 benchmark cycles per hash implmentation, queries randomized each call)"),
+                     top=textGrob(expression(bold("hash performance for queries of length k\n(100 benchmark cycles per hash implmentation, queries randomized each call)")),gp=gpar(fontface="bold")),
                      right=legendGrob(c("mean"), pch=c(mean_point_shape)))
 
 ggsave("hash_vs_hash.png", plot, width=30, height=15, units="cm")

@@ -4,7 +4,7 @@
 # plot runtime for pows
 library(ggplot2)
 
-setwd("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/pow_vs_pow/")
+setwd("/home/clem/Workspace/kmer_index/source/benchmarks/pow_vs_pow/")
 data <- read.csv("2020-06-09_16-52-16.csv")
 
 # filter out gbenchmark averages
@@ -14,12 +14,11 @@ data_filtered <- data[data$name=="switch_pow"
                         | data$name=="bit_pow",]
 
 plot <- qplot(name,
-              log(real_time),
+              real_time,
               data = data_filtered,
               geom = "boxplot",
-              notch = TRUE,
               xlab = "",
-              ylab = "log(runtime)",
+              ylab = "runtime (ns)",
               #ylim = c(90, 230),
               fill = name)
 
