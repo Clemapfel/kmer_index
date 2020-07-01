@@ -75,7 +75,7 @@ plot20 <- create_plot(data, 20, yscale)
 plot25 <- create_plot(data, 25, yscale)
 
 plot <- grid.arrange(plot5, plot10, plot15, plot20, plot25, ncol=5,
-                     top=textGrob(expression(bold("hash performance for queries of length k\n(100 benchmark cycles per hash implmentation, queries randomized each call)")),gp=gpar(fontface="bold")),
+                     top=textGrob(expression("hash performance for queries of length k\n(100 benchmark cycles per hash implementation and k, queries randomized each call)")),
                      right=legendGrob(c("mean"), pch=c(mean_point_shape)))
 
 ggsave("hash_vs_hash.png", plot, width=30, height=15, units="cm")

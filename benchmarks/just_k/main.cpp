@@ -73,7 +73,7 @@ void register_all(std::vector<alphabet_t>& text, index_t* fm)
     (benchmark::RegisterBenchmark("fm", &fm_search<index_t>, ks, text.size(), fm), ...);
 }
 
-//nohup ./JUST_K_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/just_k/1e7_to_1e10_raw.csv --benchmark_out_format=csv --benchmark_repetitions=15 --benchmark_report_aggregates_only=false
+//nohup ./JUST_K_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/just_k/1e7_1e8_raw.csv --benchmark_out_format=csv --benchmark_repetitions=10 --benchmark_report_aggregates_only=false
 
 int main(int argc, char** argv)
 {
