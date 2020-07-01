@@ -108,23 +108,23 @@ As demand for large-scale genomic sequence matching rises so does the ability
  of length k called kmer.
  A kmer index optimized for this purposes was implemented and it's performance
  evaluated.
- The implementation is capable of searching kmers with an abitrary k specified
- at run-time, utilizes parallization for faster construction and searching
- of multiple queries at once and it's internal structure can be further
- customized at compile time to achieve greater performance for certain query
- sizes.
+ The implementation is capable of searching kmers with of arbitrary length
+ specified at run-time, utilizes parallization for faster construction and
+ searching of multiple queries at once and it's internal structure can be
+ further customized at compile time to achieve greater performance for certain
+ query sizes.
  The exact nature of the implementation-defined optimizations is explained
  and it's performance benchmarked.
- Results indicate that for the purpose of searching for positions or number
- of occurences of kmers of the commonly used length 
+ Results indicate that for the purpose of searching kmers of the commonly
+ used length 
 \begin_inset Formula $k\in\{3,...,30\}$
 \end_inset
 
  the kmer index performs up to 2 times faster than the fm-index regardless
  of text size.
- Further comparison for queries of greater length is made, it is observed
- that although the kmer index may perform better in some cases, it's performance
- is highly dependend on the text size and query length.
+ Furthermore for queries of greater length it is observed that although
+ the kmer index may perform better in some cases, it's performance is highly
+ dependend on the text size and the queries length.
  Soft guidelines are formulated in what cases the kmer index may outperform
  the fm-index.
  It is concluded that the kmer index is to be always preferred for any exact
@@ -136,17 +136,12 @@ As demand for large-scale genomic sequence matching rises so does the ability
 \begin_inset Formula $k$
 \end_inset
 
- it's inconsistency doesn't lend it to general-purpose use however may proof
- useful in circumstances where the lengths of query are highly homogenous.
- 
+ it's inconsistency doesn't lend it to general-purpose use however it may
+ proof useful in circumstances where the lengths of queries is known beforehand.
 \end_layout
 
 \begin_layout Section*
 Motivation
-\end_layout
-
-\begin_layout Section
-Construction
 \end_layout
 
 \begin_layout Standard
@@ -166,12 +161,20 @@ kmer
 \begin_inset Quotes erd
 \end_inset
 
-) is any (usually) genomic sequence of length k.
- The kmer index then utilizes an unordered map data structure that saves
- the positions for each occurence of the kmer so a simple lookup can retrieve
- all of them.
- To save on memory the kmer are not saved in clear text but are converted
- to an unsigned integer with the following hash function:
+) is any genomic sequence of length k, usually in the context of being a
+ subsequence of a longer text.
+ 
+\end_layout
+
+\begin_layout Section
+Construction
+\end_layout
+
+\begin_layout Standard
+The kmer index utilizes an unordered map as it's central data structure,
+ saving for each kmer the position of all occurences in the text.
+ To save on memory the kmer are converted to an unsigned integer via the
+ following hash function:
 \end_layout
 
 \begin_layout LyX-Code
@@ -216,10 +219,16 @@ where
 
 \end_deeper
 \begin_layout Standard
-This hash guarantees no hash collisions <TODO: citation> and was furthermore
- chosen because the kmer index is to be integrated and compared to the seqan3
- library <seqan citation> which uses the same hash function <todo: kmer
- hash header>.
+This hash guarantees no hash collisions
+\begin_inset CommandInset citation
+LatexCommand cite
+key "seqan2 doctor arbeit"
+literal "false"
+
+\end_inset
+
+ and was furthermore chosen because the kmer index is to be integrated and
+ compared to the seqan3 library which uses the same hash function.
  Constructing the kmer is fairly straight-forward: simply iterate through
  the text, creating a new entry for a kmer that wasn't seen before or if
  it was, adding the current position to that kmers entry:
@@ -2878,7 +2887,7 @@ While the kmer index already provides adequate performance and speedup for
 \end_layout
 
 \begin_layout Standard
-As mentioned above the type for the Hashes is currently 
+As mentioned above the type of the Hashes is currently 
 \begin_inset ERT
 status open
 
@@ -2901,9 +2910,9 @@ lstinline{uint64_t}
 \end_inset
 
  search function.
- Almost all modern systems support 128bit integer operations and abstracting
- the kmer index to use for example integers of up to 1024bit from boosts
- 
+ Almost all modern systems support 128bit integer operations <TODO: citation>
+ and abstracting the kmer index to use for example integers of up to 1024bit
+ from boosts 
 \begin_inset ERT
 status open
 
@@ -2918,10 +2927,20 @@ lstinline{<multiprecision/cpp_int.hpp>}
 
  could proof valuable, even if these types introduce a small overhead compared
  to 64bit.
- Note that currently used pow implementation (c.f.
+ 
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Note that the currently used pow implementation (c.f.
  section 4.2) works exclusively for 64bit unsigned integers however it is
  feasible to substitue it with a betters suited if slightly slower pow to
  allow for arbitrary hash sizes.
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Subsection
@@ -2947,7 +2966,7 @@ for
 
 \end_inset
 
- offered decent coverage but for a text size of 1e6 already occupied about
+ offered decent coverage but for a text size of 10⁸ already occupied about
  60gb of memory.
  While this is not unfeasable for stronger machines, as each map uses about
  
@@ -3024,8 +3043,9 @@ General Purpose Exact String Matching
 
 \begin_layout Standard
 The kmer index is able to search sequences of arbitrary lengths.
- While the original intention was to cover multiple k theoretically any
- sequence without errors could be searched.
+ While the original intention was to cover multiple k with only a few specified
+ at compile time, theoretically any sequence without errors of arbitrary
+ length could be searched.
  To investigate the possiblity of the application of this a benchmark was
  conducted that compared search time for longer queries:
 \end_layout
@@ -3052,22 +3072,18 @@ status open
 Runtime Difference for exact searcher per query size for different text
  sizes.
  (Depicted as 
-\begin_inset Formula $sign(\Delta)*log(sign(\Delta)*\Delta)$
+\begin_inset Formula $sign(\Delta_{i})*log(sign(\Delta_{i})*\Delta_{i})$
 \end_inset
 
  where 
-\begin_inset Formula $\Delta=t_{kmer}-t_{fm}$
+\begin_inset Formula $\Delta_{i}=t_{kmer}-t_{fm}$
+\end_inset
+
+ the difference of runtimes of each index searching a query length 
+\begin_inset Formula $i$
 \end_inset
 
 )
-\begin_inset Newline newline
-\end_inset
-
-To save on memory, the kmer index used 
-\begin_inset Formula $ks=\{5,7,9,11,13,15,17,18,19,21,23,25,27,29,31\}$
-\end_inset
-
-
 \end_layout
 
 \end_inset
@@ -3082,13 +3098,13 @@ To save on memory, the kmer index used
 
 \begin_layout Standard
 Results indicate that the kmer index performs comparatively well for smaller
- texts while for bigger texts it performs worse and worse.
+ texts while the bigger the text the wores the relative performance becomes.
  This is because for bigger queries no query can be covered directly and
- thus Lemma #3 makes the search performance highly dependentuseful on the
- number of results.
- Noticeable in for all text sizes are performance spikes are primes (for
- example in the above figure, notice how at 211 decrease in performance
- happens regardless of text size).
+ thus Lemma #3 makes the search performance highly dependent on the number
+ of results.
+ Noticeable for all text sizes are performance spikes around primes (for
+ example in the above figure, notice how at 211 significant decrease in
+ performance happens regardless of text size).
  Overall the kmer index is not very well suited for exact string matching
  for arbitrary lengths, however depending on the intervall of query sizes
  and the texts length and homogenity it may result in speedup on average
@@ -3166,7 +3182,7 @@ result_t exact_search(query_t query) {
 
 \begin_layout Plain Layout
 
-		return _fm_fibred.search(query);
+		return _fm_fibre.search(query);
 \end_layout
 
 \begin_layout Plain Layout
@@ -3176,7 +3192,6 @@ result_t exact_search(query_t query) {
 
 \begin_layout Plain Layout
 
-	
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
@@ -3274,7 +3289,7 @@ is
 \begin_inset Formula $\sigma>4$
 \end_inset
 
-
+)
 \end_layout
 
 \begin_layout Itemize
@@ -3317,9 +3332,9 @@ the alphabet size is comparatively big (e.g.
 
 \begin_layout Standard
 Further research is needed to develop a more sophisticated heuristic that
- may or may not pre-analyze the text during construction to also take into
- account the entropy of the text (the less homogenous it is the less results
- there will be for each kmer).
+ could also pre-analyze the text during construction to also take into account
+ the entropy of the text (the less homogenous it is the less results there
+ will be for each kmer which will favor the kmer index).
  The above stated rules are simply observations of the benchmark runs detailed
  above and should not be used as hard guidelines but rather be a jumping
  off point for doing a wide-scale analysis to develop a sophisticated heuristic
@@ -3347,14 +3362,91 @@ e that makes it hard to recommend as a general-purpose index for exact string
  The current kmer index implementation is stable, reasonably well optimized
  and has been shown to show the practical speedup that was suggested by
  the theoretical properties of the kmer index.
- Given a user-friendly front end that does not require the average used
+ Given a user-friendly front end that does not require the average user
  to interact with for example the choice of k by picking the right k for
- them should make the implementation usable in praxis.
+ them should make the implementation worth using in praxis.
  The multi-kmer approach furthermore allows for flexibility at runtime and
- if a way to compress or enough memory is possible, simply choosing all
- k for the multi-kmer index could make it a simple to use and well-performing
- option for searching exact kmers.
+ if a way to compress them (or enough aquire enough memory) is possible,
+ simply choosing all k for the multi-kmer index could make it a simple to
+ use and well-performing option for searching exact kmers.
  
+\end_layout
+
+\begin_layout Section
+Addendum
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "key-1"
+literal "false"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "seqan3 docs"
+literal "false"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "seqan2 doctor arbeit"
+literal "false"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "key-7"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "key-4"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "key-5"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "key-6"
+
+\end_inset
+
+
 \end_layout
 
 \end_body

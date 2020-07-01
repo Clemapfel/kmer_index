@@ -24,9 +24,14 @@ fm_color = "red2"
 single_only_line_size = 0.75
 
 single_only = ggplot()
+
+for (i in 1:5) {
+  single_only = single_only + geom_vline(xintercept=i*10, color="black", linetype="dashed")
+}
+
 single_only = single_only + geom_line(mapping=aes(x=query_length, y=real_time, color=single_color_label), data=data_single, size=smooth_size)
 #single_only = single_only + geom_line(mapping=aes(x=query_length, y=real_time, color=multi_color_label), data=data_multi, size=smooth_size)
-single_only = single_only + scale_x_continuous(name="k (query length)", breaks=seq(1, 50, 1)) + scale_y_continuous(name="runtime (ns)", seq(0, 6e07, 1e07))
+single_only = single_only + scale_x_continuous(name="query length", breaks=seq(1, 50, 1)) + scale_y_continuous(name="runtime (ns)", seq(0, 6e07, 1e07))
 single_only = single_only + theme(legend.title=element_blank(), legend.position="none", plot.title=element_text(face="bold"))
 single_only = single_only + ggtitle(label="search performance for kmer_index<10>", subtitle="text size = 1e6 | queries randomized each call | 25 benchmark cycles per query length")
 
@@ -36,8 +41,9 @@ x <- data_zoomed$query_length
 y <- data_zoomed$real_time
 
 inset_plot = ggplot()
+inset_plot = inset_plot + geom_vline(xintercept=20, linetype="dashed")
 inset_plot = inset_plot + geom_segment(mapping=aes(x=x, xend=x, y=0, yend=y, color=single_color_label), size=smooth_size, color=single_color)
-
+inset_plot = inset_plot + scale_y_continuous(breaks=seq(0, 60000, 10000))
 inset_plot <- inset_plot + theme(axis.title.y=element_blank(),
                                  axis.title.x=element_blank(),
                                  legend.position="none",
@@ -72,7 +78,7 @@ multi_vs_single = multi_vs_single + geom_line(mapping=aes(x=query_length, y=real
 multi_vs_single = multi_vs_single + geom_line(mapping=aes(x=query_length, y=real_time, color=multi_color_label), data=data_multi, size=line_size)
 
 multi_vs_single = multi_vs_single + coord_cartesian(ylim=c(min(data_multi$real_time), 28000), xlim=xlim)
-multi_vs_single = multi_vs_single + scale_x_continuous(name="k (query length)", breaks=seq(1, 50, 1)) + scale_y_continuous(name="runtime (ns)", breaks=seq(0, 40000, 2000))
+multi_vs_single = multi_vs_single + scale_x_continuous(name="query length", breaks=seq(1, 50, 1)) + scale_y_continuous(name="runtime (ns)", breaks=seq(0, 40000, 2000))
 multi_vs_single = multi_vs_single + ggtitle(label="search performance: multi kmer vs single kmer", subtitle="single\t=\tkmer_index<10>\nmulti\t=\tkmer_index<5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29>")
 multi_vs_single = multi_vs_single + theme(plot.title=element_text(face="bold"), legend.title=element_blank())
 multi_vs_single = multi_vs_single + scale_color_manual(values=c(single_color, multi_color, fm_color, "black"), breaks=c(single_color_label, multi_color_label, fm_color_label, "zoom"))
@@ -94,7 +100,7 @@ multi_vs_fm = multi_vs_fm + geom_line(mapping=aes(x=query_length, y=real_time, c
 multi_vs_fm = multi_vs_fm + geom_smooth(method="lm", mapping=aes(x=query_length, y=real_time, color=fm_color_label), data=data_fm[data_fm$query_length >= 4 & data_fm$query_length <= 34,], size=smooth_size, fullrange=TRUE, se=FALSE)
 
 multi_vs_fm = multi_vs_fm + coord_cartesian(ylim=c(1000, max(data_fm$real_time)), xlim=c(3, 35))
-multi_vs_fm = multi_vs_fm + scale_x_continuous(name="k (query length)", breaks=seq(1, 50, 2)) + scale_y_continuous(name="runtime (ns)", breaks=seq(0, 40000, 500))
+multi_vs_fm = multi_vs_fm + scale_x_continuous(name="query length", breaks=seq(1, 50, 2)) + scale_y_continuous(name="runtime (ns)", breaks=seq(0, 40000, 500))
 multi_vs_fm = multi_vs_fm + ggtitle(label="search performance: kmer vs fm", subtitle="fm\t\t=\tseqan3::fm_index\nmulti\t=\tkmer_index<5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29>")
 multi_vs_fm = multi_vs_fm + theme(plot.title=element_text(face="bold"), legend.title=element_blank())
 multi_vs_fm = multi_vs_fm + scale_color_manual(values=c(single_color, multi_color, fm_color, "black"), breaks=c(single_color_label, multi_color_label, fm_color_label, "zoom"))
