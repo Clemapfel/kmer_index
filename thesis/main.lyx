@@ -3017,9 +3017,11 @@ During construction of the multi kmer index, the creation functions for
 \begin_layout Standard
 As the number of possible ks is currently restricted to at most 31, modern
  systems with 32 or more CPUs are capable of constructing one multi kmer
- index for all ks in the same time as one single kmer index.
- Paralellization could furthermore be utilizes to search multiple queries
- or even multiple parts of a single query at once.
+ index for all ks in the same time as one single kmer index for k=31 given
+ sufficient memory.
+ In the future, paralellization could furthermore be utilized to search
+ multiple queries or even multiple parts of a single query at once.
+ 
 \end_layout
 
 \begin_layout Section

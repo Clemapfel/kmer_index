@@ -524,11 +524,12 @@ namespace kmer
                             query);
             }
 
+            /*
             result_t search(std::vector<alphabet_t>&& query) const
             {
                 auto hold = query;
                 return search(hold);
-            }
+            }*/
 
             /*
             // search multiple queries in paralell

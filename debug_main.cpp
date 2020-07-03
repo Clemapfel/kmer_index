@@ -28,10 +28,9 @@ int main()
 {
     using namespace seqan3;
 
-    // why spike at : 15, 16, 34, 51, 71, 121
-    constexpr size_t n = 30;
+    constexpr size_t n = 40;
 
-    std::vector<size_t> _all_ks = {7, 9, 11, 13, 15, 17, 19, 21, 23, 25};
+    std::vector<size_t> _all_ks = {3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
     std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool {return a > b;});
 
     std::array<size_t, n> _optimal_k;
