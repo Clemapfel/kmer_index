@@ -173,7 +173,7 @@ namespace kmer
                     {
                         const auto* pos = at(hash(query.begin()));
                         if (pos)
-                            return result_t(pos);
+                            return result_t(pos, detail::INIT_TYPE::K);
                         else
                             return result_t();
                     }
@@ -233,7 +233,7 @@ namespace kmer
                         // query.size % k != 0 and query.size < 2*k
                         if (nk_positions.size() == 1)
                         {
-                            result_t output(nk_positions.at(0), false);
+                            result_t output(nk_positions.at(0), detail::INIT_TYPE::NK, false);
                             for (size_t i = 0; i < nk_positions.at(0)->size(); ++i)
                                 if (usable.at(i))
                                     output.should_use(i);
@@ -244,7 +244,7 @@ namespace kmer
                         // query.size % k == 0 does not need to check rest
                         else if (rest_n == 0)
                         {
-                            result_t output(nk_positions.at(0), true);
+                            result_t output(nk_positions.at(0), detail::INIT_TYPE::NK, true);
 
                             for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
                             {
@@ -276,7 +276,7 @@ namespace kmer
                         // query.size() % k != 0 and query.size() > 2*k
                         else
                         {
-                            result_t output(nk_positions.at(0), false);
+                            result_t output(nk_positions.at(0), INIT_TYPE::NK, false);
 
                             for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
                             {
@@ -318,7 +318,7 @@ namespace kmer
                     // for query.size() < k use prefix search directly
                     else
                     {
-                        return result_t(get_position_for_all_kmer_with_prefix(query.begin(), query.size()), true);
+                        return result_t(get_position_for_all_kmer_with_prefix(query.begin(), query.size()));
                     }
                 }
 

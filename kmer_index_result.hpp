@@ -11,12 +11,24 @@ namespace kmer::detail
     template<seqan3::alphabet, typename, size_t>
     class kmer_index_element;
 
+    enum INIT_TYPE {K, NK, SUBK};
+
     // result type that only holds pointers to the positions inside kmer index
     // only to be used internally
     template<typename position_t>
     struct kmer_index_result
     {
         private:
+            // bitmask specifies which of the results should be ignore
+            compressed_bitset<uint_fast64_t> _bitmask;
+
+            bool _trivially_initialized = true;
+            size_t _n_results = 0;
+
+            // pointers to positions inside kmer index map
+            std::vector<const std::vector<position_t>*> _positions;
+
+        protected:
             // iterator class that automatically jumps to next valid result
             class kmer_index_result_iterator
             {
@@ -41,7 +53,7 @@ namespace kmer::detail
 
                         size_t new_i = _position_i + 1;
 
-                        while (new_i < _result->_bitmask.size() and _result->_bitmask.at(new_i) == false)
+                        while (new_i < _result->_n_results and _result->bitmask_at(new_i) == false)
                             new_i++;
 
                         assert(new_i != _position_i);
@@ -59,7 +71,7 @@ namespace kmer::detail
 
                         size_t new_i = _position_i - 1;
 
-                        while (new_i > 0 and _result->bitmask.at(new_i) == false)
+                        while (new_i > 0 and _result->bitmask_at(new_i) == false)
                             new_i--;
 
                         assert(new_i != _position_i);
@@ -191,11 +203,20 @@ namespace kmer::detail
                     }
             };
 
-            // bitmask specifies which of the results should be ignore
-            compressed_bitset<uint_fast64_t> _bitmask;
+            size_t get_n_results() const
+            {
+                return _n_results;
+            }
 
-            // pointers to positions inside kmer index map
-            std::vector<const std::vector<position_t>*> _positions;
+            bool bitmask_at(size_t i) const
+            {
+                assert(i < _n_results);
+
+                if (_trivially_initialized)
+                    return true;
+                else
+                    return _bitmask.at(i);
+            }
 
         public:
             // at, throws if the position at i isn't usable
@@ -219,28 +240,60 @@ namespace kmer::detail
                 return _positions.at(vector_i)->at(i);
             }
 
+            explicit kmer_index_result()
+                : _bitmask(0, true)
+            {
+                _trivially_initialized = true;
+                _n_results = 0;
+            }
+
             // CTOR: default
-            explicit kmer_index_result(bool zero_or_one = true)
-                    : _bitmask(0, zero_or_one)
+            // TODO: this is incredibly bad software design but I just want to test
+            explicit kmer_index_result(const std::vector<position_t>* pos, INIT_TYPE type, bool zero_or_one = true)
+                : _bitmask(0, true)
             {
+                if (type == K) {
+                    init_for_k(pos);
+                }
+                else if (type == NK)
+                {
+                    init_for_nk(pos, zero_or_one);
+                }
+                else assert(true);
             }
 
-            // CTOR: used by nk and k search
-            explicit kmer_index_result(const std::vector<position_t>* positions, bool zero_or_one = true)
-                    : _bitmask(positions->size(), zero_or_one), _positions{positions}
+            explicit kmer_index_result(std::vector<const std::vector<position_t>*> positions)
+                : _bitmask(0, true)
             {
+                init_for_subk(positions);
             }
 
-            // CTOR: used by subk searchs
-            explicit kmer_index_result(std::vector<const std::vector<position_t>*> positions, bool zero_or_one = true)
-                    : _positions(positions.begin(), positions.end()),
-                      _bitmask([&positions]() {
-                          size_t n = 0;
-                          for (const auto* p : positions)
-                              n += p->size();
-                          return n;
-                      }(), zero_or_one)
+            // used by n*k, needs to initialize bitmask
+            void init_for_nk(const std::vector<position_t>* positions, bool zero_or_one)
             {
+                _trivially_initialized = false;
+                _bitmask = compressed_bitset<uint_fast64_t>(positions->size(), zero_or_one);
+                _n_results = positions->size();
+                _positions = {positions};
+            }
+
+            // used by k, no bitmask needed
+            void init_for_k(const std::vector<position_t>* positions)
+            {
+                _trivially_initialized = true;
+                _n_results = positions->size();
+                _positions = {positions};
+            }
+
+            // used by subk, not bitmask needed
+            void init_for_subk(std::vector<const std::vector<position_t>*> positions)
+            {
+                _trivially_initialized = true;
+                _n_results = 0;
+                for (const auto* res : positions)
+                    _n_results += res->size();
+
+                _positions = positions;
             }
 
             // specify which positions to use by setting bitmask
@@ -272,7 +325,7 @@ namespace kmer::detail
                 size_t i = 0;
                 for (const auto* vec : _positions)
                     for (size_t j = 0; j < vec->size(); ++j, ++i)
-                        if (_bitmask.at(i))
+                        if (bitmask_at(i))
                             output.push_back(vec->at(j));
 
                 if (sort_results)
