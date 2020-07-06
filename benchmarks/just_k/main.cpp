@@ -81,7 +81,6 @@ int main(int argc, char** argv)
 {
     auto input = input_generator<alphabet_t>(seed);
 
-    /*
     auto text_1 = input.generate_sequence(1e3);
     auto fm_1 = seqan3::fm_index(text_1);
 
@@ -99,8 +98,8 @@ int main(int argc, char** argv)
 
     register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(
             text_3, &fm_3);
-            */
 
+    /*
     auto text_4 = input.generate_sequence(1e6);
     auto fm_4 = seqan3::fm_index(text_4);
 
@@ -113,13 +112,13 @@ int main(int argc, char** argv)
     register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(
             text_5, &fm_5);
 
-    /*
     auto text_6 = input.generate_sequence(1e8);
     auto fm_6 = seqan3::fm_index(text_6);
 
     register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(
             text_6, &fm_6);
 
+    /*
     auto text_7 = input.generate_sequence(1e9);
     auto fm_7 = seqan3::fm_index(text_7);
 
