@@ -75,12 +75,19 @@ void register_all(std::vector<alphabet_t>& text, index_t* fm)
     (benchmark::RegisterBenchmark("fm", &fm_search<index_t>, ks, text.size(), fm), ...);
 }
 
+template<size_t... ks>
+void register_kmer(std::vector<alphabet_t>& text)
+{
+    (benchmark::RegisterBenchmark("kmer", &kmer_search<ks>, ks, text), ...);
+}
+
 //nohup ./JUST_K_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/just_k/to_1e7_complere_raw.csv --benchmark_out_format=csv --benchmark_repetitions=100 --benchmark_report_aggregates_only=false
 
 int main(int argc, char** argv)
 {
     auto input = input_generator<alphabet_t>(seed);
 
+    /*
     auto text_1 = input.generate_sequence(1e3);
     auto fm_1 = seqan3::fm_index(text_1);
 
@@ -99,7 +106,6 @@ int main(int argc, char** argv)
     register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(
             text_3, &fm_3);
 
-    /*
     auto text_4 = input.generate_sequence(1e6);
     auto fm_4 = seqan3::fm_index(text_4);
 
@@ -117,7 +123,7 @@ int main(int argc, char** argv)
 
     register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(
             text_6, &fm_6);
-
+    */
     /*
     auto text_7 = input.generate_sequence(1e9);
     auto fm_7 = seqan3::fm_index(text_7);
@@ -125,6 +131,10 @@ int main(int argc, char** argv)
     register_all<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(
             text_7, &fm_7);
             */
+
+    auto text_8 = input.generate_sequence(1e8);
+    register_kmer<3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30>(
+            text_8);
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();

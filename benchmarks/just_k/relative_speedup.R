@@ -3,7 +3,7 @@ library(ggplot2)
 
 # to 1e6
 setwd("/home/clem/Workspace/kmer_index/source/benchmarks/just_k/")
-data_big = read.csv("new_result_1e6_1e7_2020-07-05T23-57-18+02-00.csv")#lncrna_complete.csv")
+data_big = read.csv("new_result_complete.csv")#lncrna_complete.csv")
 data_big = data_big[!grepl("stddev", data_big$name, fixed=TRUE) ,]
 #data_big = data_big[!data_big$query_length<5, ]
 
