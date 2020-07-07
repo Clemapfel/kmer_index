@@ -15,14 +15,29 @@ multi_color_label = "multi"
 multi_color = "springgreen4"
 fm_color = "red2"
 
-get_diff = function(text_length) {
+speedup = function(col_a, col_b) {
+
+  output = c()
+  for (i in seq_along(col_a)) {
+
+    if (col_a[i] > col_b[i]) {
+        output = c(output, 1 - col_a[i] / col_b[i])
+    }
+    else if (col_b[i] > col_a[i]) {
+        output = c(output, -1*(1 - col_b[i] / col_a[i]))
+    }
+  }
+
+  return(output);
+}
+
+get_speedup = function(text_length) {
 
   data_fm = data[data$name == "fm_median" & data$text_length==text_length,]
   data_multi = data[data$name == "multi_kmer_median" & data$text_length==text_length,]
-  diff = data_multi$real_time - data_fm$real_time
-  diff = sign(diff) * log(sign(diff)*diff)
-  diff[31] = diff[30]
-  return(diff);
+  diff = speedup(data_multi$real_time, data_fm$real_time)
+  diff = diff * 100
+  return(sign(diff) * log(sign(diff)*diff))
 }
 
 get_title = function(text_length) {
@@ -31,32 +46,78 @@ get_title = function(text_length) {
 }
 
 query_length = 5:1000;
-
-y_scale = scale_y_continuous(name = "log(delta)", breaks=c(-10, 0, 10))
+ylim = c(-5,5)
+y_scale = scale_y_continuous(name = "log(speedup)", breaks=c(0, ylim[1], ylim[2]))
 x_scale = scale_x_continuous(name="query length", breaks=seq(0, 1000, 30))
 theme = theme(plot.title=element_text(face="bold"), legend.position="none", axis.title.x=element_blank())
-coord = coord_cartesian(ylim=c(-10, 15))#min(diff), max(diff)))
+coord = coord_cartesian(ylim=c(-5,5))#min(diff), max(diff)))
+color = scale_color_manual(name = "", values =c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
+
+get_plot = function(text_length) {
+
+  speedup = get_speedup(text_length)
+  plot = ggplot() + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=speedup, color=ifelse(speedup>0, multi_color_label, fm_color_label)))
+  plot = plot + get_title(text_length) + y_scale + x_scale + theme + coord + color
+}
+
+plot_1e4 = get_plot(1e4)
+plot_1e6 = get_plot(1e6)
+plot_1e8 = get_plot(1e8)
+
+plot <- grid.arrange(plot_1e4, plot_1e6, plot_1e8, ncol=1,
+                     top=textGrob(expression(bold("search runtime difference (kmer - fm) over query length"))),
+                     bottom=element_blank())#get_legend(proxy))#legendGrob(c("fm faster than kmer", "kmer faster than fm"), pch=c(15,15), gp=gpar(color=c(fm_color, multi_color_label))))
+plot
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if (FALSE) {
+
+y_scale = scale_y_continuous(name = "speedup (%)", breaks=c(-1000, 1000, 10))
+x_scale = scale_x_continuous(name="query length", breaks=seq(0, 1000, 30))
+theme = theme(plot.title=element_text(face="bold"), legend.position="none", axis.title.x=element_blank())
+coord = coord_cartesian(ylim=c(-100, 100))#min(diff), max(diff)))
 color = scale_color_manual(name = "", values =c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
 
 
 # 1e4
 plot_1e4 = ggplot()
 diff_1e4 = get_diff(1e4)
-plot_1e4 = plot_1e4 + geom_segment(mapping=aes(x=query_length, xend=query_length, y=diff_1e4, yend=0, color=ifelse(diff_1e4>0, fm_color_label, multi_color_label)))
+plot_1e4 = plot_1e4 + geom_segment(mapping=aes(x=query_length, xend=query_length, y=diff_1e4, yend=0, color=ifelse(diff_1e4<0, fm_color_label, multi_color_label)))
 plot_1e4 = plot_1e4 + y_scale + x_scale + color + theme + coord + ggtitle(label=paste("text length = 1e+04"))
 plot_1e4
 
 # 1e6
 plot_1e6 = ggplot()
 diff_1e6 = get_diff(1e6)
-plot_1e6 = plot_1e6 + geom_segment(mapping=aes(x=query_length, xend=query_length, y=diff_1e6, yend=0, color=ifelse(diff_1e6>0, fm_color_label, multi_color_label)))
+plot_1e6 = plot_1e6 + geom_segment(mapping=aes(x=query_length, xend=query_length, y=diff_1e6, yend=0, color=ifelse(diff_1e6<0, fm_color_label, multi_color_label)))
 plot_1e6 = plot_1e6 + y_scale + x_scale + color + theme + coord + get_title(1e6)
 plot_1e6
 
 # 1e8
 plot_1e8 = ggplot()
 diff_1e8 = get_diff(1e8)
-plot_1e8 = plot_1e8 + geom_segment(mapping=aes(x=query_length, xend=query_length, y=diff_1e8, yend=0, color=ifelse(diff_1e8>0, fm_color_label, multi_color_label)))
+plot_1e8 = plot_1e8 + geom_segment(mapping=aes(x=query_length, xend=query_length, y=diff_1e8, yend=0, color=ifelse(diff_1e8<0, fm_color_label, multi_color_label)))
 plot_1e8 = plot_1e8 + y_scale + x_scale + color + theme + coord + get_title(1e8)
 plot_1e8
 
@@ -70,5 +131,6 @@ plot <- grid.arrange(plot_1e4, plot_1e6, plot_1e8, ncol=1,
                      bottom=get_legend(proxy))#legendGrob(c("fm faster than kmer", "kmer faster than fm"), pch=c(15,15), gp=gpar(color=c(fm_color, multi_color_label))))
 
 plot
-ggsave("runtime_diff_over_text_size.png", plot, width=30, height=20, units="cm")
+#ggsave("runtime_diff_over_text_size.png", plot, width=30, height=20, units="cm")
+}
 

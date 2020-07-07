@@ -33,7 +33,7 @@ single_only = single_only + geom_line(mapping=aes(x=query_length, y=real_time, c
 #single_only = single_only + geom_line(mapping=aes(x=query_length, y=real_time, color=multi_color_label), data=data_multi, size=smooth_size)
 single_only = single_only + scale_x_continuous(name="query length", breaks=seq(1, 50, 1)) + scale_y_continuous(name="runtime (ns)", seq(0, 6e07, 1e07))
 single_only = single_only + theme(legend.title=element_blank(), legend.position="none", plot.title=element_text(face="bold"))
-single_only = single_only + ggtitle(label="search performance for kmer_index<10>", subtitle="text size = 1e6 | queries randomized each call | 25 benchmark cycles per query length")
+single_only = single_only + ggtitle(label="search performance for kmer_index<10>", subtitle="text size = 1e6")
 
 # inset plot zooming in on 15:20
 data_zoomed <- data_single[data_single$query_length > 15 & data_single$query_length <= 20,]

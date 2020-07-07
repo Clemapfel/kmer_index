@@ -33,7 +33,8 @@ static void fm_search(benchmark::State& state, size_t query_length, size_t text_
     size_t i = 0;
     for (auto _ : state)
     {
-        benchmark::DoNotOptimize(search(input.generate_sequence(query_length), *index));
+        auto query = input.generate_sequence(query_length);
+        benchmark::DoNotOptimize(search(query, *index));
     }
 
     state.counters["text_length"] = text_length;
@@ -59,6 +60,7 @@ static void multi_kmer_search(
         size_t i = 0;
         for (auto _ : state)
         {
+            auto query = input.generate_sequence(query_length);
             benchmark::DoNotOptimize(index->search(input.generate_sequence(query_length)));
         }
     }
@@ -90,7 +92,7 @@ int main(int argc, char** argv)
     auto text = input.generate_sequence(text_length);
 
     const auto multi_kmer = kmer::make_kmer_index<5, 7, 9, 10, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>(text, std::thread::hardware_concurrency());
-    auto fm = seqan3::fm_index(text);
+    const auto fm = seqan3::fm_index(text);
 
     text.clear(); // clear memory
 
