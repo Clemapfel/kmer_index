@@ -173,7 +173,7 @@ namespace kmer
                     {
                         const auto* pos = at(hash(query.begin()));
                         if (pos)
-                            return result_t(pos, detail::INIT_TYPE::K);
+                            return result_t(pos, true, true);
                         else
                             return result_t();
                     }
@@ -233,7 +233,7 @@ namespace kmer
                         // query.size % k != 0 and query.size < 2*k
                         if (nk_positions.size() == 1)
                         {
-                            result_t output(nk_positions.at(0), detail::INIT_TYPE::NK, false);
+                            result_t output(nk_positions.at(0), false, false);
                             for (size_t i = 0; i < nk_positions.at(0)->size(); ++i)
                                 if (usable.at(i))
                                     output.should_use(i);
@@ -244,7 +244,7 @@ namespace kmer
                         // query.size % k == 0 does not need to check rest
                         else if (rest_n == 0)
                         {
-                            result_t output(nk_positions.at(0), detail::INIT_TYPE::NK, true);
+                            result_t output(nk_positions.at(0), false, true);
 
                             for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
                             {
@@ -276,7 +276,7 @@ namespace kmer
                         // query.size() % k != 0 and query.size() > 2*k
                         else
                         {
-                            result_t output(nk_positions.at(0), INIT_TYPE::NK, false);
+                            result_t output(nk_positions.at(0), true, false);
 
                             for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
                             {
