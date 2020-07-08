@@ -7,6 +7,8 @@
 
 namespace kmer::detail
 {
+    enum class BYPASS_BITMASK : bool {YES = true, NO = false};
+
     template<typename position_t>
     class kmer_index_result
     {
@@ -214,8 +216,8 @@ namespace kmer::detail
             }
 
             // CTOR: k or nk
-            kmer_index_result(const std::vector<position_t> *positions, bool zero_or_one, bool bypass_bitmask)
-                    : _bitmask((bypass_bitmask ? 0 : positions->size()), zero_or_one), _bypass_bitmask(bypass_bitmask), _n_results(positions->size())
+            kmer_index_result(const std::vector<position_t> *positions, bool zero_or_one, BYPASS_BITMASK bypass_bitmask)
+                    : _bitmask((bool(bypass_bitmask) ? 0 : positions->size()), zero_or_one), _bypass_bitmask(bool(bypass_bitmask)), _n_results(positions->size())
             {
                 _positions = {positions};
             }
