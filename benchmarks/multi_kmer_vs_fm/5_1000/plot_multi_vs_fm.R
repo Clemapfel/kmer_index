@@ -7,13 +7,15 @@ library(ggplot2)
 library(gridExtra)
 library(grid)
 setwd("/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000")
-data <- read.csv("5_to_1000_complete.csv")
+data = read.csv("new_2020-06-29T19-30-50+02-00.csv")#"5_1000_2020-07-07T16-08-21+02-00.csv")
+data = data[!grepl("stddev", data$name, fixed=TRUE) ,]
 
 fm_color_label = "fm"
 multi_color_label = "multi"
 
-multi_color = "springgreen4"
-fm_color = "red2"
+single_color = "deepskyblue2"
+multi_color = single_color
+fm_color = "lightcoral"
 
 speedup = function(col_a, col_b) {
 
@@ -26,17 +28,20 @@ speedup = function(col_a, col_b) {
     else if (col_b[i] > col_a[i]) {
         output = c(output, -1*(1 - col_b[i] / col_a[i]))
     }
+    else {
+        output = c(output, 0)
+    }
   }
 
   return(output);
 }
 
-get_speedup = function(text_length) {
+get_diff = function(text_length) {
 
   data_fm = data[data$name == "fm_median" & data$text_length==text_length,]
-  data_multi = data[data$name == "multi_kmer_median" & data$text_length==text_length,]
-  diff = speedup(data_multi$real_time, data_fm$real_time)
-  diff = diff * 100
+  data_multi = data[data$name == "kmer_median" & data$text_length==text_length,]
+  diff = data_fm$real_time - data_kmer$real_time
+  #diff = diff * 100
   return(sign(diff) * log(sign(diff)*diff))
 }
 
@@ -45,29 +50,40 @@ get_title = function(text_length) {
   return(ggtitle(label=paste("text length = ", text_length)))#, subtitle="fm\t\t=\tseqan3::fm-index\nmulti\t=\tkmer_index<5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>"))
 }
 
-query_length = 5:1000;
 ylim = c(-5,5)
-y_scale = scale_y_continuous(name = "log(speedup)", breaks=c(0, ylim[1], ylim[2]))
+y_scale = scale_y_continuous(name = "log(speedup %)", breaks=c(0, ylim[1], ylim[2]))
 x_scale = scale_x_continuous(name="query length", breaks=seq(0, 1000, 30))
 theme = theme(plot.title=element_text(face="bold"), legend.position="none", axis.title.x=element_blank())
 coord = coord_cartesian(ylim=c(-5,5))#min(diff), max(diff)))
 color = scale_color_manual(name = "", values =c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
 
-get_plot = function(text_length) {
+get_plot = function(text_length, size=0.5) {
 
-  speedup = get_speedup(text_length)
-  plot = ggplot() + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=speedup, color=ifelse(speedup>0, multi_color_label, fm_color_label)))
+  data_fm = data[data$name == "fm_median" & data$text_length==text_length,]
+  data_multi = data[data$name == "multi_kmer_median" & data$text_length==text_length,]
+  diff = speedup(data_multi$real_time, data_fm$real_time)
+  diff = diff * 100
+  query_length = seq(min(data_multi$query_length), max(data_multi$query_length), 1)
+
+  speedup = diff
+  plot = ggplot() + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=speedup, color=ifelse(speedup>0, multi_color_label, fm_color_label)), size=size)
   plot = plot + get_title(text_length) + y_scale + x_scale + theme + coord + color
 }
+
 
 plot_1e4 = get_plot(1e4)
 plot_1e6 = get_plot(1e6)
 plot_1e8 = get_plot(1e8)
 
-plot <- grid.arrange(plot_1e4, plot_1e6, plot_1e8, ncol=1,
-                     top=textGrob(expression(bold("search runtime difference (kmer - fm) over query length"))),
-                     bottom=element_blank())#get_legend(proxy))#legendGrob(c("fm faster than kmer", "kmer faster than fm"), pch=c(15,15), gp=gpar(color=c(fm_color, multi_color_label))))
+proxy = get_plot(1e4, 5) +  theme(legend.position="left", legend.text=element_text(size = 16))
+
+plot = grid.arrange(plot_1e4, plot_1e6, plot_1e8, ncol=1,
+                     top=textGrob(expression(bold("relative speedup (log-scaled): kmer vs. fm"))),
+                     bottom=get_legend(proxy))#legendGrob(c("fm faster than kmer", "kmer faster than fm"), pch=c(15,15), gp=gpar(color=c(fm_color, multi_color_label))))
+
+ggsave("runtime_diff_over_text_size.png", plot, width=30, height=20, units="cm")
 plot
+
 
 
 

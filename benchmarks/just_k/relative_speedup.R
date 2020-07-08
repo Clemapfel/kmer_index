@@ -18,6 +18,9 @@ speedup = function(col_a, col_b) {
     else if (col_b[i] > col_a[i]) {
         output = c(output, -1*(1 - col_b[i] / col_a[i]))
     }
+    else {
+        output = c(output, 0);
+    }
   }
 
   return(output);
@@ -56,8 +59,50 @@ plot = ggplot() + geom_line(aes(x=ns, y=means), alpha=0.5) + geom_smooth(aes(x=n
 fm_color_label = "fm"
 multi_color_label = "multi"
 
-multi_color = "springgreen4"
-fm_color = "red2"
+single_color = "deepskyblue2"
+multi_color = single_color
+fm_color = "lightcoral"
+
+get_line_plot = function(text_length) {
+
+    fm = data_big[data_big$name == "fm_median" & data_big$text_length == text_length,]
+    kmer = data_big[data_big$name == "kmer_median" & data_big$text_length == text_length,]
+
+    linesize = 1.5
+  alpha = 0.8
+
+    plot = ggplot()
+    plot = plot + geom_line(aes(x=fm$query_length, y=fm$real_time, color=fm_color_label), size=linesize, alpha=alpha)
+    plot = plot + geom_line(aes(x=kmer$query_length, y=kmer$real_time, color=multi_color_label), size=linesize, alpha=alpha)
+    plot = plot + scale_x_continuous(name="query length (k)", breaks=seq(1, 30, 2))
+    plot = plot + scale_y_continuous(name="runtime (ns)", breaks=seq(-100000, +100000, 100))
+    plot = plot + theme(plot.title=element_blank(), legend.position="top", panel.background =element_rect(fill="gray90"))
+    plot = plot + scale_color_manual(name = "", values=c("coral", "skyblue2"), labels = c("fm index","kmer index"))
+
+    #plot = plot + coord_cartesian(ylim=c(-150,30))
+    return(plot)
+}
+
+get_diff_plot = function(text_length) {
+
+    fm = data_big[data_big$name == "fm_median" & data_big$text_length == text_length,]
+    kmer = data_big[data_big$name == "kmer_median" & data_big$text_length == text_length,]
+
+    linesize = 1.5
+    alpha = 0.8
+    diff = kmer$real_time - fm$real_time
+
+    plot = ggplot()
+    plot = plot + geom_segment(aes(x=fm$query_length, xend=fm$query_length, y=0, yend=diff, color=ifelse(diff > 0, multi_color_label, fm_color_label)), size=linesize, alpha=alpha)
+    plot = plot + scale_x_continuous(name="query length (k)", breaks=seq(1, 30, 2))
+    plot = plot + scale_y_continuous(name="runtime (ns)", breaks=seq(-100000, +100000, 100))
+    plot = plot + ggtitle(label="(kmer - fm) absolute runtime difference")
+    plot = plot + theme(legend.position="bottom", panel.background =element_rect(fill="gray90"))
+    plot = plot + scale_color_manual(name = "", values=c("coral", "skyblue2"), labels = c("fm index","kmer index"))
+
+    #plot = plot + coord_cartesian(ylim=c(-150,30))
+    return(plot)
+}
 
 get_speedup_plot = function(text_length) {
 
@@ -66,56 +111,26 @@ get_speedup_plot = function(text_length) {
     percent = speedup(kmer$real_time, fm$real_time)*100
 
     plot = ggplot()
+    plot = plot + geom_hline(yintercept=0, color="darkgrey", size=1)
     plot = plot + geom_segment(aes(x=kmer$query_length, xend=kmer$query_length, y=0, yend=percent, color=ifelse(percent > 0, multi_color_label, fm_color_label)), size=4)
     plot = plot + scale_x_continuous(name="query length (k)", breaks=seq(1, 30, 1))
     plot = plot + scale_y_continuous(name="% speedup", breaks=seq(-1000, 1000, 5))
     plot = plot + ggtitle(label=paste("text size = ", text_length))
     plot = plot + theme(plot.title=element_text(face="bold"))
-    plot = plot + geom_hline(yintercept=0, color="darkgrey")
     plot = plot + scale_color_manual(name = "", values=c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
 
-    #plot = plot + coord_cartesian(ylim=c(-150,30))
-    return(plot)
-}
 
-ggsave("relative_speedup.png", get_speedup_plot(1e8), width=30, height=15, units="cm")
-
-get_diff_plot = function(text_length) {
-
-    fm = data_big[data_big$name == "fm_median" & data_big$text_length == text_length,]
-    kmer = data_big[data_big$name == "kmer_median" & data_big$text_length == text_length,]
-    percent = kmer$real_time - fm$real_time
-
-    plot = ggplot()
-    plot = plot + geom_segment(aes(x=kmer$query_length, xend=kmer$query_length, y=0, yend=percent, color=ifelse(percent < 0, multi_color_label, fm_color_label)), size=4)
-    plot = plot + scale_x_continuous(name="query length (k)", breaks=seq(1, 30, 1))
-    plot = plot + scale_y_continuous(name="runtime difference (ns)", breaks=seq(-1000, 1000, 20))
-    plot = plot + ggtitle(label="kmer - fm runtime", subtitle=paste("text size = ", text_length))
-    plot = plot + theme(plot.title=element_text(face="bold"))
-    plot = plot + geom_hline(yintercept=0, color="darkgrey")
-    plot = plot + scale_color_manual(name = "", values=c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
+    inset_grob = ggplotGrob(get_line_plot(text_length))
+    #plot = plot + annotation_custom(grob=inset_grob, xmin=17, xmax=30, ymin=max(percent)-40, ymax=max(percent))
 
     #plot = plot + coord_cartesian(ylim=c(-150,30))
     return(plot)
 }
 
-get_line_plot = function(text_length) {
+print(get_speedup_plot(1e8))
+ggsave("relative_speedup.png", get_speedup_plot(1e8), width=30, height=20, units="cm")
 
-    fm = data_big[data_big$name == "fm_median" & data_big$text_length == text_length,]
-    kmer = data_big[data_big$name == "kmer_median" & data_big$text_length == text_length,]
 
-    plot = ggplot()
-    plot = plot + geom_line(aes(x=kmer$query_length, y=kmer$real_time, color=multi_color_label), size=2)
-    plot = plot + geom_line(aes(x=fm$query_length, y=fm$real_time, color=fm_color_label), size=2)
-    plot = plot + scale_x_continuous(name="query length (k)", breaks=seq(1, 30, 1))
-    #plot = plot + scale_y_continuous(name="runtime (ns)", breaks=seq(-1000, 1000, 20))
-    plot = plot + ggtitle(label=paste("text size = ", text_length))
-    plot = plot + theme(plot.title=element_text(face="bold"))
-    plot = plot + scale_color_manual(name = "", values=c(fm_color, multi_color), labels = c("fm index","kmer index"))
-
-    #plot = plot + coord_cartesian(ylim=c(-150,30))
-    return(plot)
-}
 
 
 

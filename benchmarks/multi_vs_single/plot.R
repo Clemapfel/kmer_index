@@ -16,9 +16,9 @@ single_color_label = "single"
 multi_color_label = "multi"
 xlim = c(0, 45)
 
-single_color = "royalblue"
-multi_color = "mediumorchid3"
-fm_color = "red2"
+single_color = "deepskyblue2"
+multi_color = "hotpink2"
+fm_color = "lightcoral"
 
 # single_only
 single_only_line_size = 0.75
