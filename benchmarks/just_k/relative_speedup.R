@@ -69,14 +69,15 @@ get_line_plot = function(text_length) {
     kmer = data_big[data_big$name == "kmer_median" & data_big$text_length == text_length,]
 
     linesize = 1.5
-  alpha = 0.8
+  alpha = 0.6
 
     plot = ggplot()
     plot = plot + geom_line(aes(x=fm$query_length, y=fm$real_time, color=fm_color_label), size=linesize, alpha=alpha)
     plot = plot + geom_line(aes(x=kmer$query_length, y=kmer$real_time, color=multi_color_label), size=linesize, alpha=alpha)
     plot = plot + scale_x_continuous(name="query length (k)", breaks=seq(1, 30, 2))
     plot = plot + scale_y_continuous(name="runtime (ns)", breaks=seq(-100000, +100000, 100))
-    plot = plot + theme(plot.title=element_blank(), legend.position="top", panel.background =element_rect(fill="gray90"))
+    plot = plot + ggtitle(label="absolute runtime")
+    plot = plot + theme(plot.title=element_text(face="bold", size=10), legend.position="bottom", panel.background =element_rect(fill="gray90"))
     plot = plot + scale_color_manual(name = "", values=c("coral", "skyblue2"), labels = c("fm index","kmer index"))
 
     #plot = plot + coord_cartesian(ylim=c(-150,30))
@@ -112,16 +113,16 @@ get_speedup_plot = function(text_length) {
 
     plot = ggplot()
     plot = plot + geom_hline(yintercept=0, color="darkgrey", size=1)
-    plot = plot + geom_segment(aes(x=kmer$query_length, xend=kmer$query_length, y=0, yend=percent, color=ifelse(percent > 0, multi_color_label, fm_color_label)), size=4)
+    plot = plot + geom_segment(aes(x=kmer$query_length, xend=kmer$query_length, y=0, yend=percent, color=ifelse(percent < 0, fm_color_label, multi_color_label)), size=4)
     plot = plot + scale_x_continuous(name="query length (k)", breaks=seq(1, 30, 1))
     plot = plot + scale_y_continuous(name="% speedup", breaks=seq(-1000, 1000, 5))
-    plot = plot + ggtitle(label=paste("text size = ", text_length))
-    plot = plot + theme(plot.title=element_text(face="bold"))
+    plot = plot + ggtitle(label="speedup(kmer, fm)", subtitle=paste("text size = ", text_length))
+    plot = plot + theme(plot.title=element_text(face="bold"), legend.position="bottom")
     plot = plot + scale_color_manual(name = "", values=c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
 
 
     inset_grob = ggplotGrob(get_line_plot(text_length))
-    #plot = plot + annotation_custom(grob=inset_grob, xmin=17, xmax=30, ymin=max(percent)-40, ymax=max(percent))
+    plot = plot + annotation_custom(grob=inset_grob, xmin=17, xmax=30, ymin=max(percent)-40, ymax=max(percent))
 
     #plot = plot + coord_cartesian(ylim=c(-150,30))
     return(plot)

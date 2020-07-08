@@ -7,7 +7,7 @@ library(ggplot2)
 library(gridExtra)
 library(grid)
 setwd("/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000")
-data = read.csv("new_2020-06-29T19-30-50+02-00.csv")#"5_1000_2020-07-07T16-08-21+02-00.csv")
+data = read.csv("5_1000_2020-07-08T15-25-21+02-00.csv")
 data = data[!grepl("stddev", data$name, fixed=TRUE) ,]
 
 fm_color_label = "fm"
@@ -60,16 +60,17 @@ color = scale_color_manual(name = "", values =c(fm_color, multi_color), labels =
 get_plot = function(text_length, size=0.5) {
 
   data_fm = data[data$name == "fm_median" & data$text_length==text_length,]
-  data_multi = data[data$name == "multi_kmer_median" & data$text_length==text_length,]
+  data_multi = data[data$name == "kmer_median" & data$text_length==text_length,]
   diff = speedup(data_multi$real_time, data_fm$real_time)
-  diff = diff * 100
-  query_length = seq(min(data_multi$query_length), max(data_multi$query_length), 1)
+  diff = sign(diff) * log(sign(diff) * diff * 100)
+  query_length = seq(min(data_multi$query_length, na.rm=TRUE), max(data_multi$query_length), 1)
 
   speedup = diff
   plot = ggplot() + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=speedup, color=ifelse(speedup>0, multi_color_label, fm_color_label)), size=size)
   plot = plot + get_title(text_length) + y_scale + x_scale + theme + coord + color
 }
 
+stopifnot(FALSE);
 
 plot_1e4 = get_plot(1e4)
 plot_1e6 = get_plot(1e6)

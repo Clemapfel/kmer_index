@@ -84,7 +84,7 @@ int main(int argc, char** argv)
     auto fm = seqan3::fm_index(text);
     auto kmer = kmer::make_kmer_index<4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>(text, std::thread::hardware_concurrency());
 
-    for (size_t i = 32; i <= 1000; ++i)
+    for (size_t i = 5; i <= 1000; ++i)
         register_all<decltype(fm), decltype(kmer)>(i, text_length, &fm, &kmer);
 
     benchmark::Initialize(&argc, argv);
