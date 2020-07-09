@@ -109,7 +109,7 @@ void register_all(size_t query_length, size_t text_length, fm_index_t* fm, kmer_
     benchmark::RegisterBenchmark("fm", &fm_search<fm_index_t>, query_length, text_length, fm);
 }
 
-constexpr size_t text_length = 1e5;
+constexpr size_t text_length = 1e6;
 
 int main(int argc, char** argv)
 {
