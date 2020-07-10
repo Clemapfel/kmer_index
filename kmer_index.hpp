@@ -117,9 +117,9 @@ namespace kmer
                 get_position_for_all_kmer_with_prefix(iterator_t prefix_begin, size_t size) const
                 {
                     if (fast_pow(_sigma, k-size) >= 5e5)
-                    {
+                    {   /*
                         std::cerr << "[WARNING] lookup of query with size " << size << " with kmer_index for k = " << k
-                                  << " may take a long time\n";
+                                  << " may take a long time\n";*/
 
                         if (fast_pow(_sigma, k-size) > 1e7)
                         {
@@ -429,95 +429,119 @@ namespace kmer
             std::array<int, std::max({ks...}) + 1> _k_to_search_fns_i;
 
             // precalculate what ks to use based on query length (2000 is maximum common read length)
-            inline static constexpr size_t _query_size_range = 2000;
+            inline static constexpr size_t _query_size_range = 5000;
             inline static size_t _max_possible_k = 32;
-            std::array<std::pair<size_t, size_t>, _query_size_range> _optimal_k;
 
-            void choose_best_k_for_query_sizes()
+            std::array<size_t, _query_size_range> _optimal_k;
+
+            std::array<std::vector<size_t>, _query_size_range> _optimal_nk_sum;
+            std::array<bool, _query_size_range> _use_experimental_search;
+
+            // experimental search scheme
+            void choose_best_nk_sum()
             {
-                // first pass
+                std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool { return a > b; });
+            
+                std::vector<size_t> high_ks;
+                for (size_t i : _all_ks)
+                    if (i >= 9)
+                        high_ks.push_back(i);
+            
+                std::fill(_optimal_nk_sum.begin(), _optimal_nk_sum.end(), std::vector<size_t>());
+            
+                std::fill(_use_experimental_search.begin(), _use_experimental_search.end(), false);
+            
                 std::vector<size_t> not_found{};
-                for (size_t query_size = 0; query_size < _optimal_k.size(); ++query_size)
+            
+                // first pass: dynamic programming
+                for (size_t k : high_ks)
                 {
-                    // pick best k to search withthis is rea
-                    size_t optimal_k = _all_ks.front();
-                    bool found = false;
-
-                    for (size_t k : _all_ks)
-                    {
-                        // for actual kmers, prioritze absolute distance rather than divisibility
-                        if (query_size <= 31)
-                        {
-                            if (query_size <= k and (k - query_size < optimal_k - query_size))
-                            {
-                                optimal_k = k;
-                                found = true;
-                                continue;
-                            }
-                        }
-                        // for long queries divisibility is more important, also prefer higher k to lower k if mod is equal
-                        else
-                        {
-                            if (query_size % k == 0)
-                            {
-                                optimal_k = k;
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (found) {
-                        _optimal_k[query_size] = std::make_pair(optimal_k, 0);
-                    }
-                    else {
-                        not_found.push_back(query_size);
-                    }
+                    _optimal_nk_sum[k] = {k};
+                    _use_experimental_search[k] = true;
                 }
-
-                // second pass
-                std::vector<size_t> not_found_2{};
-                for (size_t query_size : not_found)
+            
+                for (size_t q = _all_ks.front()+1; q < _query_size_range; ++q)
                 {
-                    size_t optimal_k = _all_ks.front();
                     bool found = false;
-
-                    for (size_t k : _all_ks)
+                    for (size_t k : high_ks)
                     {
-                        if (query_size % k >= 10 and
-                            std::binary_search(_all_ks.begin(), _all_ks.end(), query_size % k, [](auto a, auto b) -> bool { return a > b; }))
+                        if (not _optimal_nk_sum[q - k].empty())
                         {
-                            optimal_k = k;
+                            _optimal_nk_sum[q] = _optimal_nk_sum[q - k];
+                            _optimal_nk_sum[q].push_back(k);
                             found = true;
                             break;
                         }
                     }
-
-                    if (found) {
-                        _optimal_k[query_size] = std::make_pair(optimal_k, query_size % optimal_k);
-                    }
-                    else {
-                        not_found_2.push_back(query_size);
-                    }
+            
+                    if (found)
+                        _use_experimental_search[q] = true;
                 }
-
-                // third pass
-                for (size_t query_size : not_found_2)
+            
+                // second pass: fill rest that can only be searched with subk
+                for (size_t q = 1; q < _query_size_range; ++q)
                 {
-                    size_t optimal_k = _all_ks.front();
-                    bool found = false;
-
-                    for (size_t k : _all_ks)
+                    if (not _optimal_nk_sum[q].empty())
+                        continue;
+            
+                    if (q < _all_ks.front())
                     {
+                        size_t optimal_k = _all_ks.front();
                         for (size_t k : _all_ks)
                         {
-                            if ((ceil(query_size / float(k)) * k - query_size) <
-                                (ceil(query_size / float(optimal_k)) * optimal_k - query_size))
+                            if (q <= k and (k - q < optimal_k - q))
+                            {
+                                optimal_k = k;
+                                continue;
+                            }
+                        }
+                        _optimal_nk_sum[q] = {optimal_k};
+                    }
+                    else
+                    {
+                        size_t optimal_k = _all_ks.front();
+                        for (size_t k : _all_ks)
+                        {
+                            if ((ceil(q / float(k)) * k - q) <
+                                (ceil(q / float(optimal_k)) * optimal_k - q))
                                 optimal_k = k;
                         }
+            
+                        _optimal_nk_sum[q] = {optimal_k};
                     }
+                }
+            }
 
-                    _optimal_k[query_size] = std::make_pair(optimal_k, -1 * (query_size % optimal_k));
+            // default search scheme
+            void choose_optimal_k()
+            {
+                for (size_t q = 1; q < _query_size_range; ++q)
+                {
+                    if (q < _all_ks.front())
+                    {
+                        size_t optimal_k = _all_ks.front();
+                        for (size_t k : _all_ks)
+                        {
+                            if (q <= k and (k - q < optimal_k - q))
+                            {
+                                optimal_k = k;
+                                continue;
+                            }
+                        }
+                        _optimal_k[q] = optimal_k;
+                    }
+                    else
+                    {
+                        size_t optimal_k = _all_ks.front();
+                        for (size_t k : _all_ks)
+                        {
+                            if ((ceil(q / float(k)) * k - q) <
+                                (ceil(q / float(optimal_k)) * optimal_k - q))
+                                optimal_k = k;
+                        }
+
+                        _optimal_k[q] = optimal_k;
+                    }
                 }
             }
 
@@ -568,7 +592,8 @@ namespace kmer
 
                 // sort all_ks so bigger ks can be prioritized in search
                 std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool {return a > b;});
-                choose_best_k_for_query_sizes();
+                choose_optimal_k();
+                choose_best_nk_sum();
             }
 
             // search single query, index picks optimal search scheme.
@@ -578,7 +603,7 @@ namespace kmer
                 // call corresponding index_element search
                 // optimal k for common queries (read length <= 2000) pre-computed
                 if (query.size() < _query_size_range)
-                    return (this->*_search_fns[_k_to_search_fns_i.at(_optimal_k.at(query.size()).first)])(query);
+                    return (this->*_search_fns[_k_to_search_fns_i.at(_optimal_k.at(query.size()))])(query);
                 else
                     throw(std::invalid_argument("query sizes not initialized"));
             }
@@ -591,9 +616,57 @@ namespace kmer
             result_t experimental_search(std::vector<alphabet_t>& query) const
             {
                 // with no rest present just use regular searching
-                if (_optimal_k.at(query.size()).second == 0)
+                if (not _use_experimental_search[query.size()])
                     return search(query);
 
+                std::vector<const std::vector<position_t>*> nk_positions;
+                size_t last_k = 0;
+                for (size_t current_k : _optimal_nk_sum[query.size()])
+                {
+                    const auto* pos = search_k(current_k, query.begin() + last_k);
+                    if (pos)
+                        nk_positions.push_back(pos);
+                    else
+                        return result_t();
+
+                    last_k = current_k;
+                }
+
+                if (nk_positions.size() == 1)
+                    return result_t(nk_positions.at(0), true, detail::BYPASS_BITMASK::YES);
+
+                result_t output(nk_positions.at(0), true, detail::BYPASS_BITMASK::NO);
+
+                size_t nk_sum_i = 0;
+                for (size_t start_pos_i = 0; start_pos_i < nk_positions.front()->size(); ++start_pos_i)
+                {
+                    size_t previous_pos = nk_positions.front()->at(start_pos_i);
+
+                    bool interrupted = false;
+                    for (size_t next_pos_i = 1; next_pos_i < nk_positions.size(); ++next_pos_i)
+                    {
+                        const auto* current = nk_positions.at(next_pos_i);  //TODO?
+                        auto it = std::lower_bound(current->begin(), current->end(), previous_pos += _optimal_nk_sum.at(query.size()).at(nk_sum_i));
+
+                        if (*it != previous_pos)
+                        {
+                            interrupted = true;
+                            break;
+                        }
+                    }
+
+                    if (interrupted)
+                        output.should_not_use(start_pos_i);
+                }
+
+                return output;
+            }
+
+            result_t deprecated_experimental_search(std::vector<alphabet_t>& query) const
+            {
+                // with no rest present just use regular searching
+                if (not _use_experimental_search[query.size()])
+                    return search(query);
 
                 seqan3::debug_stream << "using experimental search" << "\n";
 

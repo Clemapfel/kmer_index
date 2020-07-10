@@ -39,7 +39,7 @@ void run_test()
                 fm_result.push_back(res.reference_begin_pos());
 
             std::vector<unsigned int> single_kmer_result = single_kmer.search(query).to_vector();
-            std::vector<unsigned int> multi_kmer_result = multi_kmer.search(query).to_vector();
+            std::vector<unsigned int> multi_kmer_result = multi_kmer.experimental_search(query).to_vector();
 
             // compare
             bool equal = (fm_result == single_kmer_result) and (fm_result == multi_kmer_result);

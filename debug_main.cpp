@@ -24,11 +24,43 @@
 #include <thread_pool.hpp>
 
 std::atomic<size_t> seed = 200;
-size_t text_length = 1000000;
+size_t text_length = 1e4;
 
 int main()
 {
     using namespace seqan3;
+
+    auto input = input_generator<dna4>(1234);
+    auto text = input.generate_sequence(1e6);
+    auto single_kmer = kmer::make_kmer_index<11>(text);
+    auto multi_kmer = kmer::make_kmer_index<5,6,7,8,9,11,13,15,17,19>(text);
+    auto fm = seqan3::fm_index(text);
+
+    for (size_t _ = 1; _ < 100000; ++_)
+    {
+        for (size_t i = 9; i < 40; ++i)
+        {
+            auto query = input.generate_sequence(i);
+
+            // get results as vectors
+            std::vector<unsigned int> fm_result;
+            for (auto res : seqan3::search(query, fm))
+                fm_result.push_back(res.reference_begin_pos());
+
+            std::vector<unsigned int> single_kmer_result = single_kmer.search(query).to_vector();
+            std::vector<unsigned int> multi_kmer_result = multi_kmer.experimental_search(query).to_vector();
+
+            // compare
+            bool equal = (fm_result == single_kmer_result) and (fm_result == multi_kmer_result);
+
+            if (not equal)
+                return 1;
+        }
+    }
+
+    return 0;
+
+
 
     constexpr size_t n = 3000;
 
