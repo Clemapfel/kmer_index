@@ -7,7 +7,7 @@ library(ggplot2)
 library(gridExtra)
 library(grid)
 setwd("/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000")
-data = read.csv("1e6_experimental_2020-07-09T22-26-24+02-00.csv")
+data = read.csv("1e6_experimental_2020-07-10T18-47-34+02-00.csv")
 data = data[!grepl("stddev", data$name, fixed=TRUE) ,]
 
 fm_color_label = "fm"
