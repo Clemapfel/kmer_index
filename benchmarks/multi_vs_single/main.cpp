@@ -75,8 +75,7 @@ static void multi_kmer_search(benchmark::State& state, size_t query_length, size
 }
 
 // benchmark shows that one multi_kmer can handle more than just the exact k given
-
-constexpr size_t text_length = 1e6;
+Kar= 1e6;
 
 int main(int argc, char** argv)
 {

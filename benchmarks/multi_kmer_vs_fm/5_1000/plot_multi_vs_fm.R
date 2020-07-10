@@ -7,7 +7,7 @@ library(ggplot2)
 library(gridExtra)
 library(grid)
 setwd("/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000")
-data = read.csv("1e5_experimen2020-07-09T19-46-38+02-00.csv")
+data = read.csv("1e6_experimental_2020-07-09T22-26-24+02-00.csv")
 data = data[!grepl("stddev", data$name, fixed=TRUE) ,]
 
 fm_color_label = "fm"
@@ -50,6 +50,8 @@ get_title = function(text_length) {
   return(ggtitle(label=paste("text length = ", text_length)))#, subtitle="fm\t\t=\tseqan3::fm-index\nmulti\t=\tkmer_index<5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>"))
 }
 
+stopifnot(FALSE);
+
 ylim = c()
 y_scale = scale_y_continuous(name = "log(speedup %)", breaks=seq(-10000000, 100000000, 1000))
 x_scale = scale_x_continuous(name="query length", breaks=seq(0, 1000, 30))
@@ -61,7 +63,7 @@ get_plot = function(text_length, col_a_name, col_b_name) {
 
   data_multi = data[data$name == col_a_name & data$text_length==text_length,]
   data_fm = data[data$name == col_b_name & data$text_length==text_length,]
-  diff = data_multi$real_time - data_fm$real_time;#speedup(data_multi$real_time, data_fm$real_time)
+  diff = speedup(data_multi$real_time, data_fm$real_time)
   #diff = sign(diff) * log(sign(diff) * diff * 100)
   query_length = seq(min(data_multi$query_length, na.rm=TRUE), max(data_multi$query_length), 1)
 
@@ -70,7 +72,7 @@ get_plot = function(text_length, col_a_name, col_b_name) {
   plot = plot + ggtitle(label=paste("speedup(", col_a_name, col_b_name, ") | text length = ", text_length, sep="")) + y_scale + x_scale + theme + coord + color
 }
 
-print(get_plot(1e5, "kmer_median", "kmer_experimental_median"))
+print(get_plot(1e6, "kmer_median", "kmer_experimental_median"))
 
 stopifnot(FALSE);
 
