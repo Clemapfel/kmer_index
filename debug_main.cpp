@@ -30,9 +30,9 @@ int main()
 {
     using namespace seqan3;
 
-    constexpr size_t n = 3000;
+    constexpr size_t n = 500;
 
-    std::vector<size_t> _all_ks = {3, 4, 5, 6, 7, 8, 9, 11, 13, 15, 17, 19};
+    std::vector<size_t> _all_ks = {9, 11, 13, 17};
     std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool { return a > b; });
 
     std::vector<size_t> high_ks;
@@ -71,6 +71,8 @@ int main()
 
         if (found)
             _found_in_first_pass[q] = true;
+        else
+            not_found.push_back(q);
     }
 
     // second pass: fill rest that can only be searched with subk
@@ -107,6 +109,7 @@ int main()
     }
 
     // debug print
-    for (size_t i = 0; i < 300; ++i)
-        seqan3::debug_stream << i << " | " << (_found_in_first_pass[i] ? _optimal_k[i] : std::vector<size_t>{}) << "\n";
+    for (size_t i : not_found)
+        if (i > 31)
+            seqan3::debug_stream << i << ", ";
 }

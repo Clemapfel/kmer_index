@@ -5,8 +5,8 @@
 
 library(ggplot2)
 
-setwd("/home/clem/Documents/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/")
-data_fm_single <- read.csv("k10_to_200_2020-06-18_21-52-01.csv")
+setwd("/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000/")
+data_fm_single <- read.csv("experimental_complete.csv")
 
 data_single = data_fm_single[data_fm_single$name == "single_kmer_median",]
 data_fm = data_fm_single[data_fm_single$name == "fm_median",]

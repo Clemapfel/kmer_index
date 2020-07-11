@@ -6,8 +6,8 @@
 library(ggplot2)
 library(gridExtra)
 library(grid)
-setwd("/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000")
-data = read.csv("1e6_experimental_2020-07-10T18-47-34+02-00.csv")
+setwd("/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000/")
+data = read.csv("experimental_complete.csv")
 data = data[!grepl("stddev", data$name, fixed=TRUE) ,]
 
 fm_color_label = "fm"
@@ -50,29 +50,27 @@ get_title = function(text_length) {
   return(ggtitle(label=paste("text length = ", text_length)))#, subtitle="fm\t\t=\tseqan3::fm-index\nmulti\t=\tkmer_index<5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>"))
 }
 
-stopifnot(FALSE);
-
 ylim = c()
-y_scale = scale_y_continuous(name = "log(speedup %)", breaks=seq(-10000000, 100000000, 1000))
+y_scale = scale_y_continuous(name = "speedup %", breaks=seq(-10000, 10000, 1))
 x_scale = scale_x_continuous(name="query length", breaks=seq(0, 1000, 30))
 theme = theme(plot.title=element_text(face="bold"), legend.position="none", axis.title.x=element_blank())
-coord = coord_cartesian(ylim=c(-5,5))#min(diff), max(diff)))
+coord = coord_cartesian(ylim=c(-100,10))#min(diff), max(diff)))
 color = scale_color_manual(name = "", values =c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
 
 get_plot = function(text_length, col_a_name, col_b_name) {
 
-  data_multi = data[data$name == col_a_name & data$text_length==text_length,]
-  data_fm = data[data$name == col_b_name & data$text_length==text_length,]
-  diff = speedup(data_multi$real_time, data_fm$real_time)
-  #diff = sign(diff) * log(sign(diff) * diff * 100)
-  query_length = seq(min(data_multi$query_length, na.rm=TRUE), max(data_multi$query_length), 1)
+  data_a = data[data$name == col_a_name & data$text_length==text_length,]
+  data_b = data[data$name == col_b_name & data$text_length==text_length,]
+  diff = speedup(data_a$real_time, data_b$real_time)*100
+  #diff = sign(diff) * log(sign(dif1f) * diff * 100)
+  query_length = seq(min(data_a$query_length, na.rm=TRUE), max(data_a$query_length), 1)
 
   speedup = diff
-  plot = ggplot() + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=speedup, color=ifelse(speedup>0, multi_color_label, fm_color_label)), size=2)
+  plot = ggplot() + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=speedup, color=ifelse(speedup>0, multi_color_label, fm_color_label)), size=0.5)
   plot = plot + ggtitle(label=paste("speedup(", col_a_name, col_b_name, ") | text length = ", text_length, sep="")) + y_scale + x_scale + theme + coord + color
 }
 
-print(get_plot(1e6, "kmer_median", "kmer_experimental_median"))
+print(get_plot(1e6, "kmer_median", "fm_median"))
 
 stopifnot(FALSE);
 

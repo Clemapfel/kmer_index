@@ -1276,129 +1276,12 @@ lstinline{search_subk}
  
 \end_layout
 
-\begin_layout Subsection
-Choosing the right k
-\end_layout
-
-\begin_layout Standard
-In praxis both the texts size and the queries and thus their lengths are
- given and cannot be controlled by the user.
- 
-\begin_inset Formula $k$
-\end_inset
-
- however can be freely chosen.
- Given Lemma #1 we should choose 
-\begin_inset Formula $k$
-\end_inset
-
- as small as possible as this means the size of the map will be limited.
- For example it is reasonable to assume that unlike for 
-\begin_inset Formula $k=25$
-\end_inset
-
- in a text of length 
-\begin_inset Formula $10^{7}$
-\end_inset
-
- all 
-\begin_inset Formula $5$
-\end_inset
-
--mers will occur at least once which limits the map to a size of 
-\begin_inset Formula $\sigma^{5}=1024$
-\end_inset
-
- (note that the number of results per entry do not factor into the performance
- of 
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-lstinline{search_k}
-\end_layout
-
-\end_inset
-
-).
- Lemma #3 however implies we should choose 
-\begin_inset Formula $k$
-\end_inset
-
-s that are used to search longer queries as big as possible
-\begin_inset Foot
-status open
-
-\begin_layout Plain Layout
-Note that we are not only limited by the machines memory but also the fact
- that the kmer hashes have to fit in a 64 bit unsigned integer which necessitate
-s an alphabet and k combination so that 
-\begin_inset Formula $\sigma^{k}<2^{64}$
-\end_inset
-
-.
- For the 4-letter DNA alphabet, this means k can at most be 31 while for
- bigger alphabets, k has to be chosen far lower.
-\end_layout
-
-\end_inset
-
- as for a bigger k statistically the absolute number of occurrences per
- kmer and thus the number of results for each 
-\begin_inset Formula $p_{i}$
-\end_inset
-
- that have to be cross referenced will decrease.
- Furthermore 
-\begin_inset Formula $k$
-\end_inset
-
- should be chosen so the most amount of queries are directly of length 
-\begin_inset Formula $k$
-\end_inset
-
- or divisible by 
-\begin_inset Formula $k$
-\end_inset
-
-.
- 
-\end_layout
-
-\begin_layout Standard
-In praxis it's rarely possible to find a single k that fulfills all of these
- conditions.
- To address this the kmer-index implementation was extended to (instead
- of using a single 
-\begin_inset Formula $k$
-\end_inset
-
-) unify multiple kmer indices at once.
- This 
-\begin_inset Quotes eld
-\end_inset
-
-multi kmer-index
-\begin_inset Quotes erd
-\end_inset
-
- is then able to autonomously choose which 
-\begin_inset Formula $k$
-\end_inset
-
- would be optimal to use for any given query.
- Specifying multiple 
-\begin_inset Formula $k$
-\end_inset
-
- will thus vastly increase performance for a wider array of query lengths.
-\end_layout
-
 \begin_layout Section
 Multi kmer-Index
+\end_layout
+
+\begin_layout Subsection
+Overview
 \end_layout
 
 \begin_layout Standard
@@ -1648,6 +1531,14 @@ Despite the sub-optimal coverage of the multi kmer-index, performance is
 \begin_inset Newpage pagebreak
 \end_inset
 
+
+\end_layout
+
+\begin_layout Subsection
+Comparison with FM-Index
+\end_layout
+
+\begin_layout Standard
 To put the absolute values of the above figures into perspective, a comparative
  analysis of the fm-index
 \begin_inset Foot
@@ -2103,6 +1994,280 @@ Results indicate that using the kmer-index with optimal coverage to find
  
 \end_layout
 
+\begin_layout Subsection
+How to choose the appropriate k
+\end_layout
+
+\begin_layout Standard
+The success of the multi kmer-index relies heavily on both being provided
+ a well-chosen set of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ and furthermore using the appropriate 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ for a given query length.
+ The latter is achieved by 
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In praxis both the texts size and the queries and thus their lengths are
+ given and cannot be controlled by the user.
+ 
+\begin_inset Formula $k$
+\end_inset
+
+ however can be freely chosen.
+ Given Lemma #1 we should choose 
+\begin_inset Formula $k$
+\end_inset
+
+ as small as possible as this means the size of the map will be limited.
+ For example it is reasonable to assume that unlike for 
+\begin_inset Formula $k=25$
+\end_inset
+
+ in a text of length 
+\begin_inset Formula $10^{7}$
+\end_inset
+
+ all 
+\begin_inset Formula $5$
+\end_inset
+
+-mers will occur at least once which limits the map to a size of 
+\begin_inset Formula $\sigma^{5}=1024$
+\end_inset
+
+ (note that the number of results per entry do not factor into the performance
+ of 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{search_k}
+\end_layout
+
+\end_inset
+
+).
+ Lemma #3 however implies we should choose 
+\begin_inset Formula $k$
+\end_inset
+
+s that are used to search longer queries as big as possible
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Note that we are not only limited by the machines memory but also the fact
+ that the kmer hashes have to fit in a 64 bit unsigned integer which necessitate
+s an alphabet and k combination so that 
+\begin_inset Formula $\sigma^{k}<2^{64}$
+\end_inset
+
+.
+ For the 4-letter DNA alphabet, this means k can at most be 31 while for
+ bigger alphabets, k has to be chosen far lower.
+\end_layout
+
+\end_inset
+
+ as for a bigger k statistically the absolute number of occurrences per
+ kmer and thus the number of results for each 
+\begin_inset Formula $p_{i}$
+\end_inset
+
+ that have to be cross referenced will decrease.
+ Furthermore 
+\begin_inset Formula $k$
+\end_inset
+
+ should be chosen so the most amount of queries are directly of length 
+\begin_inset Formula $k$
+\end_inset
+
+ or divisible by 
+\begin_inset Formula $k$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+In praxis it's rarely possible to find a single k that fulfills all of these
+ conditions.
+ To address this the kmer-index implementation was extended to (instead
+ of using a single 
+\begin_inset Formula $k$
+\end_inset
+
+) unify multiple kmer indices at once.
+ This 
+\begin_inset Quotes eld
+\end_inset
+
+multi kmer-index
+\begin_inset Quotes erd
+\end_inset
+
+ is then able to autonomously choose which 
+\begin_inset Formula $k$
+\end_inset
+
+ would be optimal to use for any given query.
+ Specifying multiple 
+\begin_inset Formula $k$
+\end_inset
+
+ will thus vastly increase performance for a wider array of query lengths.
+\end_layout
+
+\begin_layout Standard
+The multi-kmer indices success in being more performant relies on taking
+ advantage of the higher flexibility of being provided multiple 
+\begin_inset Formula $k$
+\end_inset
+
+.
+ A trivial approach would simple choose one of those 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ and return a result identical to that of a single kmer-index that only
+ had access to that 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+.
+ However greater performance can be achieved by instead using multiple 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ per query.
+ At construction the multi kmer-index creates a table that, for each possible
+ query length 
+\begin_inset Formula $m_{j}$
+\end_inset
+
+ choose 
+\begin_inset Formula $k_{i}\in\{k_{a},k_{b},...\}$
+\end_inset
+
+ such that 
+\begin_inset Formula $k_{a}+k_{b}+...=m_{j}$
+\end_inset
+
+, that is the index tries to divide the query into multiple parts of different
+ lengths so that it can search each part with the corresponding single kmer-inde
+x to then much like a single kmer-index would for a query of length 
+\begin_inset Formula $m>k$
+\end_inset
+
+ crossreference each part and thuse verify which of the positions of the
+ first 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+mer are also occurences of the query.
+ Creating this table is very similar to the change making problem <TODO:
+ reference> in which given an amount of money (
+\begin_inset Formula $m_{j}$
+\end_inset
+
+) we need to find the minimum number of coins (
+\begin_inset Formula $k_{a},k_{b},...$
+\end_inset
+
+) that add up to exactly that amount.
+ Note that choosing the number of 
+\begin_inset Quotes eld
+\end_inset
+
+coins
+\begin_inset Quotes erd
+\end_inset
+
+ to be as small as possible is paramount as the less kmers the index has
+ to look up, the better the performance will be.
+ Furthermore the index should prioritize bigger 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ since as stated in Lemma 3 with a bigger 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ given a fixed text size the number of results will be lower.
+ Creating this table was achieved with a simple dynamic programming approach
+ where to find the 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ that add up to 
+\begin_inset Formula $m$
+\end_inset
+
+, we reference back to previous results to find 
+\begin_inset Formula $\{m_{memory1},m_{2},...\}:\sum_{i}m_{i}=m$
+\end_inset
+
+.
+ Depending on the set of 
+\begin_inset Formula $ks$
+\end_inset
+
+ this may not be possible for every number in the given range.
+ In this case we will have to fall back on the considerably slower 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{search_subk}
+\end_layout
+
+\end_inset
+
+ however intial testing has revealed that with a well picked set of 
+\begin_inset Formula $k$
+\end_inset
+
+ the number of queries that cannot be covered in this fairly low.
+ For example 
+\begin_inset Formula $k\in\{9,11,15,17\}$
+\end_inset
+
+ will cover every query length 
+\begin_inset Formula $m<2000$
+\end_inset
+
+ which means in the application of a read mapper the kmer index will be
+ able to lookup all sizes of reads <TODO:https://www.illumina.com/science/technolo
+gy/next-generation-sequencing/plan-experiments/read-length.html>.
+ Note that if memory limitations permit to do so, the 
+\begin_inset Formula $k$
+\end_inset
+
+ should be chosen as long as possible.
+ 
+\end_layout
+
 \begin_layout Section
 Outlook
 \end_layout
@@ -2167,8 +2332,13 @@ literal "false"
 \end_inset
 
 .
- Abstracting the hash type for the kmer-index to use for example integers
- of up to 1024 bit from boosts 
+ Furthermore in the application of read-mapping nowadays reads are often
+ of relatively short length and being able to for example find all positions
+ of a 50mer or 75mer could give programs in this application a significant
+ speedup.
+ Further research will have to be done to verify wether abstracting the
+ hash type for the kmer-index to use for example integers of up to 1024
+ bit from boosts 
 \begin_inset ERT
 status open
 
@@ -2189,9 +2359,8 @@ literal "false"
 
 \end_inset
 
- could proof valuable, even if these types introduce a small overhead compared
- to 64 bit sized integers.
- 
+ could proof valuable as it may not be feasible due to memory limitation
+ or runtime overhead inherent to these integer types.
 \end_layout
 
 \begin_layout Subsection

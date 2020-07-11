@@ -56,7 +56,7 @@ static void kmer_search(benchmark::State& state, size_t query_length, size_t tex
     for (auto _ : state)
     {
         auto query = input.generate_sequence(query_length);
-        benchmark::DoNotOptimize(index->search(query));
+        benchmark::DoNotOptimize(index->experimental_search(query));
     }
 
     state.counters["text_length"] = text_length;
