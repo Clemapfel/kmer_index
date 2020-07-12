@@ -444,7 +444,7 @@ namespace kmer
 
                 std::vector<size_t> high_ks;
                 for (size_t i : _all_ks)
-                    if (i >= 15)
+                    if (i >= 9)
                         high_ks.push_back(i);
 
                 std::fill(_optimal_nk_sum.begin(), _optimal_nk_sum.end(), std::vector<size_t>());

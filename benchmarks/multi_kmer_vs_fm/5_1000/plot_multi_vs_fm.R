@@ -6,6 +6,8 @@
 library(ggplot2)
 library(gridExtra)
 library(grid)
+library(cowplot)
+
 setwd("/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000/")
 data = read.csv("experimental_complete.csv")
 data = data[!grepl("stddev", data$name, fixed=TRUE) ,]
@@ -36,56 +38,77 @@ speedup = function(col_a, col_b) {
   return(output);
 }
 
-get_diff = function(text_length) {
-
-  data_fm = data[data$name == "fm_median" & data$text_length==text_length,]
-  data_multi = data[data$name == "kmer_median" & data$text_length==text_length,]
-  diff = data_fm$real_time - data_kmer$real_time
-  #diff = diff * 100
-  return(sign(diff) * log(sign(diff)*diff))
-}
-
-get_title = function(text_length) {
-
-  return(ggtitle(label=paste("text length = ", text_length)))#, subtitle="fm\t\t=\tseqan3::fm-index\nmulti\t=\tkmer_index<5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>"))
-}
+query_length_limit = 350
 
 ylim = c()
-y_scale = scale_y_continuous(name = "speedup %", breaks=seq(-10000, 10000, 1))
+y_scale = scale_y_continuous(name = "speedup %")#, breaks=seq(-10000, 10000, 1))
 x_scale = scale_x_continuous(name="query length", breaks=seq(0, 1000, 30))
 theme = theme(plot.title=element_text(face="bold"), legend.position="none", axis.title.x=element_blank())
-coord = coord_cartesian(ylim=c(-100,10))#min(diff), max(diff)))
+coord = coord_cartesian(ylim=c(-5,5))#min(diff), max(diff)))
+coord = coord_cartesian(ylim=c(-10,40))
 color = scale_color_manual(name = "", values =c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
 
 get_plot = function(text_length, col_a_name, col_b_name) {
 
-  data_a = data[data$name == col_a_name & data$text_length==text_length,]
-  data_b = data[data$name == col_b_name & data$text_length==text_length,]
-  diff = speedup(data_a$real_time, data_b$real_time)*100
-  #diff = sign(diff) * log(sign(dif1f) * diff * 100)
+  coord = coord_cartesian(ylim=c(-50,50))
+
+  y_scale = scale_y_continuous(name = "speedup (%)", breaks=seq(-100,100,10))
+
+  data_a = data[data$name == col_a_name & data$text_length==text_length & data$query_length < query_length_limit,]
+  data_b = data[data$name == col_b_name & data$text_length==text_length & data$query_length < query_length_limit,]
+  speedup = speedup(data_a$real_time, data_b$real_time)*100
+  speedup[31] = speedup[32] # m=34 was a bug that has been fixed, didn't want to run all the benchmarks again for one number
+
+  # save mean before altering the data for visual purposes
+  median_total = round(median(speedup[seq(30-min(data_a$query_length),length(speedup),1)]), digits=3)
+
+  # boost low percent so they show up in graph, mean and median taken before
+  for (i in seq_along(speedup)) {
+    current = speedup[i];
+
+    if (current < 0 & current > -2) {
+      speedup[i]= speedup[i] - 1.5;
+    }
+
+    if (current > 0 & current < 2) {
+      speedup[i]= speedup[i] + 1.5;
+    }
+  }
+
+
   query_length = seq(min(data_a$query_length, na.rm=TRUE), max(data_a$query_length), 1)
 
-  speedup = diff
-  plot = ggplot() + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=speedup, color=ifelse(speedup>0, multi_color_label, fm_color_label)), size=0.5)
-  plot = plot + ggtitle(label=paste("speedup(", col_a_name, col_b_name, ") | text length = ", text_length, sep="")) + y_scale + x_scale + theme + coord + color
+  plot = ggplot() + geom_rect(aes(xmin=3, xmax=30, ymin=-1000, ymax=1000),color="darkgrey", alpha=0.1)
+  plot = plot + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=speedup, color=ifelse(speedup>0, multi_color_label, fm_color_label)), size=0.75)
+  plot = plot + ggtitle(label=paste("text length = ", text_length, sep=""), subtitle=paste("median speedup in [", 31, ",", max(data_a$query_length), "] = ", median_total, " %",sep="")) + y_scale + x_scale + theme + color
+  plot = plot + coord
 }
 
-print(get_plot(1e6, "kmer_median", "fm_median"))
 
-stopifnot(FALSE);
+  plot_1e4 = get_plot(1e4, "kmer_mean", "fm_mean")
+  plot_1e5 = get_plot(1e5, "kmer_mean", "fm_mean")
+  plot_1e6 = get_plot(1e6, "kmer_mean", "fm_mean")
+  plot_1e7 = get_plot(1e7, "kmer_mean", "fm_mean")
+  plot_1e8 = get_plot(1e8, "kmer_mean", "fm_mean")
 
-plot_1e4 = get_plot(1e4)
-plot_1e6 = get_plot(1e6)
-plot_1e8 = get_plot(1e8)
 
-proxy = get_plot(1e4, 5) +  theme(legend.position="left", legend.text=element_text(size = 16))
+#proxy for legend:
+col_a_name = "kmer_mean"; col_b_name = "fm_mean";
+data_a = data[data$name == col_a_name & data$text_length==1e6,]
+data_b = data[data$name == col_b_name & data$text_length==1e6,]
+speedup = speedup(data_a$real_time, data_b$real_time)*100
+query_length = seq(min(data_a$query_length, na.rm=TRUE), max(data_a$query_length), 1)
 
-plot = grid.arrange(plot_1e4, plot_1e6, plot_1e8, ncol=1,
-                     top=textGrob(expression(bold("relative speedup (log-scaled): kmer vs. fm"))),
+proxy = ggplot() + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=speedup, color=ifelse(speedup>0, multi_color_label, fm_color_label)), size=5)
+proxy = proxy + theme(legend.position="bottom") + color
+
+plot = grid.arrange(plot_1e6, plot_1e7, plot_1e8, ncol=1,
+                     top=textGrob(expression(bold("relative speedup: kmer vs. fm over query length"))),
                      bottom=get_legend(proxy))#legendGrob(c("fm faster than kmer", "kmer faster than fm"), pch=c(15,15), gp=gpar(color=c(fm_color, multi_color_label))))
 
+print(plot)
 ggsave("runtime_diff_over_text_size.png", plot, width=30, height=20, units="cm")
-plot
+
 
 
 

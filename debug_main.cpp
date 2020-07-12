@@ -30,9 +30,9 @@ int main()
 {
     using namespace seqan3;
 
-    constexpr size_t n = 500;
+    constexpr size_t n = 40;
 
-    std::vector<size_t> _all_ks = {9, 11, 13, 17};
+    std::vector<size_t> _all_ks = {5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31};
     std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool { return a > b; });
 
     std::vector<size_t> high_ks;
@@ -109,6 +109,13 @@ int main()
     }
 
     // debug print
+    size_t i = 0;
+    for (auto q : _optimal_k)
+    {
+        seqan3::debug_stream << i << " | " << (_found_in_first_pass[i] ? q : std::vector<size_t>()) << "\n";
+        ++i;
+    }
+
     for (size_t i : not_found)
         if (i > 31)
             seqan3::debug_stream << i << ", ";

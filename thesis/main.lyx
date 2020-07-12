@@ -15,6 +15,7 @@
 \usepackage{xparse}
 
 \usepackage{mathtools}
+\usepackage{algorithm,algpseudocode}
 \DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
 \end_preamble
 \use_default_options true
@@ -104,43 +105,47 @@ Author: Clemens Cords, FU Berlin
 \end_layout
 
 \begin_layout Abstract
-As demand for large-scale genomic sequence matching rises so does the ability
+As demand for large-scale genomic sequence matching rises, so does the ability
  to efficiently get the positions or number of occurrences of a query of
  length k called a kmer.
  A kmer-index optimized for this purposes was implemented and it's performance
  evaluated.
  The implementation is capable of searching kmers of arbitrary length specified
- at runtime, utilizes parallelization for faster construction and searching
- of multiple queries at once and it's internal structure can be further
- customized at compile time to achieve greater performance for certain query
- sizes.
- The exact nature of the implementation-defined optimizations is explained
+ at runtime, utilizes parallelization for faster construction and it's internal
+ structure can be further customized at compile time to achieve greater
+ performance for certain query sizes.
+ The nature of the internal structure and search functions is explained
  and their performant nature demonstrated through benchmarks.
  Results indicate that for the purpose of finding positions or number of
- occurrences for queries of arbitrary length including the commonly used
- 
+ occurrences for queries of the commonly used length 
 \begin_inset Formula $k\in\{3,4,...,30\}$
 \end_inset
 
- compared to the fm-index the kmer-index performs up to 70% times faster
- for smaller text sizes (
-\begin_inset Formula $<10⁸$
+ compared to the fm-index the kmer-index performs up to 60% faster and is
+ thus recommended.
+ For arbitrarily long queries the kmer-index was shown to exhibit speedup
+ or slowdown of 
+\begin_inset Formula $\pm5$
 \end_inset
 
-), for arbitrarily large texts (
-\begin_inset Formula $>10⁸$
+% depending on text length and is thus in it's current iteration applicable
+ but not necessarily better suited for this purpose.
+\end_layout
+
+\begin_layout Abstract
+\begin_inset Newpage pagebreak
 \end_inset
 
-) the kmer-index should only be considered to search smaller queries of
- length 
-\begin_inset Formula $m\leq10$
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset toc
+LatexCommand tableofcontents
+
 \end_inset
 
-.
- Overall the kmer-index should provide a more performant alternative for
- searching short kmer if appropriately applied may also proof useful for
- general-purpose exact string matching of sequences of arbitrary length
- in smaller texts.
+
 \end_layout
 
 \begin_layout Standard
@@ -150,7 +155,7 @@ As demand for large-scale genomic sequence matching rises so does the ability
 
 \end_layout
 
-\begin_layout Section*
+\begin_layout Section
 Motivation
 \end_layout
 
@@ -232,12 +237,127 @@ literal "false"
 \end_inset
 
  with the presented kmer-index implementation not only for the purpose of
- searching kmers but for exact string matching in general by comparing the
- indices performance to each other.
+ searching small kmers but for exact string matching in general by comparing
+ the indices performance to each other.
 \end_layout
 
 \begin_layout Section
 Construction
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+wide false
+sideways false
+status open
+
+\begin_layout Verse
+
+\series bold
+Input
+\series default
+: text
+\end_layout
+
+\begin_layout Verse
+
+\series bold
+let
+\series default
+ 
+\begin_inset Formula $n$
+\end_inset
+
+ 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ text.size()
+\end_layout
+
+\begin_layout Verse
+
+\series bold
+for
+\series default
+ 
+\begin_inset Formula $i$
+\end_inset
+
+ 
+\series bold
+in
+\series default
+ 
+\begin_inset Formula $\{1,2,...,n\}$
+\end_inset
+
+ 
+\series bold
+do
+\end_layout
+
+\begin_deeper
+\begin_layout Verse
+
+\series bold
+let
+\series default
+ 
+\begin_inset Formula $h$
+\end_inset
+
+ 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ hash(text.substring(
+\begin_inset Formula $i,\:i+k$
+\end_inset
+
+))
+\end_layout
+
+\begin_layout Verse
+index[
+\begin_inset Formula $h$
+\end_inset
+
+] = 
+\begin_inset Formula $(\text{index}[h],\:i)$
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Verse
+
+\series bold
+end
+\end_layout
+
+\begin_layout Verse
+
+\series bold
+return
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Construction of the kmer index.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -335,14 +455,14 @@ Searching
 
 \begin_layout Standard
 To achieve greater flexibility the kmer-index implementation is capable
- of searching queries of arbitrary length irregardless of the 
+ of searching queries of arbitrary length regardless of the 
 \begin_inset Formula $k$
 \end_inset
 
  that is used to create it.
- While a specific k still needs to be specified at compile time, at run
- time any query can be searched however the search functions performance
- will vary drastically depended on the queries length in relation to 
+ While a k still needs to be specified at compile time, at runtime any query
+ can be searched; however the search functions performance will vary drastically
+ depended on the queries length in relation to 
 \begin_inset Formula $k$
 \end_inset
 
@@ -1300,7 +1420,6 @@ To further investigate the behavior implied by Lemmas 1 - 3 a benchmark
 
 \begin_layout Standard
 \begin_inset Float figure
-placement H
 wide false
 sideways false
 status open
@@ -1339,7 +1458,7 @@ zoomed in
 \end_inset
 
 .
- The dotted lines mark query lengths that are a multiple of 
+ The dotted lines mark query lengths that are a multiples of 
 \begin_inset Formula $k$
 \end_inset
 
@@ -1352,8 +1471,16 @@ zoomed in
 
 \end_layout
 
+\begin_layout Plain Layout
+
+\end_layout
+
 \end_inset
 
+
+\end_layout
+
+\begin_layout Standard
 The results show a predictable pattern substantiating the above mentioned
  lemmas.
  Best performance is only achieved for query sizes 
@@ -1439,7 +1566,7 @@ s worst case performance: for example for
 \end_inset
 
  was still satisfactory and thus 
-\begin_inset Formula $k_{i}=\{5,7,9,...,27,29\}$
+\begin_inset Formula $k_{i}=\{5,7,9,...,27,29,31\}$
 \end_inset
 
  was chosen as a substitute to a multi kmer-index with perfect coverage:
@@ -1512,30 +1639,372 @@ Despite the sub-optimal coverage of the multi kmer-index, performance is
 \end_inset
 
  and no rest and thus still performs adequately) runtime increases significantly.
- Furthermore at 
-\begin_inset Formula $m=47$
-\end_inset
-
- runtime spikes to an unacceptable level due to 47 being a prime which means
- there is no a 
-\begin_inset Formula $k\in\{5,7,...,31\}$
-\end_inset
-
- that it is divisible by.
- Similar runtime increases will always be observed for primes bigger than
- 31 (or less than 31 depending on the alphabet size and thus the maximum
- possible k).
-\end_layout
-
-\begin_layout Standard
-\begin_inset Newpage pagebreak
-\end_inset
-
-
+ To investigate the multi-kmers index behavior for queries that cannot be
+ searched as a single kmer we first need to detail how longer queries are
+ handled outside of a single-k context.
 \end_layout
 
 \begin_layout Subsection
-Comparison with FM-Index
+How to choose the appropriate k
+\end_layout
+
+\begin_layout Standard
+The success of the multi kmer-index relies heavily on both being provided
+ a well-chosen set 
+\begin_inset Formula $ks$
+\end_inset
+
+ of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ and furthermore using the appropriate 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ for a given query length.
+ The latter is achieved by a table that at construction computes for every
+ possible query length 
+\begin_inset Formula $m$
+\end_inset
+
+ a set of 
+\begin_inset Formula $\{k_{a},k_{b},...\}$
+\end_inset
+
+ such that 
+\begin_inset Formula $k_{a}+k_{b}+...=m$
+\end_inset
+
+.
+ To achieve best performance we want the minimal set (in regards to cardinality)
+ of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ for and we furthermore want the 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ are chosen as big as possible which accordant with Lemma 3 reduces runtime
+ for longer queries.
+ The table is constructed with a simple dynamic programming approach where
+ to find the set of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ for a given query 
+\begin_inset Formula $m_{j}$
+\end_inset
+
+ the already computed set for a queries 
+\begin_inset Formula $m_{a},m_{b}<m_{j}:m_{a}+m_{b}=m_{j}$
+\end_inset
+
+ are referenced back to.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement h
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="6" columns="2">
+<features booktabs="true" tabularvalignment="middle">
+<column alignment="center" valignment="top" width="0pt">
+<column alignment="center" valignment="top" width="0pt">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+query length
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+summands
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+29
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9+9+11
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+30
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+13+17
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+31
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9+9+13
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+32
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+n/a
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+33
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9+11+13
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Set of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ for certain query lengths chosen from 
+\begin_inset Formula $k\in\{9,11,13,17\}.$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Depending on the set of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ supplied, not all query lengths may be possible to be represented with
+ only summands.
+ In this case the kmer index falls back on having to call 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{search_subk}
+\end_layout
+
+\end_inset
+
+ for one of the summands.
+ To find a set of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ that covers most of the queries supplied by the user, the following recommendat
+ions should be kept in mind: 
+\end_layout
+
+\begin_layout Itemize
+no 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ should be a multiple of another: 
+\begin_inset Formula $\lnot\exists k_{j}:k_{i}\mod k_{j}=0$
+\end_inset
+
+.
+ This is to avoid redundancy as the higher 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+will always be chosen
+\end_layout
+
+\begin_layout Itemize
+all 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ should be as big as possible.
+ As stated above this will decrease runtime however depending on memory
+ limitations it may not always be possible
+\end_layout
+
+\begin_layout Itemize
+small 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ should be avoided completey.
+ If 
+\begin_inset Formula $k_{1}=3$
+\end_inset
+
+ is provided and is used for a sum, the index will have to crossreference
+ all results for a single 3mer which depending on the text length may be
+ far slower than just searching that query with 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{search_subk}
+\end_layout
+
+\end_inset
+
+.
+ Initial results suggest to not use any 
+\begin_inset Formula $k_{i}<10$
+\end_inset
+
+ and while they can still be supplied, the index will not use them for searching
+ queries of bigger lengths unless unavoidable.
+\end_layout
+
+\begin_layout Standard
+The author recommends for the set of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ to be a subset of 
+\begin_inset Formula $\{9,11,13,17,19,21,23,27,29,31\}$
+\end_inset
+
+, primes are preferable because most queries will be able to be factorized
+ into a subset of them.
+ For example 
+\begin_inset Formula $\{11,13,17,19,21\}$
+\end_inset
+
+ will cover every query length 
+\begin_inset Formula $31<m\leq10000$
+\end_inset
+
+ and the 
+\begin_inset Formula $k$
+\end_inset
+
+ are small enough to be stored on less capable machines even with bigger
+ texts such as an entire genome.
+ Note that if searching for occurences of queries of length 
+\begin_inset Formula $m\in[3,31]$
+\end_inset
+
+ the query length should be directly supplied to the set of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ as a length smaller than 
+\begin_inset Formula $min(ks)$
+\end_inset
+
+ cannot be represented as a sum of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+s.
+ 
+\end_layout
+
+\begin_layout Subsection
+Comparison with fm-Index
 \end_layout
 
 \begin_layout Standard
@@ -1551,11 +2020,7 @@ e between the fm- and bi-fm-index.
 
 \end_inset
 
- and a multi kmer-index using every 
-\begin_inset Formula $k\in\{3,30\}$
-\end_inset
-
- was conducted and the relative speedup measured:
+ and a multi kmer-index was conducted and the relative speedup measured:
 \end_layout
 
 \begin_layout Verse
@@ -1612,6 +2077,27 @@ to clarify, if
 
 \end_layout
 
+\begin_layout Subsubsection
+For Query Lengths 
+\begin_inset Formula $m\in[3,30]$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+When searching for smaller queries the approriate 
+\begin_inset Formula $k$
+\end_inset
+
+ should be directly supplied.
+ The relative performance for a multi kmer-index with all 
+\begin_inset Formula $k\in\{$
+\end_inset
+
+3,4,...,30,31} was benchmarked and compared against the fm-index:
+\end_layout
+
 \begin_layout Standard
 \begin_inset Float figure
 wide false
@@ -1653,38 +2139,47 @@ Relative speedup (in %) for search calls of the kmer-index vs.
 \end_layout
 
 \begin_layout Standard
-For bigger text sizes the kmer-index exhibits more speedup in the lower
- end of 
-\begin_inset Formula $k\in\{3,...,30\}$
-\end_inset
-
-.
- This behavior can be explained by Lemma 1: for small 
+Results indicate that for bigger texts the kmer index will only perform
+ better for relatively small 
 \begin_inset Formula $k$
 \end_inset
 
- the indices unordered map is at maximum capacity and thus lookup time seizes
- to stop scaling with the texts size.
- 
-\begin_inset Newpage pagebreak
+.
+ This is because the indices map is limited to a size of 
+\begin_inset Formula $\sigma^{k}$
 \end_inset
 
+ and as the kmer indices runtime for searching a single kmer is indepent
+ from the number of results for that query, for bigger text higher 
+\begin_inset Formula $k$
+\end_inset
 
+ will vastly increase the maps size and thus the time it takes to traverse
+ it.
+ For sufficiently small texts however, all 
+\begin_inset Formula $k\in\{3,30\}$
+\end_inset
+
+will be faster to search and the overall speedup for short queries like
+ these suggests that the kmer index should be preferred to search small
+ kmers.
 \end_layout
 
 \begin_layout Standard
-The point at which the kmer-index starts to perform worse than the fm-index
- is dependent on the text size as such:
-\end_layout
+\begin_inset Float table
+wide false
+sideways false
+status open
 
-\begin_layout Standard
+\begin_layout Plain Layout
 \begin_inset space ~
 \end_inset
 
 
 \end_layout
 
-\begin_layout Standard
+\begin_layout Plain Layout
+\align center
 \begin_inset Tabular
 <lyxtabular version="3" rows="8" columns="3">
 <features booktabs="true" tabularvalignment="middle">
@@ -1705,11 +2200,7 @@ text size
 \begin_inset Text
 
 \begin_layout Plain Layout
-mean speedup in 
-\begin_inset Formula $[3,30]$
-\end_inset
-
-
+mean speedup
 \end_layout
 
 \end_inset
@@ -1955,11 +2446,94 @@ k < 11
 
 \end_layout
 
-\begin_layout Standard
-\begin_inset space ~
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Average 
+\begin_inset Formula $speedup(t_{kmer},t_{fm})$
+\end_inset
+
+ in the interval 
+\begin_inset Formula $[3,30]$
+\end_inset
+
+ per text length.
+\end_layout
+
 \end_inset
 
 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+For arbitrary Query Lengths
+\end_layout
+
+\begin_layout Standard
+To investigate the multi kmer-indices ability to be applied in general-purpose
+ exact string matching scenarios a large-scale benchmark was conducted.
+ For different text sizes, queries were searched with both indices and their
+ relative performance measured:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+^
+\begin_inset Graphics
+	filename /home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000/runtime_diff_over_text_size.png
+	lyxscale 40
+	width 100text%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Graphs showing 
+\begin_inset Formula $speedup(t_{kmer},t_{fm})$
+\end_inset
+
+ over query lengths for different text sizes.
+ The grey area highlights query lengths [5, 30] which were excluded for
+ the depicted median speedup.
+ The multi kmer-index used all 
+\begin_inset Formula $k\in$
+\end_inset
+
+ {5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31}.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The benchmark suggests that for longer queries the kmer-index provides a
+ slight speedup over the fm-index.
+ With increasing text size this speedup decreases however.
+ This is because as mentioned in section 3.3.1 the kmer at the higher end
+ of [3,30] take a longer time to search for bigger texts which in turn means
+ that the individuals kmers the queries are made for whom the multi kmer-index
+ prioritizes the bigger k will take longer as well.
 \end_layout
 
 \begin_layout Standard
@@ -1970,53 +2544,289 @@ k < 11
 \end_layout
 
 \begin_layout Standard
-Results indicate that using the kmer-index with optimal coverage to find
- occurrences of kmers for 
-\begin_inset Formula $k\in\{3,...,30\}$
+In summary, the kmer-index has proofed superior for searching appropriately
+ small kmers given the text length detailed in Table 2.
+ While more testing will have to be done it seems reasonable to assume that
+ kmer-index will always performa better for queries of length 
+\begin_inset Formula $m<10$
 \end_inset
 
- results in an overall performance boost for smaller texts, for larger texts
- (
-\begin_inset Formula $>10⁷$
+.
+ For exact string matching of queries of arbitrary length the kmer index
+ in it's current iteration should be preferred for smaller text sizes (
+\begin_inset Formula $<10⁸$
 \end_inset
 
-) bigger k may result in overall performance decrease however if 
-\begin_inset Formula $k$
+) while the fm-index should proof more consistently performant for larger
+ texts.
+ However it may be possible to improve the kmer index with further features
+ and if that achieves for example an additional speedup of 5% for longer
+ queries, the kmer index should perform better than the fm-index for all
+ relevant text sizes such as entire genomes.
+ 
+\end_layout
+
+\begin_layout Section
+Outlook
+\end_layout
+
+\begin_layout Standard
+To further improve performance and make the implementation generally more
+ consistentlsapplicable the following additional features are proposed:
+\end_layout
+
+\begin_layout Subsection
+>64 bit Hash
+\end_layout
+
+\begin_layout Standard
+As mentioned above the datatype of the hashes is currently 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{uint64_t}
+\end_layout
+
 \end_inset
 
- is chosen adequately low the kmer-index will still perform well and should
- be preferred to the fm-index.
- Notably for 
-\begin_inset Formula $k\leq10$
+.
+ 64 bit integers were chosen because the standard C++ library does not currently
+ support >64 bit integers natively and seqan3s kmer hash also uses them
+\begin_inset CommandInset citation
+LatexCommand cite
+key "seqan3 docs: kmer hash"
+literal "false"
+
 \end_inset
 
- the kmer-index should always be preferred.
+.
+ However the size of the integer used for the hashes is arbitrary and expanding
+ it to 128 or 256 bit would improve the maximum k that can still be searched
+ with the overall faster 
+\begin_inset Formula $m=k$
+\end_inset
+
+ search function as it is currently limited to 
+\begin_inset Formula $<31$
+\end_inset
+
+ for the smallest relevant nucleotide alphabet.
+ This may be especially important when working with bigger alphabets such
+ as the complete list of IUPAC codes for nucleotides 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "dna15 codes"
+literal "false"
+
+\end_inset
+
+ or clear text for which 
+\begin_inset Formula $\sigma=255$
+\end_inset
+
+.
+ Furthermore in the application of read-mapping nowadays reads are often
+ of relatively short length and being able to for example find all positions
+ of a 50mer or 75mer could give programs in this application a significant
+ speedup compared to factorizing these queries into multiple smaller kmer.
+ Further research will have to be done to verify wether abstracting the
+ hash type for the kmer-index to use for example integers of up to 1024
+ bit from boosts 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{multiprecision}
+\end_layout
+
+\end_inset
+
+ header
+\begin_inset CommandInset citation
+LatexCommand cite
+key "boost multiprecision"
+literal "false"
+
+\end_inset
+
+ could proof valuable as it may not be feasible due to memory limitation
+ or runtime overhead inherent to these integer types.
+ Furthermore as the k and thus the number of possible hashes increases the
+ indices maps maximum size will also increase and as observed in section
+ 3.3.2 for larger texts bigger k do not result in a significane speedup.
  
 \end_layout
 
 \begin_layout Subsection
-How to choose the appropriate k
+Multi kmer-index Compression 
 \end_layout
 
 \begin_layout Standard
-The success of the multi kmer-index relies heavily on both being provided
- a well-chosen set of 
-\begin_inset Formula $k_{i}$
+As discussed in section 3, using multiple k for the same index vastly increases
+ the search performance for a broad variety of queries.
+ Ideally we would want to just choose every possible k however memory limitation
+s make this difficult.
+ The kmer-index from section 3 offered decent coverage of every second k
+ but for a text size of 10⁸ already occupied about 80gb of memory.
+ While this is not unfeasible for stronger machines, as each map uses about
+ 
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+
+\begin_inset Formula $\#H*64*n*32$
 \end_inset
 
- and furthermore using the appropriate 
-\begin_inset Formula $k_{i}$
+
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ (where 
+\begin_inset Formula $H$
 \end_inset
 
- for a given query length.
- The latter is achieved by 
+ is the set of all pairwise different hashes, 
+\begin_inset Formula $n$
+\end_inset
+
+ is the text size) many bytes which for bigger text such as an entire genome
+ means using every possible 
+\begin_inset Formula $k$
+\end_inset
+
+ is currently not practical.
+ To remedy this it could be possible to implement a way to compress the
+ single kmer-indices contained in the multi kmer-index.
+ Each index contains all positions of the text in it's map exactly once
+ which means in a multi kmer-index with 5 ks, the individual indices contain
+ at least 
+\begin_inset Formula $(5-1)n*32$
+\end_inset
+
+ many bits of redundant entries in the form of the vectors of positions
+ for each hash.
+ If a version of the kmer-index is implemented that only contains all the
+ texts positions once while still allowing for adequate runtime performance
+ an all-purpose kmer-index could be proposed that simply holds information
+ for all possible ks regardless of user configuration.
+\end_layout
+
+\begin_layout Subsection
+Hybrid Approach
 \end_layout
 
 \begin_layout Standard
-\begin_inset space ~
+As detailed above the performance peaks of the kmer-index are fairly consistentl
+y predictable.
+ A two-pronged approach is proposed in which for queries for whom we know
+ the kmer-index will perform poorly the searching is instead done by a desperate
+ fm-index.
+ This allows for the now hybrid-index to have the speedup the kmer offers
+ while also covering the inherent inconsistency by instead using the fm-index
+ which performs highly consistently if sometimes worse.
+ We can thus precalculate which queries should be searched with which index.
+ The fm-index should be used to search a query of length 
+\begin_inset Formula $m$
+\end_inset
+
+ if and only if at least one of the following is true:
+\end_layout
+
+\begin_layout Itemize
+the text size is 
+\begin_inset Formula $>10⁸$
+\end_inset
+
+ and 
+\begin_inset Formula $m>15$
 \end_inset
 
 
+\end_layout
+
+\begin_layout Itemize
+there is no set 
+\begin_inset Formula $\{k_{a},k_{b},...\}$
+\end_inset
+
+ such that 
+\begin_inset Formula $k_{a}+k_{b}+...=m$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In all other cases preferring the kmer-index component may result in an
+ overall speedup, however further research is needed to develop a better
+ tested heuristic that substantiates these recommendations and is capable
+ of determining a more exact text size (which may also be dependent on the
+ alphabet used) which when exceeded might proof use of the hybrid index
+ to be more trouble than it is worth given the need for increased memory
+ capacity.
+\end_layout
+
+\begin_layout Section
+Conclusion
+\end_layout
+
+\begin_layout Standard
+The current kmer-index implementation is stable, reasonably well optimized
+ and the indices performance is superior for searching kmers of relatively
+ small length 
+\begin_inset Formula $m<30$
+\end_inset
+
+ (or less than 30 for bigger texts as detailed in Section 3).
+ For this purpose it achieved a performance increase of up to 50% and is
+ thus well suited for it and should be preferred to more generalist indices
+ like the fm-index if runtime performance is important.
+ For query lengths past 30 the kmer-index has been shown to have a neglible
+ performance increase while for bigger texts great than 
+\begin_inset Formula $10^{8}$
+\end_inset
+
+ an overall performance decrease was observed.
+ It may be possible to achieve better speedup with further features and
+ optimizations that may make the kmer-index the better performing index
+ for exact string matching in most situations.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection*
+TODO3,
 \end_layout
 
 \begin_layout Standard
@@ -2268,169 +3078,146 @@ gy/next-generation-sequencing/plan-experiments/read-length.html>.
  
 \end_layout
 
-\begin_layout Section
-Outlook
-\end_layout
-
-\begin_layout Standard
-To further improve performance and make the implementation generally more
- consistent and applicable in areas it is currently not the following additional
- features are proposed:
-\end_layout
-
 \begin_layout Subsection
->64 bit Hash
+Comparison with FM-Index
 \end_layout
 
 \begin_layout Standard
-As mentioned above the datatype of the hashes is currently 
-\begin_inset ERT
+To put the absolute values of the above figures into perspective, a comparative
+ analysis of the fm-index
+\begin_inset Foot
 status open
 
 \begin_layout Plain Layout
-
-
-\backslash
-lstinline{uint64_t}
+Note that for exact string matching there's is no relevant performance differenc
+e between the fm- and bi-fm-index.
 \end_layout
 
 \end_inset
 
-.
- 64 bit integers were chosen because the standard C++ library does not currently
- support >64 bit integers natively and seqan3s kmer hash also uses them
-\begin_inset CommandInset citation
-LatexCommand cite
-key "seqan3 docs: kmer hash"
-literal "false"
-
+ and a multi kmer-index using every 
+\begin_inset Formula $k\in\{3,30\}$
 \end_inset
 
-.
- However the size of the integer used for the hashes is arbitrary and expanding
- it to 128 or 256 bit would improve the maximum k that can still be searched
- with the overall faster 
-\begin_inset Formula $m=k$
+ was conducted and the relative speedup measured:
+\end_layout
+
+\begin_layout Verse
+let 
+\begin_inset Formula $t_{fm<i>},t_{kmer<i>}$
 \end_inset
 
- search function as it is currently limited to 
-\begin_inset Formula $<31$
+ the search runtime for searching a query of length 
+\begin_inset Formula $i$
 \end_inset
 
- for the smallest relevant nucleotide alphabet.
- This may be especially important when working with bigger alphabets such
- as the complete list of IUPAC codes for nucleotides 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "dna15 codes"
-literal "false"
+ with the corresponding index
+\end_layout
 
+\begin_layout Verse
+then 
+\begin_inset Formula $\text{{speedup}}(i)=\begin{cases}
++(1-(t_{kmer<i>}/t_{fm<i>})) & \text{{if}\;}t_{kmer<i>}>t_{fm<i>}\\
+-(1-(t_{fm<i>}/t_{kmer<i>})) & \text{{if}\;}t_{kmer<i>}<t_{fm<i>}\\
+\,0 & \text{{else}}
+\end{cases}$
 \end_inset
 
- or clear text for which 
-\begin_inset Formula $\sigma=255$
-\end_inset
-
-.
- Furthermore in the application of read-mapping nowadays reads are often
- of relatively short length and being able to for example find all positions
- of a 50mer or 75mer could give programs in this application a significant
- speedup.
- Further research will have to be done to verify wether abstracting the
- hash type for the kmer-index to use for example integers of up to 1024
- bit from boosts 
-\begin_inset ERT
+|
+\begin_inset Foot
 status open
 
 \begin_layout Plain Layout
+to clarify, if 
+\begin_inset Formula $speedup(a,b)=+75\%$
+\end_inset
 
+ then 
+\begin_inset Formula $b$
+\end_inset
 
-\backslash
-lstinline{multiprecision}
+ has a runtime of 1.75 the runtime of 
+\begin_inset Formula $a$
+\end_inset
+
+, 
+\begin_inset Formula $a$
+\end_inset
+
+ is 75% faster than 
+\begin_inset Formula $b$
+\end_inset
+
+.
 \end_layout
 
 \end_inset
 
- header
-\begin_inset CommandInset citation
-LatexCommand cite
-key "boost multiprecision"
-literal "false"
 
-\end_inset
-
- could proof valuable as it may not be feasible due to memory limitation
- or runtime overhead inherent to these integer types.
-\end_layout
-
-\begin_layout Subsection
-Multi kmer-index Compression 
 \end_layout
 
 \begin_layout Standard
-As discussed in section 3, using multiple k for the same index vastly increases
- the search performance for a broad variety of queries.
- Ideally we would want to just choose every possible k however memory limitation
-s make this difficult.
- The kmer-index from section 3 offered decent coverage of every second k
- but for a text size of 10⁸ already occupied about 60gb of memory.
- While this is not unfeasible for stronger machines, as each map uses about
+For bigger text sizes the kmer-index exhibits more speedup in the lower
+ end of 
+\begin_inset Formula $k\in\{3,...,30\}$
+\end_inset
+
+.
+ This behavior can be explained by Lemma 1: for small 
+\begin_inset Formula $k$
+\end_inset
+
+ the indices unordered map is at maximum capacity and thus lookup time seizes
+ to stop scaling with the texts size.
  
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-
-\begin_inset Formula $\#H*64*n*32$
+\begin_inset Newpage pagebreak
 \end_inset
 
 
-\family default
-\series default
-\shape default
-\size default
-\emph default
-\bar default
-\strikeout default
-\xout default
-\uuline default
-\uwave default
-\noun default
-\color inherit
- (where 
-\begin_inset Formula $H$
+\end_layout
+
+\begin_layout Standard
+The point at which the kmer-index starts to perform worse than the fm-index
+ is dependent on the text size as such:
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
 \end_inset
 
- is the set of all pairwise different hashes, 
-\begin_inset Formula $n$
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
 \end_inset
 
- is the text size) many bytes which for bigger text such as an entire genome
- means achieving optimal coverage is all but impossible.
- To remedy this it could be possible to implement a way to compress the
- single kmer-indices contained in the multi kmer-index.
- Each index contains all positions of the text in it's map exactly once
- which means in a multi kmer-index with 5 ks, the individual indices contain
- at least 
-\begin_inset Formula $(5-1)n*32$
+
+\end_layout
+
+\begin_layout Standard
+Results indicate that using the kmer-index with optimal coverage to find
+ occurrences of kmers for 
+\begin_inset Formula $k\in\{3,...,30\}$
 \end_inset
 
- many bits of redundant entries in the form of the vectors of positions
- for each hash.
- If a version of the kmer-index is implemented that only contains all the
- texts positions once while still allowing for adequate runtime performance
- an all-purpose kmer-index could be proposed that simply holds information
- for all possible ks.
- To assure near optimal runtime and no overhead introduced the current implement
-ation of the kmer-index does not currently allow for any compression.
+ results in an overall performance boost for smaller texts, for larger texts
+ (
+\begin_inset Formula $>10⁷$
+\end_inset
+
+) bigger k may result in overall performance decrease however if 
+\begin_inset Formula $k$
+\end_inset
+
+ is chosen adequately low the kmer-index will still perform well and should
+ be preferred to the fm-index.
+ Notably for 
+\begin_inset Formula $k\leq10$
+\end_inset
+
+ the kmer-index should always be preferred.
+ 
 \end_layout
 
 \begin_layout Subsection
@@ -2454,39 +3241,6 @@ While the kmer-index proved to be well-suited for searching commonly used
 \end_layout
 
 \begin_layout Standard
-\begin_inset Float figure
-placement H
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Graphics
-	filename /home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000/runtime_diff_over_text_size.png
-	lyxscale 40
-	width 100text%
-
-\end_inset
-
-
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-Relative speedup over query length for different text sizes.
- (y-axis log scaled)
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
 Results indicate that the kmer-index performs comparatively well for smaller
  texts while the bigger the text the wores the relative performance becomes.
  This is because for bigger queries no query can be covered directly and
@@ -2502,101 +3256,6 @@ Results indicate that the kmer-index performs comparatively well for smaller
  proper choice of k the kmer-index may proof useful in achieving greater
  performance.
  
-\end_layout
-
-\begin_layout Subsection
-Hybrid Approach
-\end_layout
-
-\begin_layout Standard
-As detailed above the performance peaks of the kmer-index are fairly consistentl
-y predictable.
- A two-pronged approach is proposed in which for queries for whom we know
- the kmer-index will perform poorly the searching is instead done by a desperate
- fm-index.
- This allows for the now hybrid-index to have the speedup the kmer offers
- while also covering the inherent inconsistency by instead using the fm-index
- which performs highly consistently if sometimes worse.
- We can thus precalculate which queries should be searched with which index.
- The fm-index should be used to search a query of length 
-\begin_inset Formula $m$
-\end_inset
-
- if and only if at least one of the following is true:
-\end_layout
-
-\begin_layout Itemize
-the text size is 
-\begin_inset Formula $>10⁸$
-\end_inset
-
- and 
-\begin_inset Formula $m>15$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Itemize
-\begin_inset Formula $m$
-\end_inset
-
- is a prime
-\end_layout
-
-\begin_layout Itemize
-there is no 
-\begin_inset Formula $k_{i}:m\mod k_{i}=0$
-\end_inset
-
- and 
-\begin_inset Formula $m>max(k_{i})$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-In all other cases preferring the kmer-index component may result in an
- overall speedup, however further research is needed to develop a better
- tested heuristic that substantiates these recommendations and is capable
- of determining a more exact text size (which may also be dependent on the
- alphabet used) which when exceed might proof use of the hybrid index to
- be more trouble than it is worth given the need for increased memory capacity.
-\end_layout
-
-\begin_layout Section
-Conclusion
-\end_layout
-
-\begin_layout Standard
-The current kmer-index implementation is stable, reasonably well optimized
- and the indices performance is superior for searching kmers of relatively
- small length 
-\begin_inset Formula $m<30$
-\end_inset
-
- (or less than 30 for bigger texts, c.f.
- Section 3).
- For this purpose it is well suited and should be preferred to more generalist
- indices like the fm-index if runtime performance is important.
- For query lengths past 30 the kmer-index was shown to have an inconsistent
- performance increase that (in it's current form) makes it rarely applicable
- for general-purpose exact string matching.
- However it was also shown that it is possible to predict for a query whether
- or not the kmer index will result in an overall speedup and it was furthermore
- demonstrated that that speedup may be significant.
- It is therefore recommend to consider the hybrid index approach detailed
- above for further research and implementation as it may result in overall
- speedup compared to using either of the indices on their own.
- 
-\end_layout
-
-\begin_layout Standard
-\begin_inset Newpage newpage
-\end_inset
-
-
 \end_layout
 
 \begin_layout Section
