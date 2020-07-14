@@ -43,11 +43,20 @@ theorems-ams-chap-bytype
 \default_output_format default
 \output_sync 0
 \bibtex_command default
-\index_command default
+\index_command makeindex
 \float_placement H
 \paperfontsize default
 \spacing single
-\use_hyperref false
+\use_hyperref true
+\pdf_bookmarks true
+\pdf_bookmarksnumbered false
+\pdf_bookmarksopen false
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder false
+\pdf_colorlinks false
+\pdf_backref section
+\pdf_pdfusetitle true
 \papersize default
 \use_geometry false
 \use_package amsmath 1
@@ -96,7 +105,7 @@ theorems-ams-chap-bytype
 \begin_body
 
 \begin_layout Title
-Implementation and Performance Evaluation of a k-mer Index for exact String
+Implementation and Performance Evaluation of a k-mer Index for Exact String
  Matching
 \end_layout
 
@@ -114,7 +123,7 @@ As demand for large-scale genomic sequence matching rises, so does the ability
  at runtime, utilizes parallelization for faster construction and it's internal
  structure can be further customized at compile time to achieve greater
  performance for certain query sizes.
- The nature of the internal structure and search functions is explained
+ The nature of the internal structure and search functions are explained
  and their performant nature demonstrated through benchmarks.
  Results indicate that for the purpose of finding positions or number of
  occurrences for queries of the commonly used length 
@@ -128,12 +137,44 @@ As demand for large-scale genomic sequence matching rises, so does the ability
 \begin_inset Formula $\pm5$
 \end_inset
 
-% depending on text length and is thus in it's current iteration applicable
- but not necessarily better suited for this purpose.
+% depending on text length and is in it's current iteration thus applicable
+ if not necessarily better suited for this purpose.
+\end_layout
+
+\begin_layout Abstract
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+thispagestyle{empty}
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Abstract
 \begin_inset Newpage pagebreak
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+thispagestyle{empty}
+\end_layout
+
 \end_inset
 
 
@@ -150,6 +191,22 @@ LatexCommand tableofcontents
 
 \begin_layout Standard
 \begin_inset Newpage pagebreak
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+setcounter{page}{1} 
+\end_layout
+
 \end_inset
 
 
@@ -180,12 +237,12 @@ kmer
 \begin_inset Formula $k$
 \end_inset
 
-, usually in the context of being a sub-sequence of a longer genome.
+, usually in the context of a sub-sequence of a longer genome.
  Analysis of kmers is used in a wide variety of contexts such as in de novo
  genome assembly
 \begin_inset CommandInset citation
 LatexCommand cite
-key "kmer: megahit assembly,kmer: soapdenovo assembly"
+key "kmer: megahit,kmer: soapdenovo assembly"
 literal "false"
 
 \end_inset
@@ -226,8 +283,17 @@ literal "false"
 \end_inset
 
 .
- Seqan3, a newly released version of the C++ API for sequence analysis has
- yet to implement a purpose-build index for kmer searching.
+ 
+\begin_inset CommandInset href
+LatexCommand href
+name "Seqan3"
+target "https://github.com/seqan/seqan3"
+literal "false"
+
+\end_inset
+
+, a newly released version of the C++ API for sequence analysis has yet
+ to implement a purpose-build index for kmer searching.
  This paper aims to access the viability of substituting seqan3s fm-index
 \begin_inset CommandInset citation
 LatexCommand cite
@@ -323,7 +389,11 @@ index[
 \begin_inset Formula $h$
 \end_inset
 
-] = 
+] 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ 
 \begin_inset Formula $(\text{index}[h],\:i)$
 \end_inset
 
@@ -413,25 +483,19 @@ where
 
 \end_deeper
 \begin_layout Standard
-This hash guarantees no hash collisions
-\begin_inset CommandInset citation
-LatexCommand cite
-key "seqan2 doctor arbeit"
-literal "false"
-
-\end_inset
-
- and was furthermore chosen because the kmer-index is to be integrated and
- compared to the Seqan3 library which uses the same hash function
-\begin_inset CommandInset citation
-LatexCommand cite
-key "seqan3 docs: kmer hash"
+This hash guarantees no hash collisions and was furthermore chosen because
+ the kmer-index is to be integrated and compared to the Seqan3 library which
+ uses the same 
+\begin_inset CommandInset href
+LatexCommand href
+name "hash function"
+target "http://docs.seqan.de/seqan/3-master-user/group__views.html#ga6e598d6a021868f704d39df73252974f"
 literal "false"
 
 \end_inset
 
 .
- Constructing the kmer-index is fairly straight-forward: We can simply iterate
+ Constructing the kmer index is fairly straight-forward: We can simply iterate
  through the text while keeping track of the current position and adding
  it to the end of the appropriate entry for the current kmer.
  Given a text of length 
@@ -460,8 +524,12 @@ To achieve greater flexibility the kmer-index implementation is capable
 \end_inset
 
  that is used to create it.
- While a k still needs to be specified at compile time, at runtime any query
- can be searched; however the search functions performance will vary drastically
+ While a 
+\begin_inset Formula $k$
+\end_inset
+
+ still needs to be specified at compile time, at runtime any query can be
+ searched; however the search functions performance will vary drastically
  depended on the queries length in relation to 
 \begin_inset Formula $k$
 \end_inset
@@ -471,6 +539,12 @@ To achieve greater flexibility the kmer-index implementation is capable
 \end_layout
 
 \begin_layout Subsection
+\begin_inset CommandInset label
+LatexCommand label
+name "section 3.1"
+
+\end_inset
+
 Query Size m = k
 \end_layout
 
@@ -489,14 +563,6 @@ status open
 All code examples henceforth are edited for brevity and only meant for the
  purpose of demonstrating the programs behavior unless otherwise specified.
  The actual implementations makes many concessions for the sake of performance
- that can be viewed in it's entirety in the actual code
-\begin_inset CommandInset citation
-LatexCommand cite
-key "my github"
-literal "false"
-
-\end_inset
-
  and would be too lengthy to print here.
 \end_layout
 
@@ -605,10 +671,11 @@ lstinline{_data}
 \end_inset
 
 .
- C++s return value optimization
-\begin_inset CommandInset citation
-LatexCommand cite
-key "cpp RVO"
+ C++s 
+\begin_inset CommandInset href
+LatexCommand href
+name "return value optimization"
+target "https://en.cppreference.com/w/cpp/language/copy_elision"
 literal "false"
 
 \end_inset
@@ -637,6 +704,12 @@ s runtime is very close to that of a single lookup in the map.
 \end_layout
 
 \begin_layout Lemma
+\begin_inset CommandInset label
+LatexCommand label
+name "Lemma 1"
+
+\end_inset
+
 Search performance for queries of size 
 \begin_inset Formula $m:\,m=k$
 \end_inset
@@ -646,6 +719,12 @@ Search performance for queries of size
 \end_layout
 
 \begin_layout Subsection
+\begin_inset CommandInset label
+LatexCommand label
+name "section 3.2"
+
+\end_inset
+
 Query Size m < k
 \end_layout
 
@@ -914,20 +993,6 @@ Given this information we can conclude
 
 \end_layout
 
-\begin_layout Verse
-\begin_inset space ~
-\end_inset
-
-
-\end_layout
-
-\begin_layout Verse
-\begin_inset space ~
-\end_inset
-
-
-\end_layout
-
 \begin_layout Standard
 This gives us far less costly way to generate all hashes in a simple for-loop:
 \end_layout
@@ -1118,6 +1183,12 @@ While searching queries of length
 \end_layout
 
 \begin_layout Lemma
+\begin_inset CommandInset label
+LatexCommand label
+name "Lemma 2"
+
+\end_inset
+
 search performance for queries of size 
 \begin_inset Formula $m:\,(k\mod m)\neq0\:\land m<k$
 \end_inset
@@ -1144,6 +1215,7 @@ The actual implementation throws an exception if
 
  combination taking hours to complete given the amount of hashes that would
  have to be looked up.
+ 
 \begin_inset Foot
 status open
 
@@ -1174,6 +1246,12 @@ represents the case of
 \end_layout
 
 \begin_layout Subsection
+\begin_inset CommandInset label
+LatexCommand label
+name "section 3.3"
+
+\end_inset
+
 Query Size m > k
 \end_layout
 
@@ -1360,6 +1438,12 @@ For performance purposes if at any point the program does not find a fitting
 \end_layout
 
 \begin_layout Lemma
+\begin_inset CommandInset label
+LatexCommand label
+name "Lemma 3"
+
+\end_inset
+
 Search time for queries of size 
 \begin_inset Formula $m:\,m>k$
 \end_inset
@@ -1401,11 +1485,17 @@ Multi kmer-Index
 \end_layout
 
 \begin_layout Subsection
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec: multi k overview"
+
+\end_inset
+
 Overview
 \end_layout
 
 \begin_layout Standard
-To further investigate the behavior implied by Lemmas 1 - 3 a benchmark
+To further investigate the behavior implied by Lemmas 1 to 3 a benchmark
  was conducted.
  Queries of length 
 \begin_inset Formula $\{6,7,...,50\}$
@@ -1439,6 +1529,12 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "figure 1"
+
+\end_inset
+
 Average duration to get all occurences of a query of given length using
  a kmer-index for 
 \begin_inset Formula $k=\{10\}$
@@ -1513,7 +1609,17 @@ lstinline{search_subk}
 \begin_inset Formula $k$
 \end_inset
 
- increases the performance becomes worse (in accordance with Lemma 2).
+ increases the performance becomes worse (in accordance with Lemma 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Lemma 2"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+).
  For queries of length 
 \begin_inset Formula $m=(n*k)+1$
 \end_inset
@@ -1529,7 +1635,16 @@ lstinline{search_subk}
 
  reduce in severity as query length increases.
  This is because with an increase in query length given a text of fixed
- size the number of results per query decreases and as stated in Lemma 3
+ size the number of results per query decreases and as stated in Lemma 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Lemma 3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
  performance will improve slightly.
 \end_layout
 
@@ -1645,6 +1760,12 @@ Despite the sub-optimal coverage of the multi kmer-index, performance is
 \end_layout
 
 \begin_layout Subsection
+\begin_inset CommandInset label
+LatexCommand label
+name "section 4.2"
+
+\end_inset
+
 How to choose the appropriate k
 \end_layout
 
@@ -1686,8 +1807,17 @@ The success of the multi kmer-index relies heavily on both being provided
 \begin_inset Formula $k_{i}$
 \end_inset
 
- are chosen as big as possible which accordant with Lemma 3 reduces runtime
- for longer queries.
+ are chosen as big as possible which accordant with Lemma 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Lemma 3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ reduces runtime for longer queries.
  The table is constructed with a simple dynamic programming approach where
  to find the set of 
 \begin_inset Formula $k_{i}$
@@ -1707,7 +1837,7 @@ The success of the multi kmer-index relies heavily on both being provided
 
 \begin_layout Standard
 \begin_inset Float table
-placement h
+placement H
 wide false
 sideways false
 status open
@@ -1740,7 +1870,7 @@ summands
 </cell>
 </row>
 <row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+<cell alignment="center" valignment="top" topline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -1852,10 +1982,10 @@ Set of
 \end_inset
 
  for certain query lengths chosen from 
-\begin_inset Formula $k\in\{9,11,13,17\}.$
+\begin_inset Formula $k\in\{9,11,13,17\}$
 \end_inset
 
-
+ by the multi kmer-index.
 \end_layout
 
 \end_inset
@@ -1874,8 +2004,8 @@ Depending on the set of
 \end_inset
 
  supplied, not all query lengths may be possible to be represented with
- only summands.
- In this case the kmer index falls back on having to call 
+ the supplied summands.
+ In this case the kmer index falls back on calling 
 \begin_inset ERT
 status open
 
@@ -1964,9 +2094,31 @@ The author recommends for the set of
 \end_inset
 
  to be a subset of 
-\begin_inset Formula $\{9,11,13,17,19,21,23,27,29,31\}$
-\end_inset
-
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+{9, 11, 13, 17, 19, 21, 23, 27, 29, 31}
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
 , primes are preferable because most queries will be able to be factorized
  into a subset of them.
  For example 
@@ -2049,7 +2201,7 @@ then
 status open
 
 \begin_layout Plain Layout
-to clarify, if 
+To clarify, if 
 \begin_inset Formula $speedup(a,b)=+75\%$
 \end_inset
 
@@ -2067,6 +2219,26 @@ to clarify, if
 
  is 75% faster than 
 \begin_inset Formula $b$
+\end_inset
+
+; if 
+\begin_inset Formula $speedup(x,y)=-30\%$
+\end_inset
+
+ then 
+\begin_inset Formula $y$
+\end_inset
+
+ has a runtime fo 0.7 the runtime of 
+\begin_inset Formula $x$
+\end_inset
+
+, 
+\begin_inset Formula $x$
+\end_inset
+
+ is 30% slower than 
+\begin_inset Formula $y$
 \end_inset
 
 .
@@ -2092,10 +2264,19 @@ When searching for smaller queries the approriate
 
  should be directly supplied.
  The relative performance for a multi kmer-index with all 
-\begin_inset Formula $k\in\{$
+\begin_inset Formula $k\in$
 \end_inset
 
-3,4,...,30,31} was benchmarked and compared against the fm-index:
+ {3,4,...,30,31} was 
+\begin_inset CommandInset href
+LatexCommand href
+name "benchmarked"
+target "https://github.com/google/benchmark"
+literal "false"
+
+\end_inset
+
+ and compared against the fm-index:
 \end_layout
 
 \begin_layout Standard
@@ -2145,7 +2326,7 @@ Results indicate that for bigger texts the kmer index will only perform
 \end_inset
 
 .
- This is because the indices map is limited to a size of 
+ This is because tcrow primary he indices map is limited to a size of 
 \begin_inset Formula $\sigma^{k}$
 \end_inset
 
@@ -2172,22 +2353,42 @@ sideways false
 status open
 
 \begin_layout Plain Layout
-\begin_inset space ~
+\noindent
+\align left
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "table kmer faster while"
+
+\end_inset
+
+Average 
+\begin_inset Formula $speedup(t_{kmer},t_{fm})$
+\end_inset
+
+ in the interval 
+\begin_inset Formula $[3,30]$
+\end_inset
+
+ per text length.
+ Results rounded to 1 decimal digit to account for noise in benchmark results.
+\end_layout
+
 \end_inset
 
 
-\end_layout
-
-\begin_layout Plain Layout
-\align center
 \begin_inset Tabular
-<lyxtabular version="3" rows="8" columns="3">
-<features booktabs="true" tabularvalignment="middle">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top" width="0pt">
-<column alignment="decimal" decimal_point="." valignment="top" width="0pt">
+<lyxtabular version="3" rows="8" columns="5">
+<features booktabs="true" tabularvalignment="middle" tabularwidth="100text%">
+<column alignment="center" valignment="top" width="15text%">
+<column alignment="right" valignment="top" width="10text%">
+<column alignment="right" valignment="top" width="15text%">
+<column alignment="right" valignment="top" width="15text%">
+<column alignment="center" valignment="top" width="25text%">
 <row>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+<cell alignment="center" valignment="top" topline="true" bottomline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2196,16 +2397,34 @@ text size
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" bottomline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
-mean speedup
+mean
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="decimal" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+maximum 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="right" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+mininum 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2216,7 +2435,7 @@ kmer faster while
 </cell>
 </row>
 <row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+<cell alignment="center" valignment="top" topline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2228,16 +2447,34 @@ kmer faster while
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
-20.99%
+21%
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="decimal" valignment="top" topline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+64.9%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3.0%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2260,16 +2497,34 @@ k < 31
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
-19.30%
+19.3%
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="decimal" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+64.2%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2.2%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2292,16 +2547,34 @@ k < 31
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" leftline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
-17.35%
+17.3%
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="decimal" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+65.7%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.4%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2324,16 +2597,34 @@ k < 31
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" leftline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
-16.77%
+16.7%
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="decimal" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+58.8%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2.0%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2356,16 +2647,34 @@ k < 31
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
-9.43%
+9.4%
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="decimal" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+54.5%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-4.6%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2388,16 +2697,34 @@ k < 22
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" leftline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
-8.17%
+8.2%
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="decimal" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+62.1%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="right" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-11.3%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2420,7 +2747,7 @@ k < 17
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2429,7 +2756,25 @@ k < 17
 
 \end_inset
 </cell>
-<cell alignment="decimal" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+<cell alignment="right" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+48.9%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="right" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+< -16.5%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
@@ -2440,26 +2785,6 @@ k < 11
 </cell>
 </row>
 </lyxtabular>
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-Average 
-\begin_inset Formula $speedup(t_{kmer},t_{fm})$
-\end_inset
-
- in the interval 
-\begin_inset Formula $[3,30]$
-\end_inset
-
- per text length.
-\end_layout
 
 \end_inset
 
@@ -2490,7 +2815,6 @@ sideways false
 status open
 
 \begin_layout Plain Layout
-^
 \begin_inset Graphics
 	filename /home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000/runtime_diff_over_text_size.png
 	lyxscale 40
@@ -2502,6 +2826,12 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "figure 5_100"
+
+\end_inset
+
 Graphs showing 
 \begin_inset Formula $speedup(t_{kmer},t_{fm})$
 \end_inset
@@ -2530,10 +2860,20 @@ Graphs showing
 The benchmark suggests that for longer queries the kmer-index provides a
  slight speedup over the fm-index.
  With increasing text size this speedup decreases however.
- This is because as mentioned in section 3.3.1 the kmer at the higher end
- of [3,30] take a longer time to search for bigger texts which in turn means
- that the individuals kmers the queries are made for whom the multi kmer-index
- prioritizes the bigger k will take longer as well.
+ This is because as mentioned in section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "section 3.3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ the kmer at the higher end of [3,30] take a longer time to search for bigger
+ texts which in turn means that the individuals kmers the queries are made
+ for whom the multi kmer-index prioritizes the bigger k will take longer
+ as well.
 \end_layout
 
 \begin_layout Standard
@@ -2545,7 +2885,17 @@ The benchmark suggests that for longer queries the kmer-index provides a
 
 \begin_layout Standard
 In summary, the kmer-index has proofed superior for searching appropriately
- small kmers given the text length detailed in Table 2.
+ small kmers given the text length detailed in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "table kmer faster while"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
  While more testing will have to be done it seems reasonable to assume that
  kmer-index will always performa better for queries of length 
 \begin_inset Formula $m<10$
@@ -2561,8 +2911,8 @@ In summary, the kmer-index has proofed superior for searching appropriately
  texts.
  However it may be possible to improve the kmer index with further features
  and if that achieves for example an additional speedup of 5% for longer
- queries, the kmer index should perform better than the fm-index for all
- relevant text sizes such as entire genomes.
+ queries, the kmer index may perform better than the fm-index for all relevant
+ text sizes such as entire genomes.
  
 \end_layout
 
@@ -2595,10 +2945,11 @@ lstinline{uint64_t}
 
 .
  64 bit integers were chosen because the standard C++ library does not currently
- support >64 bit integers natively and seqan3s kmer hash also uses them
-\begin_inset CommandInset citation
-LatexCommand cite
-key "seqan3 docs: kmer hash"
+ support >64 bit integers natively and seqan3s kmer hash 
+\begin_inset CommandInset href
+LatexCommand href
+name "also uses them"
+target "http://docs.seqan.de/seqan/3-master-user/group__views.html#ga6e598d6a021868f704d39df73252974f"
 literal "false"
 
 \end_inset
@@ -2616,51 +2967,61 @@ literal "false"
 
  for the smallest relevant nucleotide alphabet.
  This may be especially important when working with bigger alphabets such
- as the complete list of IUPAC codes for nucleotides 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "dna15 codes"
+ as the complete list of 
+\begin_inset CommandInset href
+LatexCommand href
+name "IUPAC codes"
+target "https://www.bioinformatics.org/sms/iupac.html"
 literal "false"
 
 \end_inset
 
- or clear text for which 
+ for nucleotides or clear text for which 
 \begin_inset Formula $\sigma=255$
 \end_inset
 
 .
- Furthermore in the application of read-mapping nowadays reads are often
- of relatively short length and being able to for example find all positions
- of a 50mer or 75mer could give programs in this application a significant
- speedup compared to factorizing these queries into multiple smaller kmer.
- Further research will have to be done to verify wether abstracting the
- hash type for the kmer-index to use for example integers of up to 1024
- bit from boosts 
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-lstinline{multiprecision}
-\end_layout
+ Furthermore in the application of read-mapping, reads are 
+\begin_inset CommandInset href
+LatexCommand href
+name "often of relatively short length"
+target "https://www.illumina.com/science/technology/next-generation-sequencing/plan-experiments/read-length.html"
+literal "false"
 
 \end_inset
 
- header
-\begin_inset CommandInset citation
-LatexCommand cite
-key "boost multiprecision"
+ and being able to for example find all positions of a 50mer or 75mer could
+ give programs in this application a significant speedup compared to factorizing
+ these queries into multiple smaller kmer.
+ Further research will have to be done to verify wether abstracting the
+ hash type for the kmer-index to use for example integers of up to 1024
+ bit from boosts 
+\begin_inset CommandInset href
+LatexCommand href
+name "multiprecision header"
+target "https://www.boost.org/doc/libs/1_62_0/libs/multiprecision/doc/html/boost_multiprecision/tut/ints/cpp_int.html"
 literal "false"
 
 \end_inset
 
  could proof valuable as it may not be feasible due to memory limitation
  or runtime overhead inherent to these integer types.
- Furthermore as the k and thus the number of possible hashes increases the
- indices maps maximum size will also increase and as observed in section
- 3.3.2 for larger texts bigger k do not result in a significane speedup.
+ Furthermore as 
+\begin_inset Formula $k$
+\end_inset
+
+ and thus the number of possible hashes increases the indices maps maximum
+ size will also increase and as observed from Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "table kmer faster while"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ for larger texts bigger k do not neccessarily result in a significane speedup.
  
 \end_layout
 
@@ -2669,12 +3030,36 @@ Multi kmer-index Compression
 \end_layout
 
 \begin_layout Standard
-As discussed in section 3, using multiple k for the same index vastly increases
- the search performance for a broad variety of queries.
+As has been shown in section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec: multi k overview"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ using multiple k for the same index vastly increases the search performance
+ for a broad variety of queries.
  Ideally we would want to just choose every possible k however memory limitation
 s make this difficult.
- The kmer-index from section 3 offered decent coverage of every second k
- but for a text size of 10⁸ already occupied about 80gb of memory.
+ The kmer-index from Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "figure 5_100"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ offered decent coverage by choosing about every second 
+\begin_inset Formula $k$
+\end_inset
+
+ in {9,10,...31} but for a text size of 10⁸ already occupied about 80gb of
+ memory.
  While this is not unfeasible for stronger machines, as each map uses about
  
 \family roman
@@ -2733,7 +3118,8 @@ s make this difficult.
  If a version of the kmer-index is implemented that only contains all the
  texts positions once while still allowing for adequate runtime performance
  an all-purpose kmer-index could be proposed that simply holds information
- for all possible ks regardless of user configuration.
+ for all possible ks regardless of user configuration and thus achieves
+ optimal performance in all cases.
 \end_layout
 
 \begin_layout Subsection
@@ -2762,15 +3148,22 @@ the text size is
 \begin_inset Formula $>10⁸$
 \end_inset
 
- and 
-\begin_inset Formula $m>15$
+ (c.f.
+ Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "table kmer faster while"
+plural "false"
+caps "false"
+noprefix "false"
+
 \end_inset
 
-
+)
 \end_layout
 
 \begin_layout Itemize
-there is no set 
+there is no set of 
 \begin_inset Formula $\{k_{a},k_{b},...\}$
 \end_inset
 
@@ -2802,20 +3195,32 @@ The current kmer-index implementation is stable, reasonably well optimized
 \begin_inset Formula $m<30$
 \end_inset
 
- (or less than 30 for bigger texts as detailed in Section 3).
- For this purpose it achieved a performance increase of up to 50% and is
- thus well suited for it and should be preferred to more generalist indices
- like the fm-index if runtime performance is important.
- For query lengths past 30 the kmer-index has been shown to have a neglible
- performance increase while for bigger texts great than 
+ (or less than 30 for bigger texts as detailed in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "table kmer faster while"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+).
+ For this purpose it achieved a performance increase of up to 65% and is
+ thus well-suited and should be preferred to more generalist indices like
+ the fm-index if runtime performance is important.
+ For query lengths past 30 the kmer-index has been shown to have a performance
+ increase between 5 and 10% while for bigger texts longer than 
 \begin_inset Formula $10^{8}$
 \end_inset
 
- an overall performance decrease was observed.
- It may be possible to achieve better speedup with further features and
- optimizations that may make the kmer-index the better performing index
- for exact string matching in most situations.
- 
+ an overall performance change of 
+\begin_inset Formula $\pm2\%$
+\end_inset
+
+ was observed.
+ With further optimization and features the kmer-index may become the decidedly
+ more performant index for exact string matching purposes in all situations.
 \end_layout
 
 \begin_layout Standard
@@ -2825,441 +3230,8 @@ The current kmer-index implementation is stable, reasonably well optimized
 
 \end_layout
 
-\begin_layout Subsection*
-TODO3,
-\end_layout
-
-\begin_layout Standard
-In praxis both the texts size and the queries and thus their lengths are
- given and cannot be controlled by the user.
- 
-\begin_inset Formula $k$
-\end_inset
-
- however can be freely chosen.
- Given Lemma #1 we should choose 
-\begin_inset Formula $k$
-\end_inset
-
- as small as possible as this means the size of the map will be limited.
- For example it is reasonable to assume that unlike for 
-\begin_inset Formula $k=25$
-\end_inset
-
- in a text of length 
-\begin_inset Formula $10^{7}$
-\end_inset
-
- all 
-\begin_inset Formula $5$
-\end_inset
-
--mers will occur at least once which limits the map to a size of 
-\begin_inset Formula $\sigma^{5}=1024$
-\end_inset
-
- (note that the number of results per entry do not factor into the performance
- of 
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-lstinline{search_k}
-\end_layout
-
-\end_inset
-
-).
- Lemma #3 however implies we should choose 
-\begin_inset Formula $k$
-\end_inset
-
-s that are used to search longer queries as big as possible
-\begin_inset Foot
-status open
-
-\begin_layout Plain Layout
-Note that we are not only limited by the machines memory but also the fact
- that the kmer hashes have to fit in a 64 bit unsigned integer which necessitate
-s an alphabet and k combination so that 
-\begin_inset Formula $\sigma^{k}<2^{64}$
-\end_inset
-
-.
- For the 4-letter DNA alphabet, this means k can at most be 31 while for
- bigger alphabets, k has to be chosen far lower.
-\end_layout
-
-\end_inset
-
- as for a bigger k statistically the absolute number of occurrences per
- kmer and thus the number of results for each 
-\begin_inset Formula $p_{i}$
-\end_inset
-
- that have to be cross referenced will decrease.
- Furthermore 
-\begin_inset Formula $k$
-\end_inset
-
- should be chosen so the most amount of queries are directly of length 
-\begin_inset Formula $k$
-\end_inset
-
- or divisible by 
-\begin_inset Formula $k$
-\end_inset
-
-.
- 
-\end_layout
-
-\begin_layout Standard
-In praxis it's rarely possible to find a single k that fulfills all of these
- conditions.
- To address this the kmer-index implementation was extended to (instead
- of using a single 
-\begin_inset Formula $k$
-\end_inset
-
-) unify multiple kmer indices at once.
- This 
-\begin_inset Quotes eld
-\end_inset
-
-multi kmer-index
-\begin_inset Quotes erd
-\end_inset
-
- is then able to autonomously choose which 
-\begin_inset Formula $k$
-\end_inset
-
- would be optimal to use for any given query.
- Specifying multiple 
-\begin_inset Formula $k$
-\end_inset
-
- will thus vastly increase performance for a wider array of query lengths.
-\end_layout
-
-\begin_layout Standard
-The multi-kmer indices success in being more performant relies on taking
- advantage of the higher flexibility of being provided multiple 
-\begin_inset Formula $k$
-\end_inset
-
-.
- A trivial approach would simple choose one of those 
-\begin_inset Formula $k_{i}$
-\end_inset
-
- and return a result identical to that of a single kmer-index that only
- had access to that 
-\begin_inset Formula $k_{i}$
-\end_inset
-
-.
- However greater performance can be achieved by instead using multiple 
-\begin_inset Formula $k_{i}$
-\end_inset
-
- per query.
- At construction the multi kmer-index creates a table that, for each possible
- query length 
-\begin_inset Formula $m_{j}$
-\end_inset
-
- choose 
-\begin_inset Formula $k_{i}\in\{k_{a},k_{b},...\}$
-\end_inset
-
- such that 
-\begin_inset Formula $k_{a}+k_{b}+...=m_{j}$
-\end_inset
-
-, that is the index tries to divide the query into multiple parts of different
- lengths so that it can search each part with the corresponding single kmer-inde
-x to then much like a single kmer-index would for a query of length 
-\begin_inset Formula $m>k$
-\end_inset
-
- crossreference each part and thuse verify which of the positions of the
- first 
-\begin_inset Formula $k_{i}$
-\end_inset
-
-mer are also occurences of the query.
- Creating this table is very similar to the change making problem <TODO:
- reference> in which given an amount of money (
-\begin_inset Formula $m_{j}$
-\end_inset
-
-) we need to find the minimum number of coins (
-\begin_inset Formula $k_{a},k_{b},...$
-\end_inset
-
-) that add up to exactly that amount.
- Note that choosing the number of 
-\begin_inset Quotes eld
-\end_inset
-
-coins
-\begin_inset Quotes erd
-\end_inset
-
- to be as small as possible is paramount as the less kmers the index has
- to look up, the better the performance will be.
- Furthermore the index should prioritize bigger 
-\begin_inset Formula $k_{i}$
-\end_inset
-
- since as stated in Lemma 3 with a bigger 
-\begin_inset Formula $k_{i}$
-\end_inset
-
- given a fixed text size the number of results will be lower.
- Creating this table was achieved with a simple dynamic programming approach
- where to find the 
-\begin_inset Formula $k_{i}$
-\end_inset
-
- that add up to 
-\begin_inset Formula $m$
-\end_inset
-
-, we reference back to previous results to find 
-\begin_inset Formula $\{m_{memory1},m_{2},...\}:\sum_{i}m_{i}=m$
-\end_inset
-
-.
- Depending on the set of 
-\begin_inset Formula $ks$
-\end_inset
-
- this may not be possible for every number in the given range.
- In this case we will have to fall back on the considerably slower 
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-lstinline{search_subk}
-\end_layout
-
-\end_inset
-
- however intial testing has revealed that with a well picked set of 
-\begin_inset Formula $k$
-\end_inset
-
- the number of queries that cannot be covered in this fairly low.
- For example 
-\begin_inset Formula $k\in\{9,11,15,17\}$
-\end_inset
-
- will cover every query length 
-\begin_inset Formula $m<2000$
-\end_inset
-
- which means in the application of a read mapper the kmer index will be
- able to lookup all sizes of reads <TODO:https://www.illumina.com/science/technolo
-gy/next-generation-sequencing/plan-experiments/read-length.html>.
- Note that if memory limitations permit to do so, the 
-\begin_inset Formula $k$
-\end_inset
-
- should be chosen as long as possible.
- 
-\end_layout
-
-\begin_layout Subsection
-Comparison with FM-Index
-\end_layout
-
-\begin_layout Standard
-To put the absolute values of the above figures into perspective, a comparative
- analysis of the fm-index
-\begin_inset Foot
-status open
-
-\begin_layout Plain Layout
-Note that for exact string matching there's is no relevant performance differenc
-e between the fm- and bi-fm-index.
-\end_layout
-
-\end_inset
-
- and a multi kmer-index using every 
-\begin_inset Formula $k\in\{3,30\}$
-\end_inset
-
- was conducted and the relative speedup measured:
-\end_layout
-
-\begin_layout Verse
-let 
-\begin_inset Formula $t_{fm<i>},t_{kmer<i>}$
-\end_inset
-
- the search runtime for searching a query of length 
-\begin_inset Formula $i$
-\end_inset
-
- with the corresponding index
-\end_layout
-
-\begin_layout Verse
-then 
-\begin_inset Formula $\text{{speedup}}(i)=\begin{cases}
-+(1-(t_{kmer<i>}/t_{fm<i>})) & \text{{if}\;}t_{kmer<i>}>t_{fm<i>}\\
--(1-(t_{fm<i>}/t_{kmer<i>})) & \text{{if}\;}t_{kmer<i>}<t_{fm<i>}\\
-\,0 & \text{{else}}
-\end{cases}$
-\end_inset
-
-|
-\begin_inset Foot
-status open
-
-\begin_layout Plain Layout
-to clarify, if 
-\begin_inset Formula $speedup(a,b)=+75\%$
-\end_inset
-
- then 
-\begin_inset Formula $b$
-\end_inset
-
- has a runtime of 1.75 the runtime of 
-\begin_inset Formula $a$
-\end_inset
-
-, 
-\begin_inset Formula $a$
-\end_inset
-
- is 75% faster than 
-\begin_inset Formula $b$
-\end_inset
-
-.
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-For bigger text sizes the kmer-index exhibits more speedup in the lower
- end of 
-\begin_inset Formula $k\in\{3,...,30\}$
-\end_inset
-
-.
- This behavior can be explained by Lemma 1: for small 
-\begin_inset Formula $k$
-\end_inset
-
- the indices unordered map is at maximum capacity and thus lookup time seizes
- to stop scaling with the texts size.
- 
-\begin_inset Newpage pagebreak
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-The point at which the kmer-index starts to perform worse than the fm-index
- is dependent on the text size as such:
-\end_layout
-
-\begin_layout Standard
-\begin_inset space ~
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset space ~
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-Results indicate that using the kmer-index with optimal coverage to find
- occurrences of kmers for 
-\begin_inset Formula $k\in\{3,...,30\}$
-\end_inset
-
- results in an overall performance boost for smaller texts, for larger texts
- (
-\begin_inset Formula $>10⁷$
-\end_inset
-
-) bigger k may result in overall performance decrease however if 
-\begin_inset Formula $k$
-\end_inset
-
- is chosen adequately low the kmer-index will still perform well and should
- be preferred to the fm-index.
- Notably for 
-\begin_inset Formula $k\leq10$
-\end_inset
-
- the kmer-index should always be preferred.
- 
-\end_layout
-
-\begin_layout Subsection
-General Purpose Exact String Matching
-\end_layout
-
-\begin_layout Standard
-While the kmer-index proved to be well-suited for searching commonly used
- kmers of length 
-\begin_inset Formula $k\in\{3,...,30\}$
-\end_inset
-
-, it is also able to search queries of arbitrary length.
- To investigate the applicability of the kmer-index for general-purpose
- exact string matching a benchmark was conducted that measured search time
- for queries of length 
-\begin_inset Formula $m\in\{5,6,...,1000\}$
-\end_inset
-
-:
-\end_layout
-
-\begin_layout Standard
-Results indicate that the kmer-index performs comparatively well for smaller
- texts while the bigger the text the wores the relative performance becomes.
- This is because for bigger queries no query can be covered directly and
- thus Lemma 3 makes the search performance highly dependent on the number
- of results.
- Noticeable for all text sizes are performance spikes around primes (for
- example in the above figure, notice how at 211 significant decrease in
- performance happens regardless of text size).
- Overall while using the kmer-index may result in speedup some of the time
- it's inconsistency for queries longer than 31 makes it hard to recommend
- for general-purpose use.
- If, however, the query lengths are known and relatively homogeneous with
- proper choice of k the kmer-index may proof useful in achieving greater
- performance.
- 
-\end_layout
-
 \begin_layout Section
-Addendum: Implementation Defined Optimization
+Addendum
 \end_layout
 
 \begin_layout Standard
@@ -3267,7 +3239,7 @@ Implementation of the kmer-index was guided at every step by benchmarking
  newly implemented components comparing their performance against other
  implementations.
  In this section the most relevant of these decisions are explained.
- C++20 was used for all performance relevant code.
+ Note that C++20 was used for all performance relevant code.
 \end_layout
 
 \begin_layout Subsection
@@ -3275,8 +3247,7 @@ Choosing the fastest Pow Implementation
 \end_layout
 
 \begin_layout Standard
-By the nature of the hash used exponentiation (henceforth referred to as
- 
+By the nature of the hash, exponentiation (henceforth referred to as 
 \begin_inset Quotes eld
 \end_inset
 
@@ -3297,11 +3268,12 @@ lstinline{std::pow}
 
 \end_inset
 
-) is used every search call, sometimes multiple times.
- Note that the pow function has to be able to be evaluated at compile time
- and will only ever take unsigned integers as arguments.
- Four different versions of pow were implemented and their performance evaluated
-:
+) is used every search call sometimes multiple times.
+ To optimize performance four different versions of pow were implemented
+ and their performance evaluated.
+ Note that for the purpose of the kmer-index the pow implementation will
+ only ever be used with positive integers and has furthermore to be able
+ to be evaluated at compile time.
 \end_layout
 
 \begin_layout Itemize
@@ -3404,6 +3376,7 @@ sideways false
 status open
 
 \begin_layout Plain Layout
+´
 \begin_inset Graphics
 	filename /home/clem/Workspace/kmer_index/source/benchmarks/pow_vs_pow/pow_vs_pow.png
 	lyxscale 40
@@ -3437,190 +3410,7 @@ Boxplot showing runtime distribution of average time to compute
 
 \begin_layout Standard
 Results indicate that the implementation utilizing the fall-through switch
- is overall faster and was thus used for the index whenever possible.
-\end_layout
-
-\begin_layout Subsection
-Choosing the fastest Hash Implementation
-\end_layout
-
-\begin_layout Standard
-Having chosen the fastest pow function we next turn to the function hashing
- a kmer.
- A trivial approach would calculate the sum of ranks with a simple for loop.
- Instead the kmer-index implementation utilizes a fold expression:
-\end_layout
-
-\begin_layout Standard
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-constexpr uint8_t to_rank(...
-\end_layout
-
-\begin_layout Plain Layout
-
-constexpr size_t pow(...
-\end_layout
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\begin_layout Plain Layout
-
-template<size_t...
- is>
-\end_layout
-
-\begin_layout Plain Layout
-
-static size_t hash_fold_aux(iterator_t it, 
-\end_layout
-
-\begin_layout Plain Layout
-
-	std::index_sequence<is...> sequence)
-\end_layout
-
-\begin_layout Plain Layout
-
-{
-\end_layout
-
-\begin_layout Plain Layout
-
-	return (...
- + to_rank(*it) * pow(_sigma, k-is-1));
-\end_layout
-
-\begin_layout Plain Layout
-
-}
-\end_layout
-
-\begin_layout Plain Layout
-
-static size_t hash_fold(iterator_t query_it)
-\end_layout
-
-\begin_layout Plain Layout
-
-{
-\end_layout
-
-\begin_layout Plain Layout
-
-	return hash_fold_aux(query_it, std::make_index_sequence<k>()
-\end_layout
-
-\begin_layout Plain Layout
-
-}
-\end_layout
-
-\begin_layout Plain Layout
-
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-Implementation of hash function utilizing a fold expression.
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-As 
-\begin_inset Formula $k$
-\end_inset
-
-, 
-\begin_inset Formula $\sigma$
-\end_inset
-
- and the return value of pow can all be evaluated at compile time using
- the fold expression allows the the compiler to unwrap part of the sum and
- compute parts of the sum and compile time thus increasing performance.
- To illustrate this a benchmark was conducted comparing both hash-implementation
-:
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float figure
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Graphics
-	filename /home/clem/Workspace/kmer_index/source/benchmarks/hash_vs_hash/hash_vs_hash.png
-	lyxscale 40
-	width 100text%
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-Multiple boxplots showing distribution of average runtime results (in ns)
- for hash implementations for different 
-\begin_inset Formula $k$
-\end_inset
-
- (y-axes have been normalized to the same scale to enable valid comparison
- between graphs).
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-Results indicate that the fold expression achieves the predicted performance
- increase.
- Note how for 
-\begin_inset Formula $k=5$
-\end_inset
-
- 
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-
-\backslash
-lstinline{hash_fold}
-\end_layout
-
-\end_inset
-
- vastly outpaces the trivial implementation.
- This may be due to cache artifacts, as k is small all possible parts of
- the sum fit in the L1 cache of the machine allowing for faster access at
- runtime.
- 
+ is overall the fastest and was thus used for the index whenever possible.
 \end_layout
 
 \begin_layout Subsection
@@ -3629,8 +3419,8 @@ Choosing the fastest Map
 
 \begin_layout Standard
 The unordered map is the data structure at the center of the kmer-index
- and as such, fast access time for elements even for very large map sizes
- was necessary.
+ and as such assuring fast access time even for very large map sizes is
+ necessary.
  As 
 \begin_inset ERT
 status open
@@ -3661,10 +3451,11 @@ lstinline{std::unordered_map}
 
 \end_inset
 
- from the C++17 standard library
-\begin_inset CommandInset citation
-LatexCommand cite
-key "std::unordered_map"
+ from the 
+\begin_inset CommandInset href
+LatexCommand href
+name "C++17 standard library"
+target "https://en.cppreference.com/w/cpp/container/unordered_map"
 literal "false"
 
 \end_inset
@@ -3685,10 +3476,11 @@ lstinline{boost::unordered_map}
 
 \end_inset
 
- from the 1.65.1 Boost Library
-\begin_inset CommandInset citation
-LatexCommand cite
-key "boost::unordered_map"
+ from the 
+\begin_inset CommandInset href
+LatexCommand href
+name "1.65.1 Boost Library"
+target "https://www.boost.org/doc/libs/1_65_0/doc/html/boost/unordered_map.html"
 literal "false"
 
 \end_inset
@@ -3709,10 +3501,11 @@ lstinline{absl::node_hash_map}
 
 \end_inset
 
- from Googles Abseil
-\begin_inset CommandInset citation
-LatexCommand cite
-key "absl::unordered_map"
+ from Googles 
+\begin_inset CommandInset href
+LatexCommand href
+name "Abseil"
+target "https://abseil.io/docs/cpp/guides/container#abslnode_hash_map-and-abslnode_hash_set"
 literal "false"
 
 \end_inset
@@ -3733,11 +3526,11 @@ lstinline{robin_hood::unordered_map}
 
 \end_inset
 
- as provided by Martin Ankerl et.
- al.
-\begin_inset CommandInset citation
-LatexCommand cite
-key "robin_hood::unordered_map"
+ as provided by 
+\begin_inset CommandInset href
+LatexCommand href
+name "Martin Ankerl et. al."
+target "https://github.com/martinus/robin-hood-hashing"
 literal "false"
 
 \end_inset
@@ -3746,8 +3539,8 @@ literal "false"
 \end_layout
 
 \begin_layout Standard
-Each map was filled with a fixed number of randomized elements it's time
- to return a specific element was benchmarked.
+Each map was filled with a fixed number of randomized elements and it's
+ time to return a specific element was benchmarked.
  Only retrieval was tested here since after construction in the context
  of the kmer-index no insertion will take place.
 \end_layout
@@ -3773,7 +3566,7 @@ status open
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-Search performance for different map implementations.
+Search performance for different map implementations over size of map.
 \end_layout
 
 \end_inset
@@ -3800,8 +3593,8 @@ lstinline{robin_hood::unordered_map}
 
 \end_inset
 
- performed best irregardless of the number of elements contained and was
- as such used as the central data structure for the kmer-index.
+ performed best regardless of the number of elements contained and was as
+ such used as the central data structure for the kmer-index.
 \end_layout
 
 \begin_layout Subsection
@@ -3809,13 +3602,13 @@ Parallelization
 \end_layout
 
 \begin_layout Standard
-Apart from the amount of memory needed the only true disadvantage of using
- the multi kmer-index is the fact that the time it takes to construct increase
- a number of times as the number of 
-\begin_inset Formula $k$
+Other than the amount of memory needed the only true disadvantage of using
+ the multi kmer-index is the fact that the time it takes to construct increases
+ drastically with the number of 
+\begin_inset Formula $k_{i}$
 \end_inset
 
-s rises.
+ specific.
  To address this a general purpose thread pool was implemented that allows
  all of the single kmer-index elements to be constructed in parallel:
 \end_layout
@@ -3847,7 +3640,7 @@ multi_kmer_index(text_t& text)
 
 \begin_layout Plain Layout
 
-	auto pool = thread_pool{(...)};
+	auto pool = kmer::detail::thread_pool{(...)};
 \end_layout
 
 \begin_layout Plain Layout
@@ -3910,20 +3703,42 @@ Paralell invocation of the create function for individual kmer-index elements
 \end_layout
 
 \begin_layout Standard
-As the number of possible ks is currently restricted to at most 31, modern
- systems with 32 or more CPUs are capable of constructing one multi kmer-index
- with optimal coverage with no additional runtime overhead.
+As the number of possible 
+\begin_inset Formula $k$
+\end_inset
+
+ is currently restricted to at most 31, modern systems with 32 or more CPUs
+ are capable of constructing one multi kmer-index with optimal coverage
+ with no additional runtime overhead compared to a single-k index.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage pagebreak
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
 \begin_inset CommandInset bibitem
 LatexCommand bibitem
-key "kmer: megahit assembly"
+key "kmer: megahit"
 literal "false"
 
 \end_inset
 
- https://academic.oup.com/bioinformatics/article/31/10/1674/177884
+Dinghua Li, Chi-Man Liu, Ruibang Luo, Kunihiko Sadakane, Tak-Wah Lam, MEGAHIT:
+ an ultra-fast single-node solution for large and complex metagenomics assembly
+ via succinct de Bruijn graph, Bioinformatics, Volume 31, Issue 10, 15 May
+ 2015, Pages 1674–1676, 
+\begin_inset CommandInset href
+LatexCommand href
+target "https://academic.oup.com/bioinformatics/article/31/10/1674/177884"
+literal "false"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -3934,7 +3749,18 @@ literal "false"
 
 \end_inset
 
- https://academic.oup.com/bioinformatics/article/30/12/1660/380938
+ Yinlong Xie, Gengxiong Wu, Jingbo Tang, Ruibang Luo, Jordan Patterson,
+ Shanlin Liu, Weihua Huang, Guangzhu He, Shengchang Gu, Shengkang Li, Xin
+ Zhou, Tak-Wah Lam, Yingrui Li, Xun Xu, Gane Ka-Shu Wong, Jun Wang, SOAPdenovo-T
+rans: de novo transcriptome assembly with short RNA-Seq reads, Bioinformatics,
+ Volume 30, Issue 12, 15 June 2014, Pages 1660–1666, 
+\begin_inset CommandInset href
+LatexCommand href
+target "https://doi.org/10.1093/bioinformatics/btu077"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -3945,7 +3771,18 @@ literal "false"
 
 \end_inset
 
-https://msystems.asm.org/content/1/3/e00020-16
+A.
+ Kishk et al., A Hybrid Machine Learning Approach for the Phenotypic Classificati
+on of Metagenomic Colon Cancer Reads Based on Kmer Frequency and Biomarker
+ Profiling, 2018 9th Cairo International Biomedical Engineering Conference
+ (CIBEC), Cairo, Egypt, 2018, Pages 118-121, 
+\begin_inset CommandInset href
+LatexCommand href
+target "https://doi.org/10.1109/CIBEC.2018.8641805"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -3956,7 +3793,16 @@ literal "false"
 
 \end_inset
 
-https://genomebiology.biomedcentral.com/articles/10.1186/gb-2014-15-3-r46
+Wood, D.E., Salzberg, S.L.
+ Kraken: ultrafast metagenomic sequence classification using exact alignments.
+ Genome Biol 15, R46 (2014), 
+\begin_inset CommandInset href
+LatexCommand href
+target "https://doi.org/10.1186/gb-2014-15-3-r46"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -3967,7 +3813,18 @@ literal "false"
 
 \end_inset
 
-https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-015-0875-7
+Dubinkina, V.B., Ischenko, D.S., Ulyantsev, V.I.
+ et al.
+ Assessment of k-mer spectrum applicability for metagenomic dissimilarity
+ analysis.
+ BMC Bioinformatics 17, 38 (2016), 
+\begin_inset CommandInset href
+LatexCommand href
+target "https://doi.org/10.1186/s12859-015-0875-7"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -3978,7 +3835,16 @@ literal "false"
 
 \end_inset
 
-https://academic.oup.com/bioinformatics/article/29/3/308/257257
+Yongchao Liu, Jan Schröder, Bertil Schmidt, Musket: a multistage k-mer spectrum-
+based error corrector for Illumina sequence data, Bioinformatics, Volume
+ 29, Issue 3, 1 February 2013, Pages 308–315, 
+\begin_inset CommandInset href
+LatexCommand href
+target "https://doi.org/10.1093/bioinformatics/bts690"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -3994,162 +3860,6 @@ Pockrandt, C.
  Generic implementation of a bidirectional FM-index in SeqAn and applications.
  Diss.
  Master’s thesis, Freie Universität Berlin, 2015.
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "seqan3 docs"
-literal "false"
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "seqan3 docs: kmer hash"
-literal "false"
-
-\end_inset
-
- http://docs.seqan.de/seqan/3-master-user/group__views.html#ga6e598d6a021868f704d39
-df73252974f
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "seqan3 docs: fm index"
-literal "false"
-
-\end_inset
-
- http://docs.seqan.de/seqan/3-master-user/group__submodule__fm__index.html
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "seqan2 doctor arbeit"
-literal "false"
-
-\end_inset
-
- https://refubium.fu-berlin.de/bitstream/handle/fub188/12704/Thesis.Gogol-Doring.Seq
-An.2009.pdf?sequence=1&isAllowed=y page 143 
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "dna15 codes"
-literal "false"
-
-\end_inset
-
-https://www.bioinformatics.org/sms/iupac.html
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "my github"
-literal "false"
-
-\end_inset
-
-https://github.com/Clemapfel/kmer_index/blob/master/kmer_index.hpp 
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "cpp RVO"
-literal "false"
-
-\end_inset
-
-https://en.cppreference.com/w/cpp/language/copy_elision
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "std::unordered_map"
-literal "false"
-
-\end_inset
-
-https://en.cppreference.com/w/cpp/container/unordered_map
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "boost::unordered_map"
-literal "false"
-
-\end_inset
-
- https://www.boost.org/doc/libs/1_65_0/doc/html/boost/unordered_map.html
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "absl::unordered_map"
-literal "false"
-
-\end_inset
-
- https://abseil.io/docs/cpp/guides/container#abslnode_hash_map-and-abslnode_hash_
-set
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "robin_hood::unordered_map"
-literal "false"
-
-\end_inset
-
- https://github.com/martinus/robin-hood-hashing
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "boost multiprecision"
-literal "false"
-
-\end_inset
-
-https://www.boost.org/doc/libs/1_62_0/libs/multiprecision/doc/html/boost_multiprec
-ision/tut/ints/cpp_int.html
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "key-5"
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Bibliography
-\begin_inset CommandInset bibitem
-LatexCommand bibitem
-key "key-6"
-
-\end_inset
-
-
 \end_layout
 
 \end_body

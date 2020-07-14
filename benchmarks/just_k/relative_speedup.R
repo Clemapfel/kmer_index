@@ -47,6 +47,8 @@ for (text_length in sort(unique(data_big$text_length))) {
   means = c(means, mean(cur)*100)
   ns = c(ns, text_length)
   print(paste("mean : ", round(mean(cur)*100, digits=2), "%", sep=""))
+  print(paste("max : ", round(max(cur)*100, digits=2), " at " , match(max(cur), cur)+min(data_cur$query_length)-1))
+  print(paste("min : ", round(min(cur)*100, digits=2), " at " , match(min(cur), cur)+min(data_cur$query_length)-1))
   print(paste("faster while k >", min_k))
 }
 
