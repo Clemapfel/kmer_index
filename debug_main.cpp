@@ -30,7 +30,7 @@ int main()
 {
     using namespace seqan3;
 
-    constexpr size_t n = 40;
+    constexpr size_t n = 350;
 
     std::vector<size_t> _all_ks = {5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31};
     std::sort(_all_ks.begin(), _all_ks.end(), [](size_t a, size_t b) -> bool { return a > b; });

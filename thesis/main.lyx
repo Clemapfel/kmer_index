@@ -113,6 +113,20 @@ Implementation and Performance Evaluation of a k-mer Index for Exact String
 Author: Clemens Cords, FU Berlin
 \end_layout
 
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
 \begin_layout Abstract
 As demand for large-scale genomic sequence matching rises, so does the ability
  to efficiently get the positions or number of occurrences of a query of
@@ -131,13 +145,13 @@ As demand for large-scale genomic sequence matching rises, so does the ability
 \end_inset
 
  compared to the fm-index the kmer-index performs up to 60% faster and is
- thus recommended.
+ thus recommended for use.
  For arbitrarily long queries the kmer-index was shown to exhibit speedup
  or slowdown of 
 \begin_inset Formula $\pm5$
 \end_inset
 
-% depending on text length and is in it's current iteration thus applicable
+% depending on text length and is therefore in it's current iteration applicable
  if not necessarily better suited for this purpose.
 \end_layout
 
@@ -434,7 +448,7 @@ Construction of the kmer index.
 The kmer-index utilizes an unordered map as it's central data structure
  which for each kmer saves the position of all occurrences in the text.
  To save on memory the kmers are converted to an unsigned integer via the
- following hash function and stored as such instead:
+ following hash function:
 \end_layout
 
 \begin_layout Verse
@@ -509,8 +523,8 @@ literal "false"
  hashes will be generated and inserted into the index.
  Construction therefore has linear amortized complexity which is acceptable
  because for genomic data index construction will usually be done only once
- after which the index is serialized and can be loaded directly if needed
- at a later point.
+ after which the index is serialized and can then be loaded directly if
+ needed at a later point.
 \end_layout
 
 \begin_layout Section
@@ -2307,6 +2321,11 @@ Relative speedup (in %) for search calls of the kmer-index vs.
 
 .
  The inset plot shows the absolute runtime (in ns).
+ The multi kmer-index use 
+\begin_inset Formula $k\in$
+\end_inset
+
+ {3, 4, ..., 9, 10, 11, 12, ..., 31}
 \end_layout
 
 \end_inset

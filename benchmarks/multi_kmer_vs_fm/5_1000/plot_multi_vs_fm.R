@@ -1,4 +1,4 @@
-cd # Title     : TODO
+# Title     : TODO
 # Objective : TODO
 # Created by: clem
 # Created on: 6/19/20
@@ -85,12 +85,11 @@ get_plot = function(text_length, col_a_name, col_b_name) {
 }
 
 
-  plot_1e4 = get_plot(1e4, "kmer_mean", "fm_mean")
-  plot_1e5 = get_plot(1e5, "kmer_mean", "fm_mean")
-  plot_1e6 = get_plot(1e6, "kmer_mean", "fm_mean")
-  plot_1e7 = get_plot(1e7, "kmer_mean", "fm_mean")
-  plot_1e8 = get_plot(1e8, "kmer_mean", "fm_mean")
-
+plot_1e4 = get_plot(1e4, "kmer_mean", "fm_mean")
+plot_1e5 = get_plot(1e5, "kmer_mean", "fm_mean")
+plot_1e6 = get_plot(1e6, "kmer_mean", "fm_mean")
+plot_1e7 = get_plot(1e7, "kmer_mean", "fm_mean")
+plot_1e8 = get_plot(1e8, "kmer_mean", "fm_mean")
 
 #proxy for legend:
 col_a_name = "kmer_mean"; col_b_name = "fm_mean";
