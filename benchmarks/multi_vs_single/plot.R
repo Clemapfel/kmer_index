@@ -79,7 +79,7 @@ multi_vs_single = multi_vs_single + geom_line(mapping=aes(x=query_length, y=real
 
 multi_vs_single = multi_vs_single + coord_cartesian(ylim=c(min(data_multi$real_time), 28000), xlim=c(4,35))
 multi_vs_single = multi_vs_single + scale_x_continuous(name="query length", breaks=seq(1, 50, 1)) + scale_y_continuous(name="runtime (ns)", breaks=seq(0, 40000, 2000))
-multi_vs_single = multi_vs_single + ggtitle(label="search performance: multi kmer vs single kmer", subtitle="single\t=\tkmer_index<10>\nmulti\t=\tkmer_index<5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29>")
+multi_vs_single = multi_vs_single + ggtitle(label="search performance: multi kmer vs single kmer", subtitle="single\t=\tkmer_index<10>\nmulti\t=\tkmer_index<5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31>")
 multi_vs_single = multi_vs_single + theme(plot.title=element_text(face="bold"), legend.title=element_blank(), legend.position="bottom")
 multi_vs_single = multi_vs_single + scale_color_manual(values=c(single_color, multi_color, fm_color, "black"), breaks=c(single_color_label, multi_color_label, fm_color_label, "zoom"))
 

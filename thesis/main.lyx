@@ -735,7 +735,7 @@ Search performance for queries of size
 \begin_layout Subsection
 \begin_inset CommandInset label
 LatexCommand label
-name "section 3.2"
+name "section m < k"
 
 \end_inset
 
@@ -1320,13 +1320,6 @@ We observe that the set of positions for a specific query of length
  is valid we cross-reference the positions of the following parts as such:
 \end_layout
 
-\begin_layout Standard
-\begin_inset Newpage pagebreak
-\end_inset
-
-
-\end_layout
-
 \begin_layout Verse
 let query 
 \begin_inset Formula $q=(q_{1},\,q_{1},\,...,\,q_{m})$
@@ -1492,6 +1485,10 @@ lstinline{search_subk}
  which can result in a significant runtime increase, especially if the rest
  is short.
  
+\begin_inset Newpage pagebreak
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section
@@ -1858,6 +1855,23 @@ status open
 
 \begin_layout Plain Layout
 \align center
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Set of 
+\begin_inset Formula $k_{i}$
+\end_inset
+
+ for certain query lengths chosen from 
+\begin_inset Formula $k\in\{9,11,13,17\}$
+\end_inset
+
+ by the multi kmer-index.
+\end_layout
+
+\end_inset
+
+
 \begin_inset Tabular
 <lyxtabular version="3" rows="6" columns="2">
 <features booktabs="true" tabularvalignment="middle">
@@ -1984,23 +1998,6 @@ n/a
 </cell>
 </row>
 </lyxtabular>
-
-\end_inset
-
-
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-Set of 
-\begin_inset Formula $k_{i}$
-\end_inset
-
- for certain query lengths chosen from 
-\begin_inset Formula $k\in\{9,11,13,17\}$
-\end_inset
-
- by the multi kmer-index.
-\end_layout
 
 \end_inset
 
@@ -2345,7 +2342,7 @@ Results indicate that for bigger texts the kmer index will only perform
 \end_inset
 
 .
- This is because tcrow primary he indices map is limited to a size of 
+ This is because the indices map is limited to a size of 
 \begin_inset Formula $\sigma^{k}$
 \end_inset
 
@@ -3208,9 +3205,19 @@ Conclusion
 \end_layout
 
 \begin_layout Standard
-The current kmer-index implementation is stable, reasonably well optimized
- and the indices performance is superior for searching kmers of relatively
- small length 
+The current kmer-index implementation is stable (c.f.
+ Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Addendum: Correctness"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ below), reasonably well optimized and the indices performance is superior
+ for searching kmers of relatively small length 
 \begin_inset Formula $m<30$
 \end_inset
 
@@ -3229,17 +3236,20 @@ noprefix "false"
  thus well-suited and should be preferred to more generalist indices like
  the fm-index if runtime performance is important.
  For query lengths past 30 the kmer-index has been shown to have a performance
- increase between 5 and 10% while for bigger texts longer than 
-\begin_inset Formula $10^{8}$
+ increase between 5 and 10% for smaller texts of length 
+\begin_inset Formula $m<10⁸$
 \end_inset
 
- an overall performance change of 
+ while for bigger texts an overall performance change of 
 \begin_inset Formula $\pm2\%$
 \end_inset
 
- was observed.
+ depending on query length was observed.
  With further optimization and features the kmer-index may become the decidedly
- more performant index for exact string matching purposes in all situations.
+ more performant index for exact string matching purposes in all situations
+ however in it's current iterations it is only recommended for use with
+ appropriately small text sizes.
+ 
 \end_layout
 
 \begin_layout Standard
@@ -3253,15 +3263,294 @@ noprefix "false"
 Addendum
 \end_layout
 
+\begin_layout Subsection
+\begin_inset CommandInset label
+LatexCommand label
+name "Addendum: Correctness"
+
+\end_inset
+
+Assuring Correctness
+\end_layout
+
+\begin_layout Standard
+To assure that the kmer index returns the correct positions a 
+\begin_inset CommandInset href
+LatexCommand href
+name "test function"
+target "https://github.com/google/googletest"
+literal "false"
+
+\end_inset
+
+ was written that repeatedly compares results of the kmer-index and the
+ fm-index for randomized queries and texts.
+ This asserts that the fm-index itself is bug-free and as both indices are
+ meant to be used in the same library this assertion was presumed to be
+ reasonable.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+wide false
+sideways false
+status open
+
+\begin_layout Verse
+
+\series bold
+Input
+\series default
+: seed, 
+\begin_inset Formula $n$
+\end_inset
+
+, 
+\begin_inset Formula $m$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Verse
+
+\series bold
+while
+\series default
+ 
+\begin_inset Formula $(n>0)$
+\end_inset
+
+ 
+\series bold
+do
+\end_layout
+
+\begin_deeper
+\begin_layout Verse
+
+\series bold
+let
+\series default
+ text 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ generate_sequence(
+\begin_inset Formula $m$
+\end_inset
+
+, seed)
+\end_layout
+
+\begin_layout Verse
+
+\series bold
+let
+\series default
+ fm 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ kmer_index(text)
+\end_layout
+
+\begin_layout Verse
+
+\series bold
+let
+\series default
+ kmer 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ fm_index(text)
+\end_layout
+
+\begin_layout Verse
+
+\series bold
+for
+\series default
+ 
+\begin_inset Formula $q$
+\end_inset
+
+ 
+\series bold
+in
+\series default
+ {k-1, k, k+1, ..., 2*k} 
+\series bold
+do
+\end_layout
+
+\begin_deeper
+\begin_layout Verse
+
+\series bold
+let
+\series default
+ query 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ generate_sequence(q, seed)
+\end_layout
+
+\begin_layout Verse
+
+\series bold
+let
+\series default
+ result
+\begin_inset Formula $_{fm}$
+\end_inset
+
+ 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ fm.search(query)
+\end_layout
+
+\begin_layout Verse
+
+\series bold
+let
+\series default
+ result
+\begin_inset Formula $_{kmer}$
+\end_inset
+
+ 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ kmer.search(query)
+\end_layout
+
+\begin_layout Verse
+
+\series bold
+assert
+\series default
+ (result
+\begin_inset Formula $_{fm}$
+\end_inset
+
+ = result
+\begin_inset Formula $_{kmer}$
+\end_inset
+
+)
+\end_layout
+
+\end_deeper
+\begin_layout Verse
+
+\series bold
+end
+\end_layout
+
+\begin_layout Verse
+seed 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ seed + 1
+\end_layout
+
+\begin_layout Verse
+n 
+\begin_inset Formula $\leftarrow$
+\end_inset
+
+ n-1
+\end_layout
+
+\end_deeper
+\begin_layout Verse
+
+\series bold
+end
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Test function comparing kmer- and fm-index results to assure correctness.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+While given enough iterations and a big enough text size it is reasonable
+ to assume that this function will uncover possible bugs itself the text
+ was furthermore manually modified to account for edge cases (such as the
+ query happening at the very end of the text as detailed in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "section m < k"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+).
+ If a discrepancy between the fm- and kmer-index was uncovered the function
+ furthermore reported the exact seed and query size.
+ The randomness in 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+lstinline{generate_sequence}
+\end_layout
+
+\end_inset
+
+ was implemented to be deterministic which made reproducing possible errors
+ and what caused them reliable and easy.
+ Before each benchmark presented in this paper correctness was assured with
+ 
+\begin_inset Formula $n>10⁶$
+\end_inset
+
+ iterations using text sizes 
+\begin_inset Formula $m$
+\end_inset
+
+ as large as the machines memory allowed for.
+ 
+\end_layout
+
+\begin_layout Subsection
+Performance Optimization
+\end_layout
+
 \begin_layout Standard
 Implementation of the kmer-index was guided at every step by benchmarking
- newly implemented components comparing their performance against other
- implementations.
+ newly implemented components and comparing their performance against other
+ possible implementations.
  In this section the most relevant of these decisions are explained.
  Note that C++20 was used for all performance relevant code.
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Subsubsection
 Choosing the fastest Pow Implementation
 \end_layout
 
@@ -3291,8 +3580,8 @@ lstinline{std::pow}
  To optimize performance four different versions of pow were implemented
  and their performance evaluated.
  Note that for the purpose of the kmer-index the pow implementation will
- only ever be used with positive integers and has furthermore to be able
- to be evaluated at compile time.
+ only ever be used with positive integers and has^ to be able to be evaluated
+ at compile time.
 \end_layout
 
 \begin_layout Itemize
@@ -3432,7 +3721,7 @@ Results indicate that the implementation utilizing the fall-through switch
  is overall the fastest and was thus used for the index whenever possible.
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Subsubsection
 Choosing the fastest Map
 \end_layout
 
