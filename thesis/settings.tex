@@ -23,6 +23,9 @@
 \usepackage{algorithm,algpseudocode}
 
 \usepackage{fontspec}
+\usepackage{beramono}
+
+
 \usepackage{microtype}
 \usepackage[english]{babel}
 \usepackage{lmodern}
@@ -99,6 +102,7 @@
 \definecolor{FUblue}{RGB}{0,51,102}
 \definecolor{DBblue}{RGB}{0,102,204}
 \definecolor{DBbluedark}{RGB}{0,51,102}
+\definecolor{GlobalBlack}{RGB}{0,0,0}
 
 % setzt die globale Schriftfarbe auf DBbluedark
 \makeatletter
@@ -106,7 +110,7 @@
   \color{#1}\global\let\default@color\current@color
 }
 \makeatother
-\AtBeginDocument{\globalcolor{DBbluedark}}
+\AtBeginDocument{\globalcolor{GlobalBlack}}
 
 % färbt die Chapter- und Sectionnummern ein
 \renewcommand*{\chapterformat}{%
@@ -151,7 +155,7 @@
 %%%%%%%%%%%%%% Fonts %%%%%%%%%%%%%%
 \setmainfont{Roboto}
 \setsansfont{TeX Gyre Heros}
-\setmonofont{Roboto}
+\setmonofont{Bitstream Vera Sans Mono}
 \renewcommand\UrlFont{\rmfamily} % passt URL an
 
 % definiert textsc neu, damit es mit Arial funktioniert
@@ -165,7 +169,7 @@
 %\renewcommand\cfttoctitlefont{\LARGE\bfseries}
 
 %%%%%%%%%% Referenzen %%%%%%%%%%%
-\usepackage[style=numeric, bibencoding=utf8, backend=biber, sorting=nty, maxbibnames=15]{biblatex}% für bibliographie, style=authortitle/numeric/ieee, backend=biber/bibtex/bibtex8, bibencoding=ascii/utf8
+%\usepackage[style=numeric, bibencoding=utf8, backend=biber, sorting=nty, maxbibnames=15]{biblatex}% für bibliographie, style=authortitle/numeric/ieee, backend=biber/bibtex/bibtex8, bibencoding=ascii/utf8
 \usepackage{silence}% Filter warnings issued by package biblatex starting with "Patching footnotes failed"
 \WarningFilter{biblatex}{Patching footnotes failed}
 

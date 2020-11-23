@@ -3,46 +3,950 @@
 
 \input{settings} % load settings
 
+\usepackage[latin9]{luainputenc}
+\usepackage{color}
+\usepackage{array}
+\usepackage{float}
+\usepackage{textcomp}
+\usepackage{amsthm}
+
+
+% includes
+%% LyX 2.3.4.2 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+\floatstyle{ruled}
+\newfloat{algorithm}{tbp}{loa}
+\providecommand{\algorithmname}{Algorithm}
+\floatname{algorithm}{\protect\algorithmname}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Textclass specific LaTeX commands.
+\newenvironment{lyxcode}
+	{\par\begin{list}{}{
+		\setlength{\rightmargin}{\leftmargin}
+		\setlength{\listparindent}{0pt}% needed for AMS classes
+		\raggedright
+		\setlength{\itemsep}{0pt}
+		\setlength{\parsep}{0pt}
+		\normalfont\ttfamily}%
+	 \item[]}
+	{\end{list}}
+\theoremstyle{plain}
+    \ifx\thechapter\undefined
+      \newtheorem{lem}{\protect\lemmaname}
+    \else
+      \newtheorem{lem}{\protect\lemmaname}[chapter]
+    \fi
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+\definecolor{gray}{rgb}{0.5, 0.5, 0.5}
+\definecolor{keyword}{RGB}{243, 60, 114}
+\definecolor{comment}{RGB}{0, 200, 101}
+\definecolor{background}{rgb}{0.9, 0.9, 0.9}
+
+\usepackage{xparse}
+\usepackage{algorithm,algpseudocode}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+
+\makeatother
+
+\lstset{keywordstyle={\bfseries \color{keyword}},
+commentstyle={\color{comment}},
+caption={Search function for exact matches for a query of size 0 < m < k $^{[1]}$},
+captionpos=b,
+backgroundcolor={\color{background}},
+basicstyle={\ttfamily\small},
+language={C++},
+numbers=none,
+captionpos=b,
+tabsize=2}
+\providecommand{\lemmaname}{Lemma}
+\renewcommand{\lstlistingname}{Listing}
+
 \begin{document}
 
 % thesis details
-\title{Title}
-\newcommand{\Year}{2018}
-\date{1\textsuperscript{st} January \Year}
+\title{"Implementation and Performance Evaluation of a k-mer Index intended for Exact String Matching"}
+\newcommand{\Year}{2020}
+\date{1\textsuperscript{st} December \Year}
 \newcommand{\thesisKind}{Bachelor}
 \newcommand{\degree}{Bachelor~of~Science}
-\newcommand{\versionnumber}{0.1}
+\newcommand{\versionnumber}{1.0}
 
 % author details
-\author{Your~Name}
-\newcommand{\matrikelno}{1234567}
-\newcommand{\email}{your.name@fu-berlin.de}
+\author{Clemens~Cords}
+\newcommand{\matrikelno}{4872639}
+\newcommand{\email}{clemens.cords@fu-berlin.de}
 
 % supervisor details
-\newcommand{\supervisor}{Nicolas~Lehmann}
+\newcommand{\supervisor}{TODO~TODO}
 \newcommand{\supervisorUniversity}{Freie Universität Berlin}
 \newcommand{\supervisorDepartment}{Dept. of Computer Science and Mathematics}
-\newcommand{\supervisorAG}{Databases and Information Systems Group}
+\newcommand{\supervisorAG}{TODO}
 \newcommand{\supervisorCountry}{Germany}
 
 % Advisor 1 details
-\newcommand{\fstAdvisor}{Prof.~Dr.~Agnès~Voisard}
+\newcommand{\fstAdvisor}{TODO~TODO}
 \newcommand{\fstAdvisorsUniversity}{Freie Universität Berlin}
 \newcommand{\fstAdvisorsDepartment}{Dept. of Computer Science and Mathematics}
-\newcommand{\fstAdvisorsAG}{Databases and Information Systems Group}
+\newcommand{\fstAdvisorsAG}{TODO}
 \newcommand{\fstAdvisorsCountry}{Germany}
 
 % Advisor 2 details
-\newcommand{\sndAdvisor}{Prof.~Dr.~Heinz~Schweppe}
+\newcommand{\sndAdvisor}{TODO~TODO}
 \newcommand{\sndAdvisorsUniversity}{Freie Universität Berlin} % or company
 \newcommand{\sndAdvisorsDepartment}{Dept. of Computer Science and Mathematics}
-\newcommand{\sndAdvisorsAG}{Databases and Information Systems Group}
+\newcommand{\sndAdvisorsAG}{TODO}
 \newcommand{\sndAdvisorsCountry}{Germany}
 
-% includes
 \include{titlepage}
 
-    test
+\begin{abstract}
+As demand for large-scale genomic sequence matching rises, so does
+the ability to efficiently get the positions or number of occurrences
+of a query of length k called a kmer. A kmer-index optimized for this
+purposes was implemented and it's performance evaluated. The implementation
+is capable of searching kmers of arbitrary length specified at runtime,
+utilizes parallelization for faster construction and it's internal
+structure can be further customized at compile time to achieve greater
+performance for certain query sizes. The nature of the internal structure
+and search functions are explained and their performant nature demonstrated
+through benchmarks. Results indicate that for the purpose of finding
+positions or number of occurrences for queries of the commonly used
+length$k\in\{3,4,...,30\}$ compared to the fm-index the kmer-index
+performs up to 60\% faster and is thus recommended for use. For arbitrarily
+long queries the kmer-index was shown to exhibit speedup or slowdown
+of$\pm5$\% depending on text length and is therefore in it's current
+iteration applicable if not necessarily better suited for this purpose.
 
+\thispagestyle{empty}
+
+\pagebreak{}
+\end{abstract}
+\thispagestyle{empty}
+
+\tableofcontents{}
+
+\pagebreak{}
+
+\setcounter{page}{1}
+
+\section{Motivation}
+
+A k-mer (also known as``q-gram'', henceforth written as``kmer'')
+is any genomic sequence of length$k$, usually in the context of a
+sub-sequence of a longer genome. Analysis of kmers is used in a wide
+variety of contexts such as in de novo genome assembly\cite{kmer: megahit,kmer: soapdenovo assembly},
+taxonomic profiling\cite{kmer: taxonomical profiling} and sequence
+classification\cite{kmer: kraken LCA}. Furthermore kmer spectra (a
+graph of the multiplicity of each kmer in the set of pairwise different
+kmer in the reference) have been used to assess genome similarity\cite{kmer: spectrum dissimilarity}
+and to correct errors in sequence data\cite{kmer: spectrum error correction}.\href{https://github.com/seqan/seqan3}{Seqan3},
+a newly released version of the C++ API for sequence analysis has
+yet to implement a purpose-build index for kmer searching. This paper
+aims to access the viability of substituting seqan3s fm-index\cite{seqan3 fm-index master}
+with the presented kmer-index implementation not only for the purpose
+of searching small kmers but for exact string matching in general
+by comparing the indices performance to each other.
+
+\section{Construction}
+
+\begin{algorithm}[H]
+\begin{verse}
+\textbf{Input}: text
+
+\textbf{let}$n$$\leftarrow$ text.size()
+
+\textbf{for}$i$\textbf{in}$\{1,2,...,n\}$\textbf{do}
+\begin{verse}
+\textbf{let}$h$$\leftarrow$ hash(text.substring($i,\:i+k$))
+
+index{[}$h${]}$\leftarrow$$(\text{index}[h],\:i)$
+\end{verse}
+\textbf{end}
+
+\textbf{return}
+\end{verse}
+\caption{Construction of the kmer index.}
+\end{algorithm}
+
+The kmer-index utilizes an unordered map as it's central data structure
+which for each kmer saves the position of all occurrences in the text.
+To save on memory the kmers are converted to an unsigned integer via
+the following hash function:
+\begin{verse}
+let$kmer$ =$(q_{1},\,q_{2},\,...,q_{k})$ where$q\in A$
+
+$hash(kmer)$ =$\sum_{i=0}^{k}\:r(q_{i})\:\sigma^{k-i-1}$
+\begin{verse}
+where$\sigma=\#A$ ,$r(q_{i})\in\{0,1,...,\sigma-1\}$ the rank of$q_{i}$
+\end{verse}
+\end{verse}
+This hash guarantees no hash collisions and was furthermore chosen
+because the kmer-index is to be integrated and compared to the Seqan3
+library which uses the same\href{http://docs.seqan.de/seqan/3-master-user/group__views.html\#ga6e598d6a021868f704d39df73252974f}{hash function}.
+Constructing the kmer index is fairly straight-forward: We can simply
+iterate through the text while keeping track of the current position
+and adding it to the end of the appropriate entry for the current
+kmer. Given a text of length$n$,$n-k$ hashes will be generated and
+inserted into the index. Construction therefore has linear amortized
+complexity which is acceptable because for genomic data index construction
+will usually be done only once after which the index is serialized
+and can then be loaded directly if needed at a later point.
+
+\section{Searching}
+
+To achieve greater flexibility the kmer-index implementation is capable
+of searching queries of arbitrary length regardless of the$k$ that
+is used to create it. While a$k$ still needs to be specified at compile
+time, at runtime any query can be searched; however the search functions
+performance will vary drastically depended on the queries length in
+relation to$k$.
+
+\subsection{\label{section 3.1}Query Size m = k}
+
+The best performing cases are queries of length exactly$k$. For these
+a simple lookup in the indices unordered map will return all results
+at once:\footnote{All code examples henceforth are edited for brevity and only meant
+for the purpose of demonstrating the programs behavior unless otherwise
+specified. The actual implementations makes many concessions for the
+sake of performance and would be too lengthy to print here.}
+\begin{lyxcode}
+\begin{lstlisting}[caption={Search function for queries of size k.},language={[GNU]C++},tabsize=4]
+unordered_map<size_t, std::vector<uint32_t>> _data;
+uint64_t hash((...) query) const {(...)};
+
+template<std::ranges::range query_t>
+std::vector<size_t>& search_k(query_t& query) const
+{
+	const auto* it = _data.at(hash(query));
+	if (it == _data.end())
+		return std::vector<size_t>();
+	else
+		return *it;
+}
+\end{lstlisting}
+
+\end{lyxcode}
+By nature of using an unordered map, querying a single entry has constant-time
+amortized complexity dependent on the number of pairwise different
+kmers in the text and therefore the number of different entries in\lstinline{_data}.
+C++s\href{https://en.cppreference.com/w/cpp/language/copy_elision}{return value optimization}
+ensures that the positions are never actually copied and only a reference
+to them is moved between functions which other than the time it takes
+for the hash-function to return,\lstinline{search_k}s runtime is
+very close to that of a single lookup in the map. This is the kmer-indices
+main strength and queries of length$k$ should be considered a best-case
+scenario.
+\begin{lem}
+\label{Lemma 1}Search performance for queries of size$m:\,m=k$ is
+dependent on the absolute number of pairwise different hashes in the
+text
+\end{lem}
+
+\subsection{\label{section m < k}Query Size m < k}
+
+To be able to search queries of arbitrary length without modifying
+the indices internal structure for queries of length$m<k$ we need
+to apply a different approach: As we cannot get the results for the
+query directly we instead return the positions of all kmers that have
+the query as a prefix.
+\begin{verse}
+let$query=(q_{1},q_{2},...,q_{m})$ where$m<k$
+
+for an arbitrary$kmer=(s_{1},...,s_{k})$ it holds true that:
+
+iff$\forall i\leq m:\:q_{i}=s_{i}$ then any position$pos$ of$kmer$
+is also a position of$query$
+
+because the$m$ characters proceeding$pos$ are
+
+$s_{0},...,s_{m},...,s_{k}$ and$s_{0},...,s_{m}=q_{0},...,\,q_{m}=query$
+\end{verse}
+\noindent To avoid generating all kmers that contain$query$ as a
+prefix and then hashing them we instead generate the hashes directly.
+\begin{verse}
+let$hash(q_{1},q_{1},...,q_{m})=\sum_{i=0}^{k}\:r(q_{i})\:\sigma^{k-i}=h_{q}$
+constant as given by$query$
+
+let$H\subset\mathbb{Z}^{+}\coloneqq$ set of all hashes of kmer with
+a prefix equal to$query$
+
+let$h_{min},\:h_{max}:\:\forall h_{i}\in H:\:h_{min}\leq h_{i}<h_{max}$
+be the lower and upper bound of$H$
+
+~
+
+to find$h_{min}$ we observe that as the query$q_{min}:\,r(q_{min})=h_{min}$
+has a prefix equal to$query$ it holds true that
+
+$hash(h_{min})\geq h_{p}$ because the first$m$ summands$r(q_{min,j})\:\sigma^{k-j-1}:1\leq j\leq m$
+of the hash are given by the prefix
+
+we choose the other summands$r(q_{i})\:\sigma^{k-i-1}:i>m$ to all
+be as small as possible by choosing characters such that$\forall q_{i}:\:r(q_{i})=0$
+
+thus$h_{min}=h_{p}+\sum_{i=m+1}^{k}\:0*\sigma^{k-i-1}=h_{p}$
+
+~
+
+to find$h_{max}$ we observe that$\#H=\sigma^{k-m}$ because$m$ characters
+of each query are given by the prefix
+
+we furthermore observe that for two hashes$h_{a},\,h_{b}\in H:\,h_{a}<h_{b}$the
+difference between the hashes$h_{a}-h_{b}\geq1$
+
+this is because given$q_{a}=(a_{1},\,...,\,a_{k-1},\,a_{k})\::hash(q_{a})=h_{a}\neq h_{max}-1$
+to find the next smallest hash that is also in$H$, we replace the
+last letter$a_{k}$ with$\alpha_{k}$ such that$r(a_{k})=r(\alpha_{k})+1$.
+If$r(a_{k})=\sigma-1$ we instead substitute$a_{k-1}$, etc.
+
+this means$hash(q_{a})$ increases by$(r(a_{k})\:\sigma^{k-(k-1)})-(r(\alpha_{k})\:\sigma^{k-(k-1)})=1$
+
+Given this information we can conclude$H=\{h_{p},\,h_{p}+1,\,...,\,h_{p}+\sigma^{k-m}-1\}$
+\end{verse}
+This gives us far less costly way to generate all hashes in a simple
+for-loop:
+
+\begin{lstlisting}[caption={Search function for queries of size 0 < m < k},language={[GNU]C++},tabsize=2]
+std::vector<size_t> check_last_kmer((...)) const;
+
+template<std::ranges::range range_t>
+std::vector<size_t> search_sub_k(range_t& query) const
+{
+	size_t h_p = hash(query);
+	size_t h_min = 0 + h_p;
+	size_t h_max = h_p + pow(_sigma, k-query.size());
+
+	// lookup each hash
+	std::vector<size_t> output_positions;
+	for (size_t h = h_min; h < h_max; ++h)
+	{
+		for (size_t pos : _data.at(h))
+			output_positions.push_back(pos);
+	}
+
+	// cover edge case for last kmer
+	for (size_t pos : check_last_kmer(query))
+		output_positions.push_back(pos);
+
+	return output_positions;
+}
+\end{lstlisting}
+
+Note that after looking up all hashes depended on the query we also
+need to call\lstinline{check_last_kmer}. This is to cover an edge
+case were the query happens to be a sub-string of the last kmer in
+the text. As the query is compared against prefixes of all kmers and
+there is no kmer with a position$p>text.size()-k$ the query is instead
+manually compared against the last$k-1$ letters of the text.
+
+While searching queries of length$m<k$ is more costly than just a
+simple lookup it is feasible to search queries in a adequately fast
+manner if$k-m$ is sufficiently small as this means the given prefix
+is in turn longer which means$\#H$ and thus the number of hashes
+that need to be searched is minimal.
+\begin{lem}
+\label{Lemma 2}search performance for queries of size$m:\,(k\mod m)\neq0\:\land m<k$
+is inversely proportional to$k-m$
+\end{lem}
+The actual implementation throws an exception if$\sigma^{k-m}>10^{7}$
+in order to avoid a badly chosen$m$ and$k$ combination taking hours
+to complete given the amount of hashes that would have to be looked
+up.\footnote{While somewhat arbitrarily chosen,$10^{7}$represents the case of$k-m>11$
+for the nucleotide alphabet ($\sigma=4$) which should allow most
+users to be able to not encounter the exception during proper usage
+of the kmer-index and notably will mean for$k=10$ queries of all
+length be accepted.}
+
+\subsection{\label{section 3.3}Query Size m > k}
+
+To search queries of length$m>k$ the query is split into parts of
+length$k$ which will then be searched individually. If$m\mod k\neq0$
+there will also be a part at the end (``rest'') with a length smaller
+than$k$.
+
+We observe that the set of positions for a specific query of length$m>k$
+is a subset of the positions of the first kmer$p_{1}$, the queries
+prefix of length$k$. To confirm whether a specific position of$p_{1}$
+is valid we cross-reference the positions of the following parts as
+such:
+\begin{verse}
+let query$q=(q_{1},\,q_{1},\,...,\,q_{m})$ be of length$m:\:(m>k)\,\land(\,m\mod k\neq\text{0})$
+
+let$p_{i}=(q_{i},\,...,q_{i+k})$ with$i\in[1,\,(m-(m\mod k))/k]\subset\mathbb{N}$
+be the$i$-th$k$-long part of the query
+
+let$r=(q_{m-(m\mod k)/k},\,...,q_{m})$ be the rest of length$(m\mod k)$
+
+then the query occurs at positions$\rho_{seed}\in pos(q_{1},...q_{k})=pos(p_{1})$
+iff
+
+for all$i$ there exists a position$\rho_{2}\in pos(p_{2})$ such
+that$\rho_{2}=\rho_{seed}+k$, and there exists a position$\rho_{3}\in pos(p_{3})$
+such that$\rho_{3}=\rho_{2}+k$, etc.
+
+For$\rho_{(m-(m\mod k))/k}\in pos(p_{last})$ we need to check for
+a position$\rho_{rest}\in pos(rest)$ so that$\rho_{rest}=\rho_{(m-(m\mod k))/k}+k$
+
+If a$\rho$ is found for all parts of the query is confirmed to occur
+at$\rho_{seed}$
+\end{verse}
+For performance purposes if at any point the program does not find
+a fitting$\rho_{i}$, the current position$\rho_{seed}$ is marked
+as invalid and the loop moves onto the next. While in the worst-case
+(all position in$\rho_{seed}$ are valid) performance would be relatively
+costly, in praxis this is rarely the case, especially for longer queries.
+We observe:
+\begin{lem}
+\label{Lemma 3}Search time for queries of size$m:\,m>k$ scales inversely
+proportional to the number of results for the corresponding$p_{i}$.
+\end{lem}
+Searching queries of length$m:m\mod k=0$ (which do not have a rest)
+should be preferred as to find the positions of the rest we will need
+to employ\lstinline{search_subk} which can result in a significant
+runtime increase, especially if the rest is short.\pagebreak{}
+
+\section{Multi kmer-Index}
+
+\subsection{\label{subsec: multi k overview}Overview}
+
+To further investigate the behavior implied by Lemmas 1 to 3 a benchmark
+was conducted. Queries of length$\{6,7,...,50\}$ were searched by
+a kmer-index with a single$k=10$ and the search calls duration to
+return was measured:
+
+\begin{figure}[H]
+\includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/multi_vs_single/single_only}
+
+\caption{\label{figure 1}Average duration to get all occurences of a query
+of given length using a kmer-index for$k=\{10\}$. The inset graph
+shows a``zoomed in'' view of the area of query lengths$[16,29]$.
+The dotted lines mark query lengths that are a multiples of$k$.}
+
+\end{figure}
+
+The results show a predictable pattern substantiating the above mentioned
+lemmas. Best performance is only achieved for query sizes$m:\:m\mod k=0$
+as this avoids having to search a rest with\lstinline{search_subk}.
+While queries of length$(n*k)-1,\,(n*k)-2:\:n\in\{1,2,...\}$ still
+show acceptable performance, as the absolute difference between$m$
+and$k$ increases the performance becomes worse (in accordance with
+Lemma\ref{Lemma 2}). For queries of length$m=(n*k)+1$ results suggest
+a runtime increase of up to$6{{}^7}\approx280\,000$ times compared
+to best-case performance. Note that the peaks at$(n*k)+1$ reduce
+in severity as query length increases. This is because with an increase
+in query length given a text of fixed size the number of results per
+query decreases and as stated in Lemma\ref{Lemma 3} performance will
+improve slightly.
+
+Given this behavior if we want to choose more$k$ to improve average
+performance the most obvious addition would be to cover the previous$k$s
+worst case performance: for example for$k_{1}=10$ we would additionally
+choose$k_{2}=k_{1}+1=11$,$k_{3}=k_{2}+1$ and so on. Ideally we would
+just use every possible$k$ in one index however due to memory limitations
+this is sometimes not feasible. As observed above, runtime for$m=k-1$
+was still satisfactory and thus$k_{i}=\{5,7,9,...,27,29,31\}$ was
+chosen as a substitute to a multi kmer-index with perfect coverage:
+
+\begin{figure}[H]
+\includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/multi_vs_single/multi_vs_single}
+
+\caption{Average search performance of multi and single kmer-index to find
+all occurrences of a query of given length in a text of size$10^{6}$.}
+\end{figure}
+
+Despite the sub-optimal coverage of the multi kmer-index, performance
+is still very close to optimal. Note how at query length 10 the single
+kmer-index shows faster performance than the multi kmer-index (c.f.
+the red vertical line in Figure 2). This illustrates the slight difference
+in performance between$k=m$ (which is true for the single kmer-index
+for$m=10$) and$k=m+1$ (which is true for the multi kmer-index).
+Note further how after$m=33$ (which results in 3 search calls with$k=11$
+and no rest and thus still performs adequately) runtime increases
+significantly. To investigate the multi-kmers index behavior for queries
+that cannot be searched as a single kmer we first need to detail how
+longer queries are handled outside of a single-k context.
+
+\subsection{\label{section 4.2}How to choose the appropriate k}
+
+The success of the multi kmer-index relies heavily on both being provided
+a well-chosen set$ks$ of$k_{i}$ and furthermore using the appropriate$k_{i}$
+for a given query length. The latter is achieved by a table that at
+construction computes for every possible query length$m$ a set of$\{k_{a},k_{b},...\}$
+such that$k_{a}+k_{b}+...=m$. To achieve best performance we want
+the minimal set (in regards to cardinality) of$k_{i}$ for and we
+furthermore want the$k_{i}$ are chosen as big as possible which accordant
+with Lemma\ref{Lemma 3} reduces runtime for longer queries. The table
+is constructed with a simple dynamic programming approach where to
+find the set of$k_{i}$ for a given query$m_{j}$ the already computed
+set for a queries$m_{a},m_{b}<m_{j}:m_{a}+m_{b}=m_{j}$ are referenced
+back to.
+
+\begin{table}[H]
+\centering{}\caption{Set of$k_{i}$ for certain query lengths chosen from$k\in\{9,11,13,17\}$
+by the multi kmer-index.}
+\begin{tabular}{cc}
+\toprule
+query length & summands\tabularnewline
+\midrule
+\midrule
+29 & 9+9+11\tabularnewline
+\midrule
+30 & 13+17\tabularnewline
+\midrule
+31 & 9+9+13\tabularnewline
+\midrule
+32 & n/a\tabularnewline
+\midrule
+33 & 9+11+13\tabularnewline
+\bottomrule
+\end{tabular}
+\end{table}
+
+Depending on the set of$k_{i}$ supplied, not all query lengths may
+be possible to be represented with the supplied summands. In this
+case the kmer index falls back on calling\lstinline{search_subk}
+for one of the summands. To find a set of$k_{i}$ that covers most
+of the queries supplied by the user, the following recommendations
+should be kept in mind:
+\begin{itemize}
+\item no$k_{i}$ should be a multiple of another:$\lnot\exists k_{j}:k_{i}\mod k_{j}=0$.
+This is to avoid redundancy as the higher$k_{i}$will always be chosen
+\item all$k_{i}$ should be as big as possible. As stated above this will
+decrease runtime however depending on memory limitations it may not
+always be possible
+\item small$k_{i}$ should be avoided completey. If$k_{1}=3$ is provided
+and is used for a sum, the index will have to crossreference all results
+for a single 3mer which depending on the text length may be far slower
+than just searching that query with\lstinline{search_subk}. Initial
+results suggest to not use any$k_{i}<10$ and while they can still
+be supplied, the index will not use them for searching queries of
+bigger lengths unless unavoidable.
+\end{itemize}
+The author recommends for the set of$k_{i}$ to be a subset of\{9,
+11, 13, 17, 19, 21, 23, 27, 29, 31\}, primes are preferable because
+most queries will be able to be factorized into a subset of them.
+For example$\{11,13,17,19,21\}$ will cover every query length$31<m\leq10000$
+and the$k$ are small enough to be stored on less capable machines
+even with bigger texts such as an entire genome. Note that if searching
+for occurences of queries of length$m\in[3,31]$ the query length
+should be directly supplied to the set of$k_{i}$ as a length smaller
+than$min(ks)$ cannot be represented as a sum of$k_{i}$s.
+
+\subsection{Comparison with fm-Index}
+
+To put the absolute values of the above figures into perspective,
+a comparative analysis of the fm-index\footnote{Note that for exact string matching there's is no relevant performance
+difference between the fm- and bi-fm-index.} and a multi kmer-index was conducted and the relative speedup measured:
+\begin{verse}
+let$t_{fm<i>},t_{kmer<i>}$ the search runtime for searching a query
+of length$i$ with the corresponding index
+
+then$\text{{speedup}}(i)=\begin{cases}
++(1-(t_{kmer<i>}/t_{fm<i>})) & \text{{if}\;}t_{kmer<i>}>t_{fm<i>}\\
+-(1-(t_{fm<i>}/t_{kmer<i>})) & \text{{if}\;}t_{kmer<i>}<t_{fm<i>}\\
+\,0 & \text{{else}}
+\end{cases}$|\footnote{To clarify, if$speedup(a,b)=+75\%$ then$b$ has a runtime of 1.75
+the runtime of$a$,$a$ is 75\% faster than$b$; if$speedup(x,y)=-30\%$
+then$y$ has a runtime fo 0.7 the runtime of$x$,$x$ is 30\% slower
+than$y$.}
+\end{verse}
+
+\subsubsection{For Query Lengths$m\in[3,30]$}
+
+When searching for smaller queries the approriate$k$ should be directly
+supplied. The relative performance for a multi kmer-index with all$k\in$
+\{3,4,...,30,31\} was\href{https://github.com/google/benchmark}{benchmarked}
+and compared against the fm-index:
+
+\begin{figure}[H]
+\includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/just_k/relative_speedup}
+
+\caption{Relative speedup (in \%) for search calls of the kmer-index vs. the
+fm-index per query length with a text size of$10{{}^8}$. The inset
+plot shows the absolute runtime (in ns). The multi kmer-index use$k\in$
+\{3, 4, ..., 9, 10, 11, 12, ..., 31\}}
+\end{figure}
+
+Results indicate that for bigger texts the kmer index will only perform
+better for relatively small$k$. This is because the indices map is
+limited to a size of$\sigma^{k}$ and as the kmer indices runtime
+for searching a single kmer is indepent from the number of results
+for that query, for bigger text higher$k$ will vastly increase the
+maps size and thus the time it takes to traverse it. For sufficiently
+small texts however, all$k\in\{3,30\}$will be faster to search and
+the overall speedup for short queries like these suggests that the
+kmer index should be preferred to search small kmers.
+
+\begin{table}[H]
+\noindent \raggedright{}\caption{\label{table kmer faster while}Average$speedup(t_{kmer},t_{fm})$
+in the interval$[3,30]$ per text length. Results rounded to 1 decimal
+digit to account for noise in benchmark results.}
+\begin{tabular*}{1\textwidth}{@{\extracolsep{\fill}}>{\centering}p{0.15\textwidth}>{\raggedleft}p{0.1\textwidth}>{\raggedleft}p{0.15\textwidth}>{\raggedleft}p{0.15\textwidth}>{\centering}p{0.25\textwidth}}
+\toprule
+text size & mean & maximum & mininum & kmer faster while\tabularnewline
+\midrule
+\midrule
+$10{{}^3}$ & 21\% & 64.9\% & 3.0\% & k < 31\tabularnewline
+\midrule
+$10{{}^4}$ & 19.3\% & 64.2\% & 2.2\% & k < 31\tabularnewline
+\midrule
+$10{{}^5}$ & 17.3\% & 65.7\% & 0.4\% & k < 31\tabularnewline
+\midrule
+$10{{}^6}$ & 16.7\% & 58.8\% & 2.0\% & k < 31\tabularnewline
+\midrule
+$10{{}^7}$ & 9.4\% & 54.5\% & -4.6\% & k < 22\tabularnewline
+\midrule
+$10{{}^8}$ & 8.2\% & 62.1\% & -11.3\% & k < 17\tabularnewline
+\midrule
+$10{{}^9}$ & < 7\% & 48.9\% & < -16.5\% & k < 11\tabularnewline
+\bottomrule
+\end{tabular*}
+\end{table}
+
+
+\subsubsection{For arbitrary Query Lengths}
+
+To investigate the multi kmer-indices ability to be applied in general-purpose
+exact string matching scenarios a large-scale benchmark was conducted.
+For different text sizes, queries were searched with both indices
+and their relative performance measured:
+
+\begin{figure}[H]
+\includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000/runtime_diff_over_text_size}\caption{\label{figure 5_100}Graphs showing$speedup(t_{kmer},t_{fm})$ over
+query lengths for different text sizes. The grey area highlights query
+lengths {[}5, 30{]} which were excluded for the depicted median speedup.
+The multi kmer-index used all$k\in$ \{5, 6, 7, 8, 9, 10, 11, 12,
+13, 15, 17, 19, 21, 23, 25, 27, 29, 31\}.}
+\end{figure}
+
+The benchmark suggests that for longer queries the kmer-index provides
+a slight speedup over the fm-index. With increasing text size this
+speedup decreases however. This is because as mentioned in section\ref{section 3.3}
+the kmer at the higher end of {[}3,30{]} take a longer time to search
+for bigger texts which in turn means that the individuals kmers the
+queries are made for whom the multi kmer-index prioritizes the bigger
+k will take longer as well.
+
+~
+
+In summary, the kmer-index has proofed superior for searching appropriately
+small kmers given the text length detailed in Table\ref{table kmer faster while}.
+While more testing will have to be done it seems reasonable to assume
+that kmer-index will always performa better for queries of length$m<10$.
+For exact string matching of queries of arbitrary length the kmer
+index in it's current iteration should be preferred for smaller text
+sizes ($<10{{}^8}$) while the fm-index should proof more consistently
+performant for larger texts. However it may be possible to improve
+the kmer index with further features and if that achieves for example
+an additional speedup of 5\% for longer queries, the kmer index may
+perform better than the fm-index for all relevant text sizes such
+as entire genomes.
+
+\section{Outlook}
+
+To further improve performance and make the implementation generally
+more consistentlsapplicable the following additional features are
+proposed:
+
+\subsection{>64 bit Hash}
+
+As mentioned above the datatype of the hashes is currently\lstinline{uint64_t}.
+64 bit integers were chosen because the standard C++ library does
+not currently support >64 bit integers natively and seqan3s kmer hash\href{http://docs.seqan.de/seqan/3-master-user/group__views.html\#ga6e598d6a021868f704d39df73252974f}{also uses them}.
+However the size of the integer used for the hashes is arbitrary and
+expanding it to 128 or 256 bit would improve the maximum k that can
+still be searched with the overall faster$m=k$ search function as
+it is currently limited to$<31$ for the smallest relevant nucleotide
+alphabet. This may be especially important when working with bigger
+alphabets such as the complete list of\href{https://www.bioinformatics.org/sms/iupac.html}{IUPAC codes}
+for nucleotides or clear text for which$\sigma=255$. Furthermore
+in the application of read-mapping, reads are\href{https://www.illumina.com/science/technology/next-generation-sequencing/plan-experiments/read-length.html}{often of relatively short length}
+and being able to for example find all positions of a 50mer or 75mer
+could give programs in this application a significant speedup compared
+to factorizing these queries into multiple smaller kmer. Further research
+will have to be done to verify wether abstracting the hash type for
+the kmer-index to use for example integers of up to 1024 bit from
+boosts\href{https://www.boost.org/doc/libs/1_62_0/libs/multiprecision/doc/html/boost_multiprecision/tut/ints/cpp_int.html}{multiprecision header}
+could proof valuable as it may not be feasible due to memory limitation
+or runtime overhead inherent to these integer types. Furthermore as$k$
+and thus the number of possible hashes increases the indices maps
+maximum size will also increase and as observed from Table\ref{table kmer faster while}
+for larger texts bigger k do not neccessarily result in a significane
+speedup.
+
+\subsection{Multi kmer-index Compression}
+
+As has been shown in section\ref{subsec: multi k overview} using
+multiple k for the same index vastly increases the search performance
+for a broad variety of queries. Ideally we would want to just choose
+every possible k however memory limitations make this difficult. The
+kmer-index from Figure\ref{figure 5_100} offered decent coverage
+by choosing about every second$k$ in \{9,10,...31\} but for a text
+size of 10\textsuperscript{8} already occupied about 80gb of memory.
+While this is not unfeasible for stronger machines, as each map uses
+about$\#H*64*n*32$ (where$H$ is the set of all pairwise different
+hashes,$n$ is the text size) many bytes which for bigger text such
+as an entire genome means using every possible$k$ is currently not
+practical. To remedy this it could be possible to implement a way
+to compress the single kmer-indices contained in the multi kmer-index.
+Each index contains all positions of the text in it's map exactly
+once which means in a multi kmer-index with 5 ks, the individual indices
+contain at least$(5-1)n*32$ many bits of redundant entries in the
+form of the vectors of positions for each hash. If a version of the
+kmer-index is implemented that only contains all the texts positions
+once while still allowing for adequate runtime performance an all-purpose
+kmer-index could be proposed that simply holds information for all
+possible ks regardless of user configuration and thus achieves optimal
+performance in all cases.
+
+\subsection{Hybrid Approach}
+
+As detailed above the performance peaks of the kmer-index are fairly
+consistently predictable. A two-pronged approach is proposed in which
+for queries for whom we know the kmer-index will perform poorly the
+searching is instead done by a desperate fm-index. This allows for
+the now hybrid-index to have the speedup the kmer offers while also
+covering the inherent inconsistency by instead using the fm-index
+which performs highly consistently if sometimes worse. We can thus
+precalculate which queries should be searched with which index. The
+fm-index should be used to search a query of length$m$ if and only
+if at least one of the following is true:
+\begin{itemize}
+\item the text size is$>10{{}^8}$ (c.f. Table\ref{table kmer faster while})
+\item there is no set of$\{k_{a},k_{b},...\}$ such that$k_{a}+k_{b}+...=m$
+\end{itemize}
+In all other cases preferring the kmer-index component may result
+in an overall speedup, however further research is needed to develop
+a better tested heuristic that substantiates these recommendations
+and is capable of determining a more exact text size (which may also
+be dependent on the alphabet used) which when exceeded might proof
+use of the hybrid index to be more trouble than it is worth given
+the need for increased memory capacity.
+
+\section{Conclusion}
+
+The current kmer-index implementation is stable (c.f. Section\ref{Addendum: Correctness}
+below), reasonably well optimized and the indices performance is superior
+for searching kmers of relatively small length$m<30$ (or less than
+30 for bigger texts as detailed in Table\ref{table kmer faster while}).
+For this purpose it achieved a performance increase of up to 65\%
+and is thus well-suited and should be preferred to more generalist
+indices like the fm-index if runtime performance is important. For
+query lengths past 30 the kmer-index has been shown to have a performance
+increase between 5 and 10\% for smaller texts of length$m<10{{}^8}$
+while for bigger texts an overall performance change of$\pm2\%$ depending
+on query length was observed. With further optimization and features
+the kmer-index may become the decidedly more performant index for
+exact string matching purposes in all situations however in it's current
+iterations it is only recommended for use with appropriately small
+text sizes.
+
+\newpage{}
+
+\section{Addendum}
+
+\subsection{\label{Addendum: Correctness}Assuring Correctness}
+
+To assure that the kmer index returns the correct positions a\href{https://github.com/google/googletest}{test function}
+was written that repeatedly compares results of the kmer-index and
+the fm-index for randomized queries and texts. This asserts that the
+fm-index itself is bug-free and as both indices are meant to be used
+in the same library this assertion was presumed to be reasonable.
+
+\begin{algorithm}[H]
+\begin{verse}
+\textbf{Input}: seed,$n$,$m$
+
+\textbf{while}$(n>0)$\textbf{do}
+\begin{verse}
+\textbf{let} text$\leftarrow$ generate\_sequence($m$, seed)
+
+\textbf{let} fm$\leftarrow$ kmer\_index(text)
+
+\textbf{let} kmer$\leftarrow$ fm\_index(text)
+
+\textbf{for}$q$\textbf{in} \{k-1, k, k+1, ..., 2{*}k\}\textbf{do}
+\begin{verse}
+\textbf{let} query$\leftarrow$ generate\_sequence(q, seed)
+
+\textbf{let} result$_{fm}$$\leftarrow$ fm.search(query)
+
+\textbf{let} result$_{kmer}$$\leftarrow$ kmer.search(query)
+
+\textbf{assert} (result$_{fm}$ = result$_{kmer}$)
+\end{verse}
+\textbf{end}
+
+seed$\leftarrow$ seed + 1
+
+n$\leftarrow$ n-1
+\end{verse}
+\textbf{end}
+\end{verse}
+\caption{Test function comparing kmer- and fm-index results to assure correctness.}
+\end{algorithm}
+
+While given enough iterations and a big enough text size it is reasonable
+to assume that this function will uncover possible bugs itself the
+text was furthermore manually modified to account for edge cases (such
+as the query happening at the very end of the text as detailed in
+Section\ref{section m < k}). If a discrepancy between the fm- and
+kmer-index was uncovered the function furthermore reported the exact
+seed and query size. The randomness in\lstinline{generate_sequence}
+was implemented to be deterministic which made reproducing possible
+errors and what caused them reliable and easy. Before each benchmark
+presented in this paper correctness was assured with$n>10{{}^6}$
+iterations using text sizes$m$ as large as the machines memory allowed
+for.
+
+\subsection{Performance Optimization}
+
+Implementation of the kmer-index was guided at every step by benchmarking
+newly implemented components and comparing their performance against
+other possible implementations. In this section the most relevant
+of these decisions are explained. Note that C++20 was used for all
+performance relevant code.
+
+\subsubsection{Choosing the fastest Pow Implementation}
+
+By the nature of the hash, exponentiation (henceforth referred to
+as``pow'' in reference to the commonly used\lstinline{std::pow})
+is used every search call sometimes multiple times. To optimize performance
+four different versions of pow were implemented and their performance
+evaluated. Note that for the purpose of the kmer-index the pow implementation
+will only ever be used with positive integers and has\textasciicircum{}
+to be able to be evaluated at compile time.
+\begin{itemize}
+\item \lstinline{trivial_pow(base,n)}: A trivial implementation calling$base*base$$n$-many
+times
+\item \lstinline{recursive_pow(base,n)}: Utilizing a recursive approach,
+this function calls itself recursively$n$-many times and then evaluates
+each call from the inside out to return the correct result based on
+whether the exponent was odd or even
+\item \lstinline{bit_pow(base,n)}: Utilizes bit-operations which are generally
+more well-optimized on most modern machines
+\item \lstinline{switch_pow(base,n)}: Instead of using a loop, this implementation
+has multiple switch cases with identical code, when the function is
+called a lookup in a pre-calculated table produces the correct first
+switch case to start with. The result``falls through'' the rest
+of the switch cases the correct number of times. Any exponentiation
+that would overflow the unsigned 64 bit integer result is immediately
+caught and 0 is returned instead.
+\end{itemize}
+\begin{figure}[H]
+\textasciiacute \includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/pow_vs_pow/pow_vs_pow}
+
+\caption{Boxplot showing runtime distribution of average time to compute$x^{y}$.}
+\end{figure}
+
+Results indicate that the implementation utilizing the fall-through
+switch is overall the fastest and was thus used for the index whenever
+possible.
+
+\subsubsection{Choosing the fastest Map}
+
+The unordered map is the data structure at the center of the kmer-index
+and as such assuring fast access time even for very large map sizes
+is necessary. As\lstinline{std::unordered_map} did not proof sufficiently
+fast enough, other maps implemented by 3rd parties were tested and
+evaluated specifically in the context of use in a kmer-index:
+\begin{itemize}
+\item \lstinline{std::unordered_map} from the\href{https://en.cppreference.com/w/cpp/container/unordered_map}{C++17 standard library}
+\item \lstinline{boost::unordered_map} from the\href{https://www.boost.org/doc/libs/1_65_0/doc/html/boost/unordered_map.html}{1.65.1 Boost Library}
+\item \lstinline{absl::node_hash_map} from Googles\href{https://abseil.io/docs/cpp/guides/container\#abslnode_hash_map-and-abslnode_hash_set}{Abseil}
+\item \lstinline{robin_hood::unordered_map} as provided by\href{https://github.com/martinus/robin-hood-hashing}{Martin Ankerl et. al.}
+\end{itemize}
+Each map was filled with a fixed number of randomized elements and
+it's time to return a specific element was benchmarked. Only retrieval
+was tested here since after construction in the context of the kmer-index
+no insertion will take place.
+
+\begin{figure}[H]
+\includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/map_vs_map/map_vs_map}
+
+\caption{Search performance for different map implementations over size of
+map.}
+\end{figure}
+
+Results indicate that\lstinline{robin_hood::unordered_map} performed
+best regardless of the number of elements contained and was as such
+used as the central data structure for the kmer-index.
+
+\subsection{Parallelization}
+
+Other than the amount of memory needed the only true disadvantage
+of using the multi kmer-index is the fact that the time it takes to
+construct increases drastically with the number of$k_{i}$ specific.
+To address this a general purpose thread pool was implemented that
+allows all of the single kmer-index elements to be constructed in
+parallel:
+
+\begin{lstlisting}[caption={Paralell invocation of the create function for individual kmer-index
+elements during construction of the multi kmer-index.}]
+template<std::ranges::range text_t>
+multi_kmer_index(text_t& text)
+	: single_kmer_index<ks>()...
+{
+	auto pool = kmer::detail::thread_pool{(...)};
+	std::vector<std::future<(...)>> futures;
+	(futures.emplace_back(
+		pool.execute(&single_kmer_index<ks>::create, text)), ...);
+
+	// wait to finish
+	for (auto& f : futures)
+		f.get();
+}
+\end{lstlisting}
+
+As the number of possible$k$ is currently restricted to at most 31,
+modern systems with 32 or more CPUs are capable of constructing one
+multi kmer-index with optimal coverage with no additional runtime
+overhead compared to a single-k index.
+
+\pagebreak{}
+\begin{thebibliography}{1}
+\bibitem{kmer: megahit}Dinghua Li, Chi-Man Liu, Ruibang Luo, Kunihiko
+Sadakane, Tak-Wah Lam, MEGAHIT: an ultra-fast single-node solution
+for large and complex metagenomics assembly via succinct de Bruijn
+graph, Bioinformatics, Volume 31, Issue 10, 15 May 2015, Pages 1674--1676,\href{https://academic.oup.com/bioinformatics/article/31/10/1674/177884}{https://academic.oup.com/bioinformatics/article/31/10/1674/177884}
+
+\bibitem{kmer: soapdenovo assembly} Yinlong Xie, Gengxiong Wu, Jingbo
+Tang, Ruibang Luo, Jordan Patterson, Shanlin Liu, Weihua Huang, Guangzhu
+He, Shengchang Gu, Shengkang Li, Xin Zhou, Tak-Wah Lam, Yingrui Li,
+Xun Xu, Gane Ka-Shu Wong, Jun Wang, SOAPdenovo-Trans: de novo transcriptome
+assembly with short RNA-Seq reads, Bioinformatics, Volume 30, Issue
+12, 15 June 2014, Pages 1660--1666,\href{https://doi.org/10.1093/bioinformatics/btu077}{https://doi.org/10.1093/bioinformatics/btu077}
+
+\bibitem{kmer: taxonomical profiling}A. Kishk et al., A Hybrid Machine
+Learning Approach for the Phenotypic Classification of Metagenomic
+Colon Cancer Reads Based on Kmer Frequency and Biomarker Profiling,
+2018 9th Cairo International Biomedical Engineering Conference (CIBEC),
+Cairo, Egypt, 2018, Pages 118-121,\href{https://doi.org/10.1109/CIBEC.2018.8641805}{https://doi.org/10.1109/CIBEC.2018.8641805}
+
+\bibitem{kmer: kraken LCA}Wood, D.E., Salzberg, S.L. Kraken: ultrafast
+metagenomic sequence classification using exact alignments. Genome
+Biol 15, R46 (2014),\href{https://doi.org/10.1186/gb-2014-15-3-r46}{https://doi.org/10.1186/gb-2014-15-3-r46}
+
+\bibitem{kmer: spectrum dissimilarity}Dubinkina, V.B., Ischenko,
+D.S., Ulyantsev, V.I. et al. Assessment of k-mer spectrum applicability
+for metagenomic dissimilarity analysis. BMC Bioinformatics 17, 38
+(2016),\href{https://doi.org/10.1186/s12859-015-0875-7}{https://doi.org/10.1186/s12859-015-0875-7}
+
+\bibitem{kmer: spectrum error correction}Yongchao Liu, Jan Schr�der,
+Bertil Schmidt, Musket: a multistage k-mer spectrum-based error corrector
+for Illumina sequence data, Bioinformatics, Volume 29, Issue 3, 1
+February 2013, Pages 308--315,\href{https://doi.org/10.1093/bioinformatics/bts690}{https://doi.org/10.1093/bioinformatics/bts690}
+
+\bibitem{seqan3 fm-index master}Pockrandt, C. M. Generic implementation
+of a bidirectional FM-index in SeqAn and applications. Diss. Master\textquoteright s
+thesis, Freie Universit�t Berlin, 2015.
+\end{thebibliography}
 
 \end{document}
