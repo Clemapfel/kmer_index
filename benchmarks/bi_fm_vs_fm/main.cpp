@@ -46,11 +46,11 @@ static void fm_search(benchmark::State& state, size_t query_length, size_t text_
     seed++;
 }
 
-//nohup ./JUST_K_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/just_k/to_1e7_complere_raw.csv --benchmark_out_format=csv --benchmark_repetitions=100 --benchmark_report_aggregates_only=false
+nohup ./BI_FM_VS_FM_BENCHMARK --benchmark_format=console --benchmark_counters_tabular=true --benchmark_out=/srv/public/clemenscords/bi_fm_vs_fm/1e8_raw.csv --benchmark_out_format=csv --benchmark_repetitions=5 --benchmark_report_aggregates_only=false
 
 int main(int argc, char** argv)
 {
-    size_t text_length = 1e8;
+    size_t text_length = 1e4;
 
     auto input = input_generator<seqan3::dna4>(seed);
     auto text = input.generate_sequence(text_length);

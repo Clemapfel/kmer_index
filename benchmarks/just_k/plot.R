@@ -15,7 +15,6 @@ smooth_size = 3
 
 get_plot = function(text_length)  {
 
-
   data_cur = data[data$text_length == text_length,]
   fm = data_cur[data_cur$name=="fm_median",];  #sic
   kmer = data_cur[data_cur$name=="kmer_median",]

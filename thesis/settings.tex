@@ -1,0 +1,318 @@
+%! Author = clem
+%! Date = 23.11.20
+\documentclass[
+			twoside,
+            fontsize=12pt,
+            parskip=half-,
+            %DIV=calc,
+            titlepage,
+            abstracton, % prints Abstractname
+            %listof=totocnumbered, % LOF, LOT, LOL  nummeriert im TOC
+            bibliography=totocnumbered, % Referenzen nummeriert im TOC
+            headings=normal,% Überschriften verkleinern
+          	]{scrreprt}% scrreprt
+
+%%%%%%%%%%%%%%%% Pakete %%%%%%%%%%%%%%%%
+\usepackage{blindtext}
+
+\usepackage{geometry}
+\usepackage{calc}
+\usepackage{amsmath}	% MUSS vor fontspec geladen werden
+\usepackage{mathtools}	% modifiziert amsmath
+\usepackage{amssymb}	% mathematische symbole, für \ceckmarks
+\usepackage{algorithm,algpseudocode}
+
+\usepackage{fontspec}
+\usepackage{microtype}
+\usepackage[english]{babel}
+\usepackage{lmodern}
+%\usepackage{slantsc}
+\usepackage[scale]{tgheros} % kapitälchen mit helvetica (ähnlich der arial)
+
+\usepackage{scrhack} % ersetzt float
+\usepackage{enumitem}
+\usepackage{etoolbox}
+\usepackage{multicol}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{booktabs} % To thicken table lines
+\usepackage[RGB,table]{xcolor}
+\usepackage{multirow}        % tabular-multirow
+\usepackage{colortbl}
+\usepackage{csquotes}		 % inline quotation
+\usepackage{comment} 		 % comment large blocks
+\usepackage[colorlinks,      % hyperlinks
+            linktocpage,
+            allcolors=FUblue]
+            {hyperref}
+\usepackage{titling}
+% Kopf- und Fußzeile:
+\usepackage[headsepline=true,
+            footsepline=true, % plainfootsepline,
+            markcase=upper,
+            manualmark, % manualmark / automark,
+            headsepline=0.5pt, footsepline=0.5pt
+            ]{scrlayer-scrpage}
+%\usepackage{lastpage} % total page number
+
+%\usepackage{biolinum} % notwendig für small capitals (läuft nicht)
+%\usepackage{tocloft} % für cfttoctitlefont, um Schriftgröße zu verringern
+
+
+%%%%%%%%%%%%%% Settings %%%%%%%%%%%%%%
+\setkomafont{sectioning}{\rmfamily\bfseries}% setzt Ü-Schriften in Serifen, {disposition}
+\rowcolors{2}{lightgray!20}{lightgray!40} % alternierende Zeilenfarbe
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+%\setcounter{lofdepth}{1}
+%\setcounter{lotdepth}{2}
+
+%%%%%%%%%%%%%% Layout %%%%%%%%%%%%%%
+\setlength{\unitlength}{1cm}
+\newcommand{\abstand}{\dimexpr\paperwidth/18\relax}
+\newcommand{\rand}{\dimexpr3.6\abstand\relax}
+\newcommand{\randI}{\dimexpr1.8\abstand\relax}
+\newcommand{\randA}{\dimexpr1.8\abstand\relax}
+\newcommand{\logosize}{\dimexpr1.5cm\relax}
+\setlength{\columnsep}{\abstand}
+\ModifyLayer[addvoffset=-3pt]{scrheadings.foot.above.line}% Linie über Fußzeile nach oben schieben
+%\ModifyLayer[addvoffset=+3pt]{scrheadings.head.below.line}% Linie unter Kopfzeile nach unten schieben
+\setlength{\footheight}{\dimexpr2\abstand+15ex\relax}
+\geometry{
+    headheight = 1cm,
+    headsep = \abstand,
+    footskip = \dimexpr\abstand+\footheight\relax,
+	left = \randI,
+    right = \randA,
+	top = \dimexpr1.8\abstand+\headheight+\headsep\relax,
+    bottom = \dimexpr\abstand+\footskip\relax,
+    marginparwidth = 0pt,
+    bindingoffset = \abstand,
+    %showframe,
+    %includehead, includefoot
+}
+
+%%%%%%%%%%%%%% eigene Farben %%%%%%%%%%%%%%
+\let\definecolor=\xdefinecolor
+\definecolor{FUgreen}{RGB}{153,204,0}
+\definecolor{FUblue}{RGB}{0,51,102}
+\definecolor{DBblue}{RGB}{0,102,204}
+\definecolor{DBbluedark}{RGB}{0,51,102}
+
+% setzt die globale Schriftfarbe auf DBbluedark
+\makeatletter
+\newcommand{\globalcolor}[1]{%
+  \color{#1}\global\let\default@color\current@color
+}
+\makeatother
+\AtBeginDocument{\globalcolor{DBbluedark}}
+
+% färbt die Chapter- und Sectionnummern ein
+\renewcommand*{\chapterformat}{%
+  \textcolor{DBblue}{\thechapter}\autodot\enskip%
+}
+\renewcommand*{\sectionformat}{%
+  \textcolor{DBblue}{\thesection}\autodot\enskip%
+}
+\renewcommand*{\subsectionformat}{%
+  \textcolor{DBblue}{\thesubsection}\autodot\enskip%
+}
+\renewcommand*{\subsubsectionformat}{%
+  \textcolor{DBblue}{\thesubsubsection}\autodot\enskip%
+}
+
+%%%%%%%%%%%% Kopf- und Fußzeile:
+\clearpairofpagestyles% Bisherige Einstellungen löschen
+%\automark[section]{chapter}
+\renewcommand*\chapterpagestyle{scrheadings} % scrheadings, auch Seiten bei Chapterbeginn erhalten Kopf- und Fußzeilen
+% link: http://texwelt.de/wissen/fragen/6302/wo-sind-kopfzeile-und-fuzeile-bei-kapitelstart
+
+\renewcommand{\chaptermark}[1]{\markboth{#1}{#1}} % \markright, \markleft, \markboth
+
+\lehead*{}
+\cehead*{}
+\rehead*{\upshape\thechapter\xspace \headmark} % \thechapter, \headmark [\headmark]
+\lefoot*{\pagemark}%\pageref{LastPage}
+\cefoot*{}
+\refoot*{\parbox{\dimexpr\linewidth-2em\relax}{\upshape \textbf{\theauthor}, \textit{\thetitle}, \Year}}
+
+\lohead*{\upshape\thechapter\xspace \headmark}
+\cohead*{}
+\rohead*{}
+\lofoot*{\parbox{\dimexpr\linewidth-2em\relax}{\upshape \textbf{\theauthor}, \textit{\thetitle}, \Year}}
+%\cofoot*{center odd foot}
+\rofoot*{\pagemark}%\pageref{LastPage}
+\pagestyle{scrheadings}
+
+%\KOMAoptions{onpsinit=\linespread{3}\selectfont}% Kopf- und Fußzeilen dreizeilig
+%\renewcommand*\chaptermarkformat{\thechapter\autodot\enskip}% Kopfzeile ohne chapterprefix
+
+%%%%%%%%%%%%%% Fonts %%%%%%%%%%%%%%
+\setmainfont{Roboto}
+\setsansfont{TeX Gyre Heros}
+\setmonofont{Roboto}
+\renewcommand\UrlFont{\rmfamily} % passt URL an
+
+% definiert textsc neu, damit es mit Arial funktioniert
+\renewcommand\textsc[1]{{\sffamily\scshape#1}}
+
+%%%%%%%%%%%%%%% Fontsize %%%%%%%%%%%%%%
+% \setkomafont{chapter}{\LARGE}
+% \setkomafont{section}{\Large}
+% \setkomafont{subsection}{\large}
+% \setkomafont{paragraph}{\normalsize}
+%\renewcommand\cfttoctitlefont{\LARGE\bfseries}
+
+%%%%%%%%%% Referenzen %%%%%%%%%%%
+\usepackage[style=numeric, bibencoding=utf8, backend=biber, sorting=nty, maxbibnames=15]{biblatex}% für bibliographie, style=authortitle/numeric/ieee, backend=biber/bibtex/bibtex8, bibencoding=ascii/utf8
+\usepackage{silence}% Filter warnings issued by package biblatex starting with "Patching footnotes failed"
+\WarningFilter{biblatex}{Patching footnotes failed}
+
+%\bibliographystyle{unsrt}	 % reorders the cited references by apperance
+%\bibliographystyle{plain}
+%\addbibresource{content/references.bib}
+%\DeclareFieldFormat{isbn}{}
+%\renewcommand{\bibname}{\thesection References}
+
+\usepackage{xpatch}
+\xpatchbibmacro{author}{\printnames{author}}{\mkbibbold{\printnames{author}}}{}{} % author bold
+
+%%%%%%%%%%%%%% Enumitem
+\setlist[enumerate]{font=\color{DBblue}\bfseries, leftmargin=*}
+\setlist[enumerate,1]{label=\arabic*, ref=\alph*.}
+\setlist[enumerate,2]{label*=.\arabic*, ref=\alph*}
+\setlist[enumerate,3]{label*=.\arabic*, ref=\alph*}
+\setlist[itemize]{font=\color{DBblue}\bfseries, leftmargin=*}
+\setlist[itemize,1]{label=$\blacktriangleright$, ref=\labelitemi}
+\setlist[itemize,2]{label=\small$\blacktriangleright$, ref=\labelitemii}
+\setlist[itemize,3]{label=\footenotesize$\blacktriangleright$, ref=\labelitemiii}%textbullet, diamond, bullet
+\setlist[description]{font=\color{DBblue}\bfseries, leftmargin=*}
+
+%%%%%%%%%%%%%%% Tables %%%%%%%%%%%%%%
+\renewcommand{\arraystretch}{1.2}
+\aboverulesep=0ex
+\belowrulesep=0ex
+
+
+%%%%%%%%%%%%%% Chapter %%%%%%%%%%%%
+% reduces the space before chapter to zero
+\renewcommand*{\chapterheadstartvskip}{\vspace*{\dimexpr5pt-\topskip\relax}}
+
+%\RedeclareSectionCommand[beforeskip=\baselineskip, afterskip=\baselineskip]{chapter}
+%\RedeclareSectionCommand[beforeskip=0.75\baselineskip, afterskip=0.5\baselineskip]{section}
+%\RedeclareSectionCommand[beforeskip=0.75\baselineskip, afterskip=0.5\baselineskip]{subsection}
+\RedeclareSectionCommand[beforeskip=0.75\baselineskip, afterskip=0pt]{paragraph}
+\let\paragraphOld\paragraph
+\renewcommand{\paragraph}[1]{\paragraphOld{#1}\hspace{1ex}}
+
+%%%%%%%%%%%%%% Syntaxhighlighting %%%%%%%%%%%%%%
+\renewcommand{\lstlistingname}{Source Code}% Listing -> Source Code
+\lstloadlanguages{Python, C, C++, R, HTML, Haskell, Java, SQL, PHP, SPARQL, Octave, Matlab, OCL, XML, bash, Ruby}
+\lstset{
+   basicstyle=\color{DBbluedark}\small\ttfamily\selectfont,	% \scriptsize the size of the fonts that are used for the code
+   backgroundcolor = \color{gray!20},	% legt Farbe der Box fest
+   breakatwhitespace=false,	% sets if automatic breaks should only happen at whitespace
+   breaklines=true,			% sets automatic line breaking
+   captionpos=b,				% sets the caption-position to bottom, t for top
+   commentstyle=\color{gray}\selectfont,% comment style
+   frame=single,				% adds a frame around the code
+   keepspaces=true,			% keeps spaces in text, useful for keeping indentation
+							% of code (possibly needs columns=flexible)
+   keywordstyle=\bfseries\color{DBblue}\selectfont,% keyword style
+   ndkeywordstyle=\color{DBbluedark}\bfseries\selectfont,
+   numbers=left,				% where to put the line-numbers;
+   							% possible values are (none, left, right)
+   numberstyle=\scriptsize\color{FUblue}\selectfont,	% the style that is used for the line-numbers
+   numbersep=9pt,			% how far the line-numbers are from the code
+   stepnumber=1,				% nummeriert nur jede i-te Zeile
+   showspaces=false,			% show spaces everywhere adding particular underscores;
+							% it overrides 'showstringspaces'
+   %showstringspaces=false,	% underline spaces within strings only
+   showtabs=false,			% show tabs within strings adding particular underscores
+   flexiblecolumns=false,
+   %tabsize=1,				% the step between two line-numbers. If 1: each line will be numbered
+   stringstyle=\color{red}\ttfamily\selectfont,	% string literal style
+   numberblanklines=false,				% leere Zeilen werden nicht mitnummeriert
+   xleftmargin=\dimexpr2em\relax,	% Abstand zum linken Layoutrand
+   framexleftmargin=\dimexpr2em-3pt\relax,
+   xrightmargin=\dimexpr2pt\relax,					% Abstand zum rechten Layoutrand
+   framexrightmargin=\dimexpr-2pt\relax,
+   aboveskip=2ex,
+}
+
+%%%%%%%%%%%%%%%% definition of language %%%%%%%%%%%%%%%%
+\lstdefinestyle{html}{
+   language=HTML,
+}
+\lstdefinestyle{c}{
+  language=C,
+}
+\lstdefinestyle{cpp}{
+  language=C++,
+}
+\lstdefinestyle{py}{
+   language=Python,
+}
+\lstdefinestyle{php}{
+  language=PHP,
+}
+\lstdefinestyle{rdf}{%oder xml
+  language=SPARQL,
+}
+\lstdefinestyle{o}{
+  language=Octave,
+}
+\lstdefinestyle{m}{
+  language=Matlab,
+}
+\lstdefinestyle{ocl}{%omg
+  language=OCL,
+}
+\lstdefinestyle{xml}{
+  language=XML,
+}
+\lstdefinestyle{hs}{
+  language=Haskell,
+}
+\lstdefinestyle{sql}{
+  language=SQL,
+}
+\lstdefinestyle{bash}{
+  language=bash,
+}
+\lstdefinestyle{pseudo}{
+  language = Python,
+  mathescape = true,
+  morekeywords = {do, procedure, end, while, if, else},
+}
+\lstdefinestyle{ruby}{
+  language=Ruby,
+}
+\lstdefinestyle{java}{
+	language=Java,
+    morekeywords={typeof, new, true, false, function, return, null, catch, switch, var, if, in, while, do, else, case, break, class, export, boolean, throw, implements, extends, import, this, int, Integer, Boolean, String, Object, Float, Double, double, float, long, void},
+    ndkeywords={List, E},
+	extendedchars=true,% lets you use non-ASCII characters;
+    % for 8-bits encodings only, does not work with UTF-8
+}
+\lstdefinestyle{R}{
+	language=R,
+	extendedchars=true,% for 8-bits encodings only,
+    % does not work with UTF-8
+}
+
+%%%%%%%%%%%%%% Environments %%%%%%%%%%%%%%
+\newenvironment{abstractDE}{%
+\thispagestyle{empty}%
+\selectlanguage{ngerman}%
+\begin{center}%
+\textbf{\abstractname}
+\end{center}}{}
+
+\newenvironment{abstractEN}{%
+\thispagestyle{empty}%
+\selectlanguage{english}%
+\begin{center}%
+\textbf{\abstractname}
+\end{center}}{}

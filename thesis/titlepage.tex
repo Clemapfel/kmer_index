@@ -1,0 +1,95 @@
+\newcommand{\institute}{Institute of Computer Science}
+\newcommand{\department}{Department of Computer Science and Mathematics}
+\newcommand{\university}{Freie Universität Berlin}
+\newcommand{\researchGroup}{Databases and Information Systems}
+\newcommand{\city}{Berlin}
+\newcommand{\country}{Germany}
+
+%%%%%%%%% Begin Titlepage %%%%%%%%%%%
+\begin{titlepage}
+  \thispagestyle{empty}%
+    \begin{picture}(2,0)(0,-1.35)
+    \includegraphics[height=\logosize]{images/agdb_logo}
+  \end{picture}\hfill
+  \begin{picture}(4,0)(1.6,-1.35)
+    \includegraphics[height=\logosize]{images/fu_logo}
+  \end{picture}\vskip0pt
+  \vspace*{-1.1cm}%
+  \hskip-\dimexpr\abstand+\randI\relax%
+  \colorbox{DBbluedark}{%
+  \begin{minipage}[t]%[2\abstand][c]
+  	{\paperwidth}%
+    \vspace{2ex}
+    \hskip\dimexpr\abstand+\randI\relax%
+      \begin{minipage}{\dimexpr\paperwidth-\randA-\randI\relax}
+      \color{white}%
+      \LARGE\thetitle
+      \end{minipage}
+    \vspace{2ex}
+  \end{minipage}%
+  }\vskip-8.5pt
+  \hskip-\dimexpr\abstand+\randI\relax%
+  \colorbox{lightgray}{%
+  \begin{minipage}[t][1cm][c]{\paperwidth}
+    \hskip\dimexpr\abstand+\randI\relax%
+    \textit{A \textbf{thesis} presented for the degree of}
+    \textbf{\textit{\degree}}.
+  \end{minipage}}\vfill%\vspace{5\baselineskip}
+
+%%%%%%%%%%% datas %%%%%%%%%%%
+    \textbf{\theauthor}, \university, \country\par
+    Matriculation number: \matrikelno\par
+    \href{mailto:\email}{\email}\par
+    \vspace{0.5\baselineskip}
+    \thedate\par
+    \vfill%vspace{5\baselineskip}
+
+    % SUPERVISOR
+    \textbf{\underline{Supervisor:}}\par
+    \textbf{\supervisor}%
+      \footnote{%
+      \supervisorDepartment,
+      \supervisorAG},
+      \supervisorUniversity,
+      \supervisorCountry
+    \vspace{1.5\baselineskip}
+
+	% 1. ADVISOR
+    \textbf{\underline{Reviewers:}}\par
+    \textbf{\fstAdvisor}%
+      \footnote{\fstAdvisorsDepartment,
+      \fstAdvisorsAG},
+    \fstAdvisorsUniversity,
+      \fstAdvisorsCountry\par
+    % 2. ADVISOR
+    \textbf{\sndAdvisor}%
+      \footnote{\sndAdvisorsDepartment,
+      \sndAdvisorsAG},
+      \sndAdvisorsUniversity,
+      \fstAdvisorsCountry
+   	\par\vspace{3.5\baselineskip}
+
+    \textbf{\underline{Citation:}}\par
+    \textbf{\theauthor},
+    \textit{\thetitle}, \university,
+    \thesisKind{} Thesis, \Year\par
+    \vspace{2.5\baselineskip}
+
+    \textbf{Version:} \versionnumber
+    \vfill
+\end{titlepage}
+
+
+
+
+\chapter*{Statutory Declaration}
+\thispagestyle{empty} % no page number
+\setcounter{page}{1}
+
+I declare that I have developed and written the enclosed \thesisKind{} thesis completely by myself, and have not used sources or means without declaration in the text. Any thoughts from others or literal quotations are clearly marked.\par
+The \thesisKind{} thesis was not used in the same or in a similar version to achieve an academic grading or is being published elsewhere.\vspace{2\baselineskip}
+
+Berlin (Germany), \thedate\vspace{2.5\baselineskip}
+
+\rule{15.5em}{1pt}\newline
+\theauthor
