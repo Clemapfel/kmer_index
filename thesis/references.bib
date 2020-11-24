@@ -1,0 +1,94 @@
+@article{megahit,
+    author = {Li, Dinghua and Liu, Chi-Man and Luo, Ruibang and Sadakane, Kunihiko and Lam, Tak-Wah},
+    title = "{MEGAHIT: an ultra-fast single-node solution for large and complex metagenomics assembly via succinct de Bruijn graph}",
+    journal = {Bioinformatics},
+    volume = {31},
+    number = {10},
+    pages = {1674-1676},
+    year = {2015},
+    month = {01},
+    abstract = "{Summary: MEGAHIT is a NGS de novo assembler for assembling large and complex metagenomics data in a time- and cost-efficient manner. It finished assembling a soil metagenomics dataset with 252 Gbps in 44.1 and 99.6 h on a single computing node with and without a graphics processing unit, respectively. MEGAHIT assembles the data as a whole, i.e. no pre-processing like partitioning and normalization was needed. When compared with previous methods on assembling the soil data, MEGAHIT generated a three-time larger assembly, with longer contig N50 and average contig length; furthermore, 55.8\\% of the reads were aligned to the assembly, giving a fourfold improvement.Availability and implementation: The source code of MEGAHIT is freely available at https://github.com/voutcn/megahit under GPLv3 license.Contact:rb@l3-bioinfo.com or twlam@cs.hku.hkSupplementary information: Supplementary data are available at Bioinformatics online.}",
+    issn = {1367-4803},
+    doi = {10.1093/bioinformatics/btv033},
+    url = {https://doi.org/10.1093/bioinformatics/btv033},
+    eprint = {https://academic.oup.com/bioinformatics/article-pdf/31/10/1674/17085710/btv033.pdf},
+}
+
+@article{SOAPdenovo,
+    author = {Xie, Yinlong and Wu, Gengxiong and Tang, Jingbo and Luo, Ruibang and Patterson, Jordan and Liu, Shanlin and Huang, Weihua and He, Guangzhu and Gu, Shengchang and Li, Shengkang and Zhou, Xin and Lam, Tak-Wah and Li, Yingrui and Xu, Xun and Wong, Gane Ka-Shu and Wang, Jun},
+    title = "{SOAPdenovo-Trans: de novo transcriptome assembly with short RNA-Seq reads}",
+    journal = {Bioinformatics},
+    volume = {30},
+    number = {12},
+    pages = {1660-1666},
+    year = {2014},
+    month = {02},
+    abstract = "{Motivation: Transcriptome sequencing has long been the favored method for quickly and inexpensively obtaining a large number of gene sequences from an organism with no reference genome. Owing to the rapid increase in throughputs and decrease in costs of next- generation sequencing, RNA-Seq in particular has become the method of choice. However, the very short reads (e.g. 2 × 90 bp paired ends) from next generation sequencing makes de novo assembly to recover complete or full-length transcript sequences an algorithmic challenge.Results: Here, we present SOAPdenovo-Trans, a de novo transcriptome assembler designed specifically for RNA-Seq. We evaluated its performance on transcriptome datasets from rice and mouse. Using as our benchmarks the known transcripts from these well-annotated genomes (sequenced a decade ago), we assessed how SOAPdenovo-Trans and two other popular transcriptome assemblers handled such practical issues as alternative splicing and variable expression levels. Our conclusion is that SOAPdenovo-Trans provides higher contiguity, lower redundancy and faster execution.Availability and implementation: Source code and user manual are available at http://sourceforge.net/projects/soapdenovotrans/.Contact:xieyl@genomics.cn or bgi-soap@googlegroups.comSupplementary information:Supplementary data are available at Bioinformatics online.}",
+    issn = {1367-4803},
+    doi = {10.1093/bioinformatics/btu077},
+    url = {https://doi.org/10.1093/bioinformatics/btu077},
+    eprint = {https://academic.oup.com/bioinformatics/article-pdf/30/12/1660/1081308/btu077.pdf},
+}
+
+@INPROCEEDINGS{phenotype:classification:with:kmer:spectrum,
+  author={A. {Kishk} and A. {Elzizy} and D. {Galal} and E. A. {Razek} and E. {Fawzy} and G. {Ahmed} and M. {Gawish} and S. {Hamad} and M. {El-Hadidi}},
+  booktitle={2018 9th Cairo International Biomedical Engineering Conference (CIBEC)},
+  title={A Hybrid Machine Learning Approach for the Phenotypic Classification of Metagenomic Colon Cancer Reads Based on Kmer Frequency and Biomarker Profiling},
+  year={2018},
+  pages={118-121},
+  doi={10.1109/CIBEC.2018.8641805}
+}
+
+@article{kraken:sequence:classification,
+  doi = {10.1186/gb-2014-15-3-r46},
+  url = {https://doi.org/10.1186/gb-2014-15-3-r46},
+  year = {2014},
+  publisher = {Springer Science and Business Media {LLC}},
+  volume = {15},
+  number = {3},
+  pages = {R46},
+  author = {Derrick E Wood and Steven L Salzberg},
+  title = "{Kraken: ultrafast metagenomic sequence classification using exact alignments}",
+  journal = {Genome Biology}
+}
+
+@article{kmer:spectrum:dissimilarity,
+  doi = {10.1186/s12859-015-0875-7},
+  url = {https://doi.org/10.1186/s12859-015-0875-7},
+  year = {2016},
+  month = jan,
+  publisher = {Springer Science and Business Media {LLC}},
+  volume = {17},
+  number = {1},
+  author = {Veronika B. Dubinkina and Dmitry S. Ischenko and Vladimir I. Ulyantsev and Alexander V. Tyakht and Dmitry G. Alexeev},
+  title = "{Assessment of k-mer spectrum applicability for metagenomic dissimilarity analysis}",
+  journal = {{BMC} Bioinformatics}
+}
+
+@article{musket:kmer:spectrum:error:correction,
+    author = {Liu, Yongchao and Schröder, Jan and Schmidt, Bertil},
+    title = "{Musket: a multistage k-mer spectrum-based error corrector for Illumina sequence data}",
+    journal = {Bioinformatics},
+    volume = {29},
+    number = {3},
+    pages = {308-315},
+    year = {2012},
+    month = {11},
+    abstract = "{Motivation: The imperfect sequence data produced by next-generation sequencing technologies have motivated the development of a number of short-read error correctors in recent years. The majority of methods focus on the correction of substitution errors, which are the dominant error source in data produced by Illumina sequencing technology. Existing tools either score high in terms of recall or precision but not consistently high in terms of both measures.Results: In this article, we present Musket, an efficient multistage k-mer-based corrector for Illumina short-read data. We use the k-mer spectrum approach and introduce three correction techniques in a multistage workflow: two-sided conservative correction, one-sided aggressive correction and voting-based refinement. Our performance evaluation results, in terms of correction quality and de novo genome assembly measures, reveal that Musket is consistently one of the top performing correctors. In addition, Musket is multi-threaded using a master–slave model and demonstrates superior parallel scalability compared with all other evaluated correctors as well as a highly competitive overall execution time.Availability: Musket is available at http://musket.sourceforge.net.Contact:liuy@uni-mainz.de or bertil.schmidt@uni-mainz.deSupplementary information:Supplementary data are available at Bioinformatics online.}",
+    issn = {1367-4803},
+    doi = {10.1093/bioinformatics/bts690},
+    url = {https://doi.org/10.1093/bioinformatics/bts690},
+    eprint = {https://academic.oup.com/bioinformatics/article-pdf/29/3/308/17103359/bts690.pdf},
+}
+
+@MastersThesis{fm:index:master:thesis,
+    author     =     {C.M. Pockrandt},
+    title     =     {{Generic implementation of a bidirectional FM-index in SeqAn and
+applications}},
+    school     =     {Freie Universität Berlin},
+    address     =     {Germany},
+    year     =     {2015},
+}
+
+
+

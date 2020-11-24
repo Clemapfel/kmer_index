@@ -10,11 +10,6 @@
 \usepackage{textcomp}
 \usepackage{amsthm}
 
-
-% includes
-%% LyX 2.3.4.2 created this file.  For more info, see http://www.lyx.org/.
-%% Do not edit unless you really know what you are doing.
-
 \makeatletter
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
@@ -106,7 +101,8 @@ tabsize=2}
 
 \include{titlepage}
 
-\begin{abstract}
+% Abstract in english
+\begin{abstractEN}
 As demand for large-scale genomic sequence matching rises, so does
 the ability to efficiently get the positions or number of occurrences
 of a query of length k called a kmer. A kmer-index optimized for this
@@ -123,11 +119,30 @@ performs up to 60\% faster and is thus recommended for use. For arbitrarily
 long queries the kmer-index was shown to exhibit speedup or slowdown
 of$\pm5$\% depending on text length and is therefore in it's current
 iteration applicable if not necessarily better suited for this purpose.
+\end{abstractEN}
+\vfill
 
-\thispagestyle{empty}
+% abstract in german
+\begin{abstractDE}
+As demand for large-scale genomic sequence matching rises, so does
+the ability to efficiently get the positions or number of occurrences
+of a query of length k called a kmer. A kmer-index optimized for this
+purposes was implemented and it's performance evaluated. The implementation
+is capable of searching kmers of arbitrary length specified at runtime,
+utilizes parallelization for faster construction and it's internal
+structure can be further customized at compile time to achieve greater
+performance for certain query sizes. The nature of the internal structure
+and search functions are explained and their performant nature demonstrated
+through benchmarks. Results indicate that for the purpose of finding
+positions or number of occurrences for queries of the commonly used
+length$k\in\{3,4,...,30\}$ compared to the fm-index the kmer-index
+performs up to 60\% faster and is thus recommended for use. For arbitrarily
+long queries the kmer-index was shown to exhibit speedup or slowdown
+of$\pm5$\% depending on text length and is therefore in it's current
+iteration applicable if not necessarily better suited for this purpose.
+\end{abstractDE}
+\vfill
 
-\pagebreak{}
-\end{abstract}
 \thispagestyle{empty}
 
 \tableofcontents{}
@@ -141,15 +156,15 @@ iteration applicable if not necessarily better suited for this purpose.
 A k-mer (also known as``q-gram'', henceforth written as``kmer'')
 is any genomic sequence of length$k$, usually in the context of a
 sub-sequence of a longer genome. Analysis of kmers is used in a wide
-variety of contexts such as in de novo genome assembly\cite{kmer: megahit,kmer: soapdenovo assembly},
-taxonomic profiling\cite{kmer: taxonomical profiling} and sequence
-classification\cite{kmer: kraken LCA}. Furthermore kmer spectra (a
+variety of contexts such as in de novo genome assembly\cite{SOAPdenovo},
+taxonomic profiling\cite{phenotype:classification:with:kmer:spectrum} and sequence
+classification\cite{kraken:sequence:classification}. Furthermore kmer spectra (a
 graph of the multiplicity of each kmer in the set of pairwise different
-kmer in the reference) have been used to assess genome similarity\cite{kmer: spectrum dissimilarity}
-and to correct errors in sequence data\cite{kmer: spectrum error correction}.\href{https://github.com/seqan/seqan3}{Seqan3},
+kmer in the reference) have been used to assess genome similarity\cite{kmer:spectrum:dissimilarity}
+and to correct errors in sequence data\cite{musket:kmer:spectrum:error:correction}.\href{https://github.com/seqan/seqan3}{Seqan3},
 a newly released version of the C++ API for sequence analysis has
 yet to implement a purpose-build index for kmer searching. This paper
-aims to access the viability of substituting seqan3s fm-index\cite{seqan3 fm-index master}
+aims to access the viability of substituting seqan3s fm-index\cite{fm:index:master:thesis}
 with the presented kmer-index implementation not only for the purpose
 of searching small kmers but for exact string matching in general
 by comparing the indices performance to each other.
@@ -911,42 +926,9 @@ multi kmer-index with optimal coverage with no additional runtime
 overhead compared to a single-k index.
 
 \pagebreak{}
-\begin{thebibliography}{1}
-\bibitem{kmer: megahit}Dinghua Li, Chi-Man Liu, Ruibang Luo, Kunihiko
-Sadakane, Tak-Wah Lam, MEGAHIT: an ultra-fast single-node solution
-for large and complex metagenomics assembly via succinct de Bruijn
-graph, Bioinformatics, Volume 31, Issue 10, 15 May 2015, Pages 1674--1676,\href{https://academic.oup.com/bioinformatics/article/31/10/1674/177884}{https://academic.oup.com/bioinformatics/article/31/10/1674/177884}
 
-\bibitem{kmer: soapdenovo assembly} Yinlong Xie, Gengxiong Wu, Jingbo
-Tang, Ruibang Luo, Jordan Patterson, Shanlin Liu, Weihua Huang, Guangzhu
-He, Shengchang Gu, Shengkang Li, Xin Zhou, Tak-Wah Lam, Yingrui Li,
-Xun Xu, Gane Ka-Shu Wong, Jun Wang, SOAPdenovo-Trans: de novo transcriptome
-assembly with short RNA-Seq reads, Bioinformatics, Volume 30, Issue
-12, 15 June 2014, Pages 1660--1666,\href{https://doi.org/10.1093/bioinformatics/btu077}{https://doi.org/10.1093/bioinformatics/btu077}
-
-\bibitem{kmer: taxonomical profiling}A. Kishk et al., A Hybrid Machine
-Learning Approach for the Phenotypic Classification of Metagenomic
-Colon Cancer Reads Based on Kmer Frequency and Biomarker Profiling,
-2018 9th Cairo International Biomedical Engineering Conference (CIBEC),
-Cairo, Egypt, 2018, Pages 118-121,\href{https://doi.org/10.1109/CIBEC.2018.8641805}{https://doi.org/10.1109/CIBEC.2018.8641805}
-
-\bibitem{kmer: kraken LCA}Wood, D.E., Salzberg, S.L. Kraken: ultrafast
-metagenomic sequence classification using exact alignments. Genome
-Biol 15, R46 (2014),\href{https://doi.org/10.1186/gb-2014-15-3-r46}{https://doi.org/10.1186/gb-2014-15-3-r46}
-
-\bibitem{kmer: spectrum dissimilarity}Dubinkina, V.B., Ischenko,
-D.S., Ulyantsev, V.I. et al. Assessment of k-mer spectrum applicability
-for metagenomic dissimilarity analysis. BMC Bioinformatics 17, 38
-(2016),\href{https://doi.org/10.1186/s12859-015-0875-7}{https://doi.org/10.1186/s12859-015-0875-7}
-
-\bibitem{kmer: spectrum error correction}Yongchao Liu, Jan Schr�der,
-Bertil Schmidt, Musket: a multistage k-mer spectrum-based error corrector
-for Illumina sequence data, Bioinformatics, Volume 29, Issue 3, 1
-February 2013, Pages 308--315,\href{https://doi.org/10.1093/bioinformatics/bts690}{https://doi.org/10.1093/bioinformatics/bts690}
-
-\bibitem{seqan3 fm-index master}Pockrandt, C. M. Generic implementation
-of a bidirectional FM-index in SeqAn and applications. Diss. Master\textquoteright s
-thesis, Freie Universit�t Berlin, 2015.
-\end{thebibliography}
+% Bibliography
+\bibliography{references}
+\bibliographystyle{ieeetr}
 
 \end{document}

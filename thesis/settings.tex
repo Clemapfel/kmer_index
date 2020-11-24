@@ -25,7 +25,6 @@
 \usepackage{fontspec}
 \usepackage{beramono}
 
-
 \usepackage{microtype}
 \usepackage[english]{babel}
 \usepackage{lmodern}
@@ -198,7 +197,6 @@
 \aboverulesep=0ex
 \belowrulesep=0ex
 
-
 %%%%%%%%%%%%%% Chapter %%%%%%%%%%%%
 % reduces the space before chapter to zero
 \renewcommand*{\chapterheadstartvskip}{\vspace*{\dimexpr5pt-\topskip\relax}}
@@ -306,17 +304,17 @@
     % does not work with UTF-8
 }
 
-%%%%%%%%%%%%%% Environments %%%%%%%%%%%%%%
-\newenvironment{abstractDE}{%
-\thispagestyle{empty}%
-\selectlanguage{ngerman}%
-\begin{center}%
-\textbf{\abstractname}
-\end{center}}{}
-
+% environments: abstract
 \newenvironment{abstractEN}{%
 \thispagestyle{empty}%
 \selectlanguage{english}%
 \begin{center}%
 \textbf{\abstractname}
+\end{center}}{}
+
+\newenvironment{abstractDE}{%
+\thispagestyle{empty}%
+%\selectlanguage{ngerman}%
+\begin{center}%
+\textbf{Abstrakt}
 \end{center}}{}
