@@ -66,7 +66,7 @@ tabsize=2}
 \begin{document}
 
 % thesis details
-\title{Implementation and Performance Evaluation of a k-mer Index intended for Exact String Matching}
+\title{Implementation and Performance Evaluation of a kmer Index intended for Exact String Matching}
 \newcommand{\Year}{2020}
 \date{TODO\textsuperscript{st} December \Year2020}
 \newcommand{\thesisKind}{Bachelor}
@@ -103,9 +103,9 @@ tabsize=2}
 
 % Abstract in english
 \begin{abstractEN}
-As demand for large-scale genomic sequence matching rises, so does
-the ability to efficiently get the positions or number of occurrences
-of a query of length k called a kmer. A kmer-index optimized for this
+As demand for large-scale genomic sequence matching rises, as does
+demand for the ability to efficiently compute the positions or number of occurrences
+of a nucleotide sequence of length k called a kmer. A kmer-index optimized for this
 purposes was implemented and it's performance evaluated. The implementation
 is capable of searching kmers of arbitrary length specified at runtime,
 utilizes parallelization for faster construction and it's internal
@@ -124,7 +124,7 @@ iteration applicable if not necessarily better suited for this purpose.
 
 % abstract in german
 \begin{abstractDE}
-TODO
+TODO: german abstract
 \end{abstractDE}
 \vfill
 
@@ -132,24 +132,7 @@ TODO
 \tableofcontents{}
 \setcounter{page}{1}
 
-%%% MOTIVATION %%%
-\chapter{Motivation}
-
-A k-mer (also known as``q-gram'', henceforth written as``kmer'')
-is any genomic sequence of length$k$, usually in the context of a
-sub-sequence of a longer genome. Analysis of kmers is used in a wide
-variety of contexts such as in de novo genome assembly\cite{SOAPdenovo},
-taxonomic profiling\cite{phenotype:classification:with:kmer:spectrum} and sequence
-classification\cite{kraken:sequence:classification}. Furthermore kmer spectra (a
-graph of the multiplicity of each kmer in the set of pairwise different
-kmer in the reference) have been used to assess genome similarity\cite{kmer:spectrum:dissimilarity}
-and to correct errors in sequence data\cite{musket:kmer:spectrum:error:correction}.\href{https://github.com/seqan/seqan3}{Seqan3},
-a newly released version of the C++ API for sequence analysis has
-yet to implement a purpose-build index for kmer searching. This paper
-aims to access the viability of substituting seqan3s fm-index\cite{fm:index:master:thesis}
-with the presented kmer-index implementation not only for the purpose
-of searching small kmers but for exact string matching in general
-by comparing the indices performance to each other.
+\include{content/inroduction}
 
 \chapter{Construction}
 

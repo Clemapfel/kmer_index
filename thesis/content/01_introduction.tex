@@ -1,0 +1,18 @@
+%%% MOTIVATION %%%
+\chapter{Motivation}
+
+A k-mer (also known as``q-gram'', henceforth written as``kmer'')
+is any genomic sequence of length$k$, usually in the context of a
+sub-sequence of a longer genome. Analysis of kmers is used in a wide
+variety of contexts such as in de novo genome assembly\cite{SOAPdenovo},
+taxonomic profiling\cite{phenotype:classification:with:kmer:spectrum} and sequence
+classification\cite{kraken:sequence:classification}. Furthermore kmer spectra (a
+graph of the multiplicity of each kmer in the set of pairwise different
+kmer in the reference) have been used to assess genome similarity\cite{kmer:spectrum:dissimilarity}
+and to correct errors in sequence data\cite{musket:kmer:spectrum:error:correction}.\href{https://github.com/seqan/seqan3}{Seqan3},
+a newly released version of the C++ API for sequence analysis has
+yet to implement a purpose-build index for kmer searching. This paper
+aims to access the viability of substituting seqan3s fm-index\cite{fm:index:master:thesis}
+with the presented kmer-index implementation not only for the purpose
+of searching small kmers but for exact string matching in general
+by comparing the indices performance to each other.
