@@ -1,0 +1,42 @@
+\chapter{Implementation}
+\section{Construction}
+The kmer-index utilizes an unordered map as it's central data structure.
+For each kmer said map notes the position of all occurrences of a given kmer in the text.
+To save on memory the kmers are converted to an unsigned integer via
+the following hash function:
+\begin{verse}
+let $kmer =(q_{1},\,q_{2},\,...,q_{k})$ where $q\in A$
+
+$hash(kmer) = \sum_{i=0}^{k}\:r(q_{i})\:\sigma^{k-i-1}$
+\begin{verse}
+where $\sigma=\#A,r(q_{i})\in\{0,1,...,\sigma-1\}$ the rank of $q_{i}$
+\end{verse}
+\end{verse}
+This hash guarantees no hash collisions and is furthermore
+\href{http://docs.seqan.de/seqan/3-master-user/group__views.html\#ga6e598d6a021868f704d39df73252974f}{also used} in the Seqan3
+library with which the kmer-index is intended to interface.
+
+\begin{algorithm}[H]
+\begin{verse}
+\textbf{Input}: text
+
+\textbf{let} $n\leftarrow$ text.size()
+
+\textbf{for} $i$ \textbf{in} $\{1,2,...,n\}$ \textbf{do}
+\begin{verse}
+\textbf{let} $h\leftarrow$ hash(text.substring($i,\:i+k$))
+
+$\text{index}[h]\leftarrow(\text{index}[h],\:i)$
+\end{verse}
+
+\textbf{end}
+
+\textbf{return}
+\end{verse}
+\caption{Construction of the kmer index}
+\end{algorithm}
+
+Constructing the kmer index is fairly straightforward: Keeping track of the current position we iterate through the text.
+As each position $i<n-k$ represents the position of a kmer $n-k$ hashes will be generated and inserted into the index' map.
+Construction therefore has linear amortized complexity. This is acceptably quick because genomic data is usually static and as such
+the construction will usually only be done once after which the index is serialized so it can be loaded directly at a later point.

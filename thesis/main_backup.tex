@@ -138,6 +138,51 @@ TODO: german abstract
 % 02: Implementation
 \include{content/02_implementation}
 
+\chapter{Construction}
+
+\begin{algorithm}[H]
+\begin{verse}
+\textbf{Input}: text
+
+\textbf{let}$n$$\leftarrow$ text.size()
+
+\textbf{for}$i$\textbf{in}$\{1,2,...,n\}$\textbf{do}
+\begin{verse}
+\textbf{let}$h$$\leftarrow$ hash(text.substring($i,\:i+k$))
+
+index{[}$h${]}$\leftarrow$$(\text{index}[h],\:i)$
+\end{verse}
+\textbf{end}
+
+\textbf{return}
+\end{verse}
+\caption{Construction of the kmer index.}
+\end{algorithm}
+
+The kmer-index utilizes an unordered map as it's central data structure
+which for each kmer saves the position of all occurrences in the text.
+To save on memory the kmers are converted to an unsigned integer via
+the following hash function:
+\begin{verse}
+let$kmer$ =$(q_{1},\,q_{2},\,...,q_{k})$ where$q\in A$
+
+$hash(kmer)$ =$\sum_{i=0}^{k}\:r(q_{i})\:\sigma^{k-i-1}$
+\begin{verse}
+where$\sigma=\#A$ ,$r(q_{i})\in\{0,1,...,\sigma-1\}$ the rank of$q_{i}$
+\end{verse}
+\end{verse}
+This hash guarantees no hash collisions and was furthermore chosen
+because the kmer-index is to be integrated and compared to the Seqan3
+library which uses the same\href{http://docs.seqan.de/seqan/3-master-user/group__views.html\#ga6e598d6a021868f704d39df73252974f}{hash function}.
+Constructing the kmer index is fairly straight-forward: We can simply
+iterate through the text while keeping track of the current position
+and adding it to the end of the appropriate entry for the current
+kmer. Given a text of length$n$,$n-k$ hashes will be generated and
+inserted into the index. Construction therefore has linear amortized
+complexity which is acceptable because for genomic data index construction
+will usually be done only once after which the index is serialized
+and can then be loaded directly if needed at a later point.
+
 \chapter{Searching}
 
 To achieve greater flexibility the kmer-index implementation is capable
