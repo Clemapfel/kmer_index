@@ -66,9 +66,9 @@ tabsize=2}
 \begin{document}
 
 % thesis details
-\title{"Implementation and Performance Evaluation of a k-mer Index intended for Exact String Matching"}
+\title{Implementation and Performance Evaluation of a k-mer Index intended for Exact String Matching}
 \newcommand{\Year}{2020}
-\date{1\textsuperscript{st} December \Year}
+\date{TODO\textsuperscript{st} December \Year2020}
 \newcommand{\thesisKind}{Bachelor}
 \newcommand{\degree}{Bachelor~of~Science}
 \newcommand{\versionnumber}{1.0}
@@ -79,24 +79,24 @@ tabsize=2}
 \newcommand{\email}{clemens.cords@fu-berlin.de}
 
 % supervisor details
-\newcommand{\supervisor}{TODO~TODO}
-\newcommand{\supervisorUniversity}{Freie Universität Berlin}
+\newcommand{\supervisor}{Prof. Dr. Knut Reinert}
+\newcommand{\supervisorUniversity}{Freie Universit\"at Berlin}
 \newcommand{\supervisorDepartment}{Dept. of Computer Science and Mathematics}
-\newcommand{\supervisorAG}{TODO}
+\newcommand{\supervisorAG}{Algorithmische Bioinformatik}
 \newcommand{\supervisorCountry}{Germany}
 
 % Advisor 1 details
-\newcommand{\fstAdvisor}{TODO~TODO}
-\newcommand{\fstAdvisorsUniversity}{Freie Universität Berlin}
+\newcommand{\fstAdvisor}{Enrico Seiler}
+\newcommand{\fstAdvisorsUniversity}{Freie Universit\"at Berlin}
 \newcommand{\fstAdvisorsDepartment}{Dept. of Computer Science and Mathematics}
-\newcommand{\fstAdvisorsAG}{TODO}
+\newcommand{\fstAdvisorsAG}{Algorithmische Bioinformatik}
 \newcommand{\fstAdvisorsCountry}{Germany}
 
 % Advisor 2 details
-\newcommand{\sndAdvisor}{TODO~TODO}
-\newcommand{\sndAdvisorsUniversity}{Freie Universität Berlin} % or company
-\newcommand{\sndAdvisorsDepartment}{Dept. of Computer Science and Mathematics}
-\newcommand{\sndAdvisorsAG}{TODO}
+\newcommand{\sndAdvisor}{Prof. Dr. Knut Reinert}
+\newcommand{\sndAdvisorsUniversity}{Freie Universit\"at Berlin} % or company
+%\newcommand{\sndAdvisorsDepartment}{Dept. of Computer Science and Mathematics}
+%\newcommand{\sndAdvisorsAG}{Algorithmische Bioinformatik}
 \newcommand{\sndAdvisorsCountry}{Germany}
 
 \include{titlepage}
@@ -124,34 +124,16 @@ iteration applicable if not necessarily better suited for this purpose.
 
 % abstract in german
 \begin{abstractDE}
-As demand for large-scale genomic sequence matching rises, so does
-the ability to efficiently get the positions or number of occurrences
-of a query of length k called a kmer. A kmer-index optimized for this
-purposes was implemented and it's performance evaluated. The implementation
-is capable of searching kmers of arbitrary length specified at runtime,
-utilizes parallelization for faster construction and it's internal
-structure can be further customized at compile time to achieve greater
-performance for certain query sizes. The nature of the internal structure
-and search functions are explained and their performant nature demonstrated
-through benchmarks. Results indicate that for the purpose of finding
-positions or number of occurrences for queries of the commonly used
-length$k\in\{3,4,...,30\}$ compared to the fm-index the kmer-index
-performs up to 60\% faster and is thus recommended for use. For arbitrarily
-long queries the kmer-index was shown to exhibit speedup or slowdown
-of$\pm5$\% depending on text length and is therefore in it's current
-iteration applicable if not necessarily better suited for this purpose.
+TODO
 \end{abstractDE}
 \vfill
 
-\thispagestyle{empty}
-
+%%% TOC %%%
 \tableofcontents{}
-
-\pagebreak{}
-
 \setcounter{page}{1}
 
-\section{Motivation}
+%%% MOTIVATION %%%
+\chapter{Motivation}
 
 A k-mer (also known as``q-gram'', henceforth written as``kmer'')
 is any genomic sequence of length$k$, usually in the context of a
@@ -169,7 +151,7 @@ with the presented kmer-index implementation not only for the purpose
 of searching small kmers but for exact string matching in general
 by comparing the indices performance to each other.
 
-\section{Construction}
+\chapter{Construction}
 
 \begin{algorithm}[H]
 \begin{verse}
@@ -214,7 +196,7 @@ complexity which is acceptable because for genomic data index construction
 will usually be done only once after which the index is serialized
 and can then be loaded directly if needed at a later point.
 
-\section{Searching}
+\chapter{Searching}
 
 To achieve greater flexibility the kmer-index implementation is capable
 of searching queries of arbitrary length regardless of the$k$ that
@@ -223,7 +205,7 @@ time, at runtime any query can be searched; however the search functions
 performance will vary drastically depended on the queries length in
 relation to$k$.
 
-\subsection{\label{section 3.1}Query Size m = k}
+\section{\label{section 3.1}Query Size m = k}
 
 The best performing cases are queries of length exactly$k$. For these
 a simple lookup in the indices unordered map will return all results
@@ -264,7 +246,7 @@ dependent on the absolute number of pairwise different hashes in the
 text
 \end{lem}
 
-\subsection{\label{section m < k}Query Size m < k}
+\section{\label{section m < k}Query Size m < k}
 
 To be able to search queries of arbitrary length without modifying
 the indices internal structure for queries of length$m<k$ we need
@@ -379,7 +361,7 @@ users to be able to not encounter the exception during proper usage
 of the kmer-index and notably will mean for$k=10$ queries of all
 length be accepted.}
 
-\subsection{\label{section 3.3}Query Size m > k}
+\section{\label{section 3.3}Query Size m > k}
 
 To search queries of length$m>k$ the query is split into parts of
 length$k$ which will then be searched individually. If$m\mod k\neq0$
@@ -427,9 +409,9 @@ should be preferred as to find the positions of the rest we will need
 to employ\lstinline{search_subk} which can result in a significant
 runtime increase, especially if the rest is short.\pagebreak{}
 
-\section{Multi kmer-Index}
+\chapter{Multi kmer-Index}
 
-\subsection{\label{subsec: multi k overview}Overview}
+\section{\label{subsec: multi k overview}Overview}
 
 To further investigate the behavior implied by Lemmas 1 to 3 a benchmark
 was conducted. Queries of length$\{6,7,...,50\}$ were searched by
@@ -488,7 +470,7 @@ significantly. To investigate the multi-kmers index behavior for queries
 that cannot be searched as a single kmer we first need to detail how
 longer queries are handled outside of a single-k context.
 
-\subsection{\label{section 4.2}How to choose the appropriate k}
+\section{\label{section 4.2}How to choose the appropriate k}
 
 The success of the multi kmer-index relies heavily on both being provided
 a well-chosen set$ks$ of$k_{i}$ and furthermore using the appropriate$k_{i}$
@@ -554,7 +536,7 @@ for occurences of queries of length$m\in[3,31]$ the query length
 should be directly supplied to the set of$k_{i}$ as a length smaller
 than$min(ks)$ cannot be represented as a sum of$k_{i}$s.
 
-\subsection{Comparison with fm-Index}
+\section{Comparison with fm-Index}
 
 To put the absolute values of the above figures into perspective,
 a comparative analysis of the fm-index\footnote{Note that for exact string matching there's is no relevant performance
@@ -573,7 +555,7 @@ then$y$ has a runtime fo 0.7 the runtime of$x$,$x$ is 30\% slower
 than$y$.}
 \end{verse}
 
-\subsubsection{For Query Lengths$m\in[3,30]$}
+\subsection{For Query Lengths$m\in[3,30]$}
 
 When searching for smaller queries the approriate$k$ should be directly
 supplied. The relative performance for a multi kmer-index with all$k\in$
@@ -626,7 +608,7 @@ $10{{}^9}$ & < 7\% & 48.9\% & < -16.5\% & k < 11\tabularnewline
 \end{table}
 
 
-\subsubsection{For arbitrary Query Lengths}
+\subsection{For arbitrary Query Lengths}
 
 To investigate the multi kmer-indices ability to be applied in general-purpose
 exact string matching scenarios a large-scale benchmark was conducted.
@@ -664,13 +646,13 @@ an additional speedup of 5\% for longer queries, the kmer index may
 perform better than the fm-index for all relevant text sizes such
 as entire genomes.
 
-\section{Outlook}
+\chapter{Outlook}
 
 To further improve performance and make the implementation generally
 more consistentlsapplicable the following additional features are
 proposed:
 
-\subsection{>64 bit Hash}
+\section{>64 bit Hash}
 
 As mentioned above the datatype of the hashes is currently\lstinline{uint64_t}.
 64 bit integers were chosen because the standard C++ library does
@@ -696,7 +678,7 @@ maximum size will also increase and as observed from Table\ref{table kmer faster
 for larger texts bigger k do not neccessarily result in a significane
 speedup.
 
-\subsection{Multi kmer-index Compression}
+\section{Multi kmer-index Compression}
 
 As has been shown in section\ref{subsec: multi k overview} using
 multiple k for the same index vastly increases the search performance
@@ -721,7 +703,7 @@ kmer-index could be proposed that simply holds information for all
 possible ks regardless of user configuration and thus achieves optimal
 performance in all cases.
 
-\subsection{Hybrid Approach}
+\section{Hybrid Approach}
 
 As detailed above the performance peaks of the kmer-index are fairly
 consistently predictable. A two-pronged approach is proposed in which
@@ -745,7 +727,7 @@ be dependent on the alphabet used) which when exceeded might proof
 use of the hybrid index to be more trouble than it is worth given
 the need for increased memory capacity.
 
-\section{Conclusion}
+\chapter{Conclusion}
 
 The current kmer-index implementation is stable (c.f. Section\ref{Addendum: Correctness}
 below), reasonably well optimized and the indices performance is superior
@@ -765,9 +747,9 @@ text sizes.
 
 \newpage{}
 
-\section{Addendum}
+\chapter{Addendum}
 
-\subsection{\label{Addendum: Correctness}Assuring Correctness}
+\section{\label{Addendum: Correctness}Assuring Correctness}
 
 To assure that the kmer index returns the correct positions a\href{https://github.com/google/googletest}{test function}
 was written that repeatedly compares results of the kmer-index and
@@ -821,7 +803,7 @@ presented in this paper correctness was assured with$n>10{{}^6}$
 iterations using text sizes$m$ as large as the machines memory allowed
 for.
 
-\subsection{Performance Optimization}
+\section{Performance Optimization}
 
 Implementation of the kmer-index was guided at every step by benchmarking
 newly implemented components and comparing their performance against
@@ -829,7 +811,7 @@ other possible implementations. In this section the most relevant
 of these decisions are explained. Note that C++20 was used for all
 performance relevant code.
 
-\subsubsection{Choosing the fastest Pow Implementation}
+\subsection{Choosing the fastest Pow Implementation}
 
 By the nature of the hash, exponentiation (henceforth referred to
 as``pow'' in reference to the commonly used\lstinline{std::pow})
@@ -865,7 +847,7 @@ Results indicate that the implementation utilizing the fall-through
 switch is overall the fastest and was thus used for the index whenever
 possible.
 
-\subsubsection{Choosing the fastest Map}
+\subsection{Choosing the fastest Map}
 
 The unordered map is the data structure at the center of the kmer-index
 and as such assuring fast access time even for very large map sizes

@@ -1,0 +1,32 @@
+Inhaltlich ist es sehr gut, aber an der Form und Presentation kann noch etwas gefeilt werden:
+
+
+
+    Die ersten 3 Seiten haben eine spezielle Form, das steht irgendwo beim Pruefungsbuero (z.B. fehlt die Eigenstaendigkeitserklaerung)
+    Man hat meist Introduction und dann Motivation
+    Introduction:
+        Noch viel zu kurz; aber es wird allles wichtige erwaehnt
+        Kurz erklaeren was Assembly, Profiling, Classification ist (Stichpunkt: Metagenomics)
+        Der SeqAn Absatz scheint sehr aus heiterem Himmel, das muss etwas motiviert werden
+        Am Ende auch kurz umreissen, wie die Arbeit aufgebaut ist und was einem erwartet
+    Gliederung mehr in diese Richtung:
+        Introduction and Motivation (evtl. auch getrennt?)
+        Methods/Implementation mit subsections zu kmer Index, multi kmer Index, etc.
+        Results
+        Discussion
+        Conclusion
+    Generell: Methods und Results immer trennen; Results und Discussion passen manchmal auch ganz gut in einem chapter zusammen
+    Figures:
+        Allgemein: Groesser, vor allem auch die Achsenbeschriftungen. Man muss es auch ausgedruckt lesen koennen
+        Statt nanosekunden einfach mikrosekunden verwenden, wenn die Abschnitte eh schon Multiple von 10,000 sind
+        Moeglichst keine scientific notation wo vermeidbar. 1e6 -> 1,000,000
+        Bei Figure 2 die y-Achse vllt logarithmisch skalieren, da einige bars nach oben raus gehen
+        Figure 4 ist viel zu klein und die x-Achse ist nicht beschriftet. Man kann den Plot auch einfach auf eine landscape Seite packen
+    Benchmarks:
+        Generell sind kurze queries eher sehr speziell, da z.B. Sequencer einem zumindest 100er geben, d.h. man kann das noch etwas in praktischen Bezug setzen und die benchmarks fuer arbitrarily large queries etwas mehr betonen (Die benchmarks sind trotzdem gut, da sie das Verhalten des Indices zeigen!)
+        Das benchmarken der maps kann man eventuell aus dem Appendix nach vorne holen, ist eigentlich ziemlich interessant; kommt drauf an, wie man es einbaut.
+    Typos:
+        Jemand sollte korrekturlesen
+        it’s vs. its
+        FM-Index wenn du von der Datenstruktur an sich redest, fm_index wenn du von der SeqAn3 Klasse redest (evtl da auch einfach seqan3::fm_index)
+

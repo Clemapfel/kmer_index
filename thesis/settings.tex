@@ -6,7 +6,7 @@
             parskip=half-,
             %DIV=calc,
             titlepage,
-            abstracton, % prints Abstractname
+            abstract=true, % prints Abstractname
             %listof=totocnumbered, % LOF, LOT, LOL  nummeriert im TOC
             bibliography=totocnumbered, % Referenzen nummeriert im TOC
             headings=normal,% Überschriften verkleinern
@@ -21,7 +21,7 @@
 \usepackage{mathtools}	% modifiziert amsmath
 \usepackage{amssymb}	% mathematische symbole, für \ceckmarks
 \usepackage{algorithm,algpseudocode}
-
+\usepackage{fancyhdr}
 \usepackage{fontspec}
 \usepackage{beramono}
 
@@ -133,20 +133,29 @@
 
 \renewcommand{\chaptermark}[1]{\markboth{#1}{#1}} % \markright, \markleft, \markboth
 
-\lehead*{}
-\cehead*{}
-\rehead*{\upshape\thechapter\xspace \headmark} % \thechapter, \headmark [\headmark]
-\lefoot*{\pagemark}%\pageref{LastPage}
-\cefoot*{}
-\refoot*{\parbox{\dimexpr\linewidth-2em\relax}{\upshape \textbf{\theauthor}, \textit{\thetitle}, \Year}}
 
-\lohead*{\upshape\thechapter\xspace \headmark}
-\cohead*{}
-\rohead*{}
-\lofoot*{\parbox{\dimexpr\linewidth-2em\relax}{\upshape \textbf{\theauthor}, \textit{\thetitle}, \Year}}
-%\cofoot*{center odd foot}
-\rofoot*{\pagemark}%\pageref{LastPage}
 \pagestyle{scrheadings}
+
+\rehead*{Chapter \upshape\thechapter: \headmark}
+\refoot*{\pagemark}
+\lohead*{Chapter \upshape\thechapter: \headmark}
+\lofoot*{\pagemark}
+
+
+%\lehead*{}
+%\cehead*{}
+%\rehead*{\upshape\thechapter, \headmark} % \thechapter, \headmark [\headmark]
+%%\lefoot*{}%\pageref{LastPage}
+%\cefoot*{}
+%\refoot*{}%\pagemark}%\parbox{\dimexpr\linewidth-2em\relax}{\upshape \textbf{\theauthor}, \textit{\thetitle}, \Year}}
+
+%\lohead*{}%\upshape\thechapter\xspace \headmark}
+%\cohead*{}
+%\rohead*{}
+%\lofoot*{}%\pagemark}%\parbox{\dimexpr\linewidth-2em\relax}{\upshape \textbf{\theauthor}, \textit{\thetitle}, \Year}}
+%%\cofoot*{}%center odd foot}
+%\rofoot*{}%\pagemark}%\pageref{LastPage}
+%\pagestyle{scrheadings}
 
 %\KOMAoptions{onpsinit=\linespread{3}\selectfont}% Kopf- und Fußzeilen dreizeilig
 %\renewcommand*\chaptermarkformat{\thechapter\autodot\enskip}% Kopfzeile ohne chapterprefix
@@ -316,5 +325,5 @@
 \thispagestyle{empty}%
 %\selectlanguage{ngerman}%
 \begin{center}%
-\textbf{Abstrakt}
+\textbf{\abstractname}
 \end{center}}{}
