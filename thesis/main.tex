@@ -141,6 +141,8 @@ TODO: german abstract
 % 03: Methods
 \include{content/03_measuring_performance}
 
+% 04: Outlook
+\include{content/04_outlook}
 \chapter{Outlook}
 
 To further improve performance and make the implementation generally
@@ -149,12 +151,10 @@ proposed:
 
 \section{>64 bit Hash}
 
-As mentioned above the datatype of the hashes is currently\lstinline{uint64_t}.
-64 bit integers were chosen because the standard C++ library does
-not currently support >64 bit integers natively and seqan3s kmer hash\href{http://docs.seqan.de/seqan/3-master-user/group__views.html\#ga6e598d6a021868f704d39df73252974f}{also uses them}.
-However the size of the integer used for the hashes is arbitrary and
+
+However the size of the integer used for the hashes is technically arbitrary and
 expanding it to 128 or 256 bit would improve the maximum k that can
-still be searched with the overall faster$m=k$ search function as
+still be searched with the overall faster $m=k$ search function as
 it is currently limited to$<31$ for the smallest relevant nucleotide
 alphabet. This may be especially important when working with bigger
 alphabets such as the complete list of\href{https://www.bioinformatics.org/sms/iupac.html}{IUPAC codes}
@@ -183,14 +183,14 @@ kmer-index from Figure\ref{figure 5_100} offered decent coverage
 by choosing about every second$k$ in \{9,10,...31\} but for a text
 size of 10\textsuperscript{8} already occupied about 80gb of memory.
 While this is not unfeasible for stronger machines, as each map uses
-about$\#H*64*n*32$ (where$H$ is the set of all pairwise different
-hashes,$n$ is the text size) many bytes which for bigger text such
-as an entire genome means using every possible$k$ is currently not
+about $\#H*64*n*32$ (where $H$ is the set of all pairwise different
+hashes, $n$ is the text size) many bytes for bigger text such
+as an entire genome this means using every possible $k$ is currently not
 practical. To remedy this it could be possible to implement a way
 to compress the single kmer-indices contained in the multi kmer-index.
 Each index contains all positions of the text in it's map exactly
-once which means in a multi kmer-index with 5 ks, the individual indices
-contain at least$(5-1)n*32$ many bits of redundant entries in the
+once, which means in a multi kmer-index with 5 $k$s, the individual indices
+contain at least $(5-1)n*32$ many bits of redundant entries in the
 form of the vectors of positions for each hash. If a version of the
 kmer-index is implemented that only contains all the texts positions
 once while still allowing for adequate runtime performance an all-purpose
@@ -201,11 +201,10 @@ performance in all cases.
 \section{Hybrid Approach}
 
 As detailed above the performance peaks of the kmer-index are fairly
-consistently predictable. A two-pronged approach is proposed in which
-for queries for whom we know the kmer-index will perform poorly the
-searching is instead done by a desperate fm-index. This allows for
-the now hybrid-index to have the speedup the kmer offers while also
-covering the inherent inconsistency by instead using the fm-index
+consistently predictable. Therefore a two-pronged approach is proposed in which
+for queries for which we know the kmer-index will perform poorly the
+searching is instead done by a seperate fm-index. This allows this theoretical hybrid index
+to have the speedup the kmer offers while also covering the inherent inconsistencies by instead using the fm-index
 which performs highly consistently if sometimes worse. We can thus
 precalculate which queries should be searched with which index. The
 fm-index should be used to search a query of length$m$ if and only
