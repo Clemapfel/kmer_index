@@ -1,4 +1,6 @@
 \chapter{Implementation}
+
+% CONSTRUCTION
 \section{Construction}
 The kmer-index utilizes an unordered map as it's central data structure.
 For each kmer said map notes the position of all occurrences of a given kmer in the text.
@@ -33,10 +35,215 @@ $\text{index}[h]\leftarrow(\text{index}[h],\:i)$
 
 \textbf{return}
 \end{verse}
-\caption{Construction of the kmer index}
+\caption{Construction of the kmer index.}
 \end{algorithm}
 
-Constructing the kmer index is fairly straightforward: Keeping track of the current position we iterate through the text.
-As each position $i<n-k$ represents the position of a kmer $n-k$ hashes will be generated and inserted into the index' map.
-Construction therefore has linear amortized complexity. This is acceptably quick because genomic data is usually static and as such
-the construction will usually only be done once after which the index is serialized so it can be loaded directly at a later point.
+Constructing the kmer index is fairly straightforward: Keeping track of the current position we iterate through the
+text. As each position $i<n-k$ represents the position of a kmer $n-k$ hashes will be generated and inserted into the
+index' map. Construction therefore has linear amortized complexity. This is acceptably quick because genomic data is
+usually static and as such the construction will usually only be done once after which the index is serialized so it
+can be loaded directly at a later point.
+
+% SEARCHING
+\section{Searching}
+
+The kmer-index implementation is capable of searching queries of arbitrary length regardless of the $k$ specified on
+construction. However a $k$ will still need to be chosen and depending on the relation of the length of the query to $k$
+performance may vary drastically.
+
+% M = K
+\subsection{Query Length m = k}
+
+The optimally performing case is a query length of exactly $k$. Here only a simple lookup in the unordered map will
+return all positions of the query directly.
+\begin{lstlisting}[caption={Search function for queries of size k.},language={[GNU]C++},tabsize=4]
+unordered_map<size_t, std::vector<uint32_t>> _data;
+uint64_t hash((...) query) const {(...)};
+
+template<std::ranges::range query_t>
+std::vector<size_t>& search_k(query_t& query) const
+{
+	const auto* it = _data.at(hash(query));
+	if (it == _data.end())
+		return std::vector<size_t>();
+	else
+		return *it;
+}
+\end{lstlisting}
+
+By nature of using an unordered map, querying it for the positions of a single entry has constant-time amortized complexity
+dependent on the number entries in \lstinline{_data} which is equivalent to the number of pairwise different kmers in the text. C++s
+\href{https://en.cppreference.com/w/cpp/language/copy_elision}{return value optimization} ensures that the positions are
+never actually copied and only a reference to them is moved between functions. This means that the only overhead of querying
+the kmer-index compared to a simple lookup in an unordered map is the time it takes for the hash function
+to compute the hash. This is the kmer-indices main strength and queries of length $k$ should be considered optimal.
+
+\begin{lem}
+\label{Lemma 1}
+Search performance for queries of size $m:\,m==k$ is dependent on the number of pairwise different kmers in the text
+\end{lem}
+
+% M < K
+\subsection{Query Length m < k}
+
+To be able to search queries of arbitrary length without modifying the indices internal structrue (that is while still
+using the unordered map generate for the initial k) we cannot lookup the query directely. As $m < k$ we instead
+find the positions of all kmers that have the query as a prefix.
+
+\begin{verse}
+let $query=(q_{1},q_{2},...,q_{m})$ where $m<k$
+for an arbitrary $kmer=(s_{1},...,s_{k})$ it holds true that:
+
+iff $\forall i\leq m:\:q_{i}=s_{i}$ then any position $pos$ of $kmer$
+is also a position of $query$
+because the $m$ characters proceeding$pos$ are
+$s_{0},...,s_{m},...,s_{k}$ and $s_{0},...,s_{m}=q_{0},...,\,q_{m}=query$
+\end{verse}
+
+To find the position of a query we can thus generate all possible kmers that contain the query as a prefix and
+look up the position said kmers. Any valid occurence for any of these kmers is also a valid occurence of the query.
+To save on memory and runtime we generate the hashes of the set of kmers directly.
+
+\begin{verse}
+let $hash(q_{1},q_{1},...,q_{m})=\sum_{i=0}^{k}\:r(q_{i})\:\sigma^{k-i}=h_{q}$
+constant as given by $query$
+
+let $H\subset\mathbb{Z}^{+}\coloneqq$ set of all hashes of kmer with
+a prefix equal to$query$
+
+let $h_{min},\:h_{max}:\:\forall h_{i}\in H:\:h_{min}\leq h_{i}<h_{max}$
+be the lower and upper bound of $H$
+
+~
+
+to find $h_{min}$ we observe that as the query $q_{min}:\,r(q_{min})=h_{min}$
+has a prefix equal to $query$ it holds true that
+
+$hash(h_{min})\geq h_{p}$ because the first $m$ summands$r(q_{min,j})\:\sigma^{k-j-1}:1\leq j\leq m$
+of the hash are given by the prefix
+
+we choose the other summands $r(q_{i})\:\sigma^{k-i-1}:i>m$ to all
+be as small as possible by choosing characters such that $\forall q_{i}:\:r(q_{i})=0$
+
+thus $h_{min}=h_{p}+\sum_{i=m+1}^{k}\:0*\sigma^{k-i-1}=h_{p}$
+
+~
+
+to find $h_{max}$ we observe that$\#H=\sigma^{k-m}$ because$m$ characters
+of each query are given by the prefix
+
+we furthermore observe that for two hashes $h_{a},\,h_{b}\in H:\,h_{a}<h_{b}$ the
+difference between the hashes $h_{a}-h_{b}\geq1$
+
+this is because given $q_{a}=(a_{1},\,...,\,a_{k-1},\,a_{k})\::hash(q_{a})=h_{a}\neq h_{max}-1$
+to find the next smallest hash that is also in $H$, we replace the
+last letter $a_{k}$ with $\alpha_{k}$ such that $r(a_{k})=r(\alpha_{k})+1$.
+If $r(a_{k})=\sigma-1$ we instead substitute $a_{k-1}$, etc.
+
+this means $hash(q_{a})$ increases by $(r(a_{k})\:\sigma^{k-(k-1)})-(r(\alpha_{k})\:\sigma^{k-(k-1)})=1$
+
+Given this information we can conclude $H=\{h_{p},\,h_{p}+1,\,...,\,h_{p}+\sigma^{k-m}-1\}$
+\end{verse}
+
+\begin{minipage}{\linewidth} % prevent linebreak
+\begin{lstlisting}[caption={Search function for queries of size 0 < m < k.},language={[GNU]C++},tabsize=2]
+std::vector<size_t> check_last_kmer((...)) const;
+
+template<std::ranges::range range_t>
+std::vector<size_t> search_sub_k(range_t& query) const
+{
+	size_t h_p = hash(query);
+	size_t h_min = 0 + h_p;
+	size_t h_max = h_p + pow(_sigma, k-query.size());
+
+	// lookup each hash
+	std::vector<size_t> output_positions;
+	for (size_t h = h_min; h < h_max; ++h)
+	{
+		for (size_t pos : _data.at(h))
+			output_positions.push_back(pos);
+	}
+
+	// cover edge case for last kmer
+	for (size_t pos : check_last_kmer(query))
+		output_positions.push_back(pos);
+
+	return output_positions;
+}
+\end{lstlisting}
+\end{minipage}
+
+Note that after looking up all the hashes we also need to call \lstinline{check_last_kmer}. This function covers an
+edge case were the query happens to be a substring of the last kmer in the text. As the query is compared
+against prefixes and there is no kmer with a position $p>n-k$ the query is instead
+manually compared against the last $k-1$ letters of the text.
+
+While searching queries of length $m<k$ is significantly more costly, it is feasible to search queries in an a
+adequately fast manner if $k-m$ is sufficently small. The smaller $k-m$ the longer the prefix is compared to $k$ which
+in turn means $\#H$ (and thus the number of hashes that need to be searched) is also lower increasing runtime.
+
+\begin{lem}
+\label{Lemma 2}
+search performance for queries of size $m:\,(k\mod m)\neq0\:\land m<k$ is inversely proportional to $k-m$
+\end{lem}
+
+The actual implementation throws an exception if $\sigma^{k-m}>10^{7}$ in order to avoid a badly chosen $m$ and $k$
+combination to take hours to search for if the number of resulting hashes is too high.\footnote{While somewhat arbitrarily
+chosen, $10^{7}$ represents the case of $k-m>11$ for the nucleotide alphabet ($\sigma=4$) which should allow most users
+to be able to not encounter the exception during proper usage of the kmer-index and notably will mean for $k=10$ queries
+of all length be accepted.}
+
+% QUERY SIZE M > K
+\subsection{Query Length m > k}
+
+To search queries of length $m>k$ the query is split into parts of length $k$ which are then searched individually.
+If $m\modk\neq0$ there will be a "rest" of length $r<k$.
+
+We observe that the set of positions for a specific query of length $m>k$ is a subset of the positions of the queries
+prefix $p_{1}$ of length k. To confirm wether a specific position of $p_{1}$ is also a valid position of the query we
+cross-reference the positions of the following parts as such:
+
+\begin{verse}
+let query $q=(q_{1},\,q_{1},\,...,\,q_{m})$ be of length $m:\:(m>k)\,\land(\,m\mod k\neq\text{0})$
+
+let $p_{i}=(q_{i},\,...,q_{i+k})$ with $i\in[1,\,(m-(m\mod k))/k]\subset\mathbb{N}$
+be the $i$-th $k$-long part of the query
+
+let $r=(q_{m-(m\mod k)/k},\,...,q_{m})$ be the rest of length $(m\mod k)$
+
+then the query occurs at positions $\rho_{seed}\in pos(q_{1},...q_{k})=pos(p_{1})$
+iff
+
+for all $i$ there exists a position $\rho_{2}\in pos(p_{2})$ such
+that $\rho_{2}=\rho_{seed}+k$, and there exists a position $\rho_{3}\in pos(p_{3})$
+such that $\rho_{3}=\rho_{2}+k$, etc.
+
+For $\rho_{(m-(m\mod k))/k}\in pos(p_{last})$ we need to check for
+a position $\rho_{rest}\in pos(rest)$ such that $\rho_{rest}=\rho_{(m-(m\mod k))/k}+k$
+
+If a $\rho$ is found to exist for all parts $\rho_{seed}$ is confirmed to be a valid position of the query
+\end{verse}
+
+For performance purposes if at any point the program does not find an appropriate $\rho_{i}$ the current position
+$\rho_{seed}$ is marked as invalid and the loop moves onto the next. While in the worst-case scenario (all positions
+in $\rho_{seed}$ are valid) performance will be relatively costly in praxis this is rarely the case, especially for
+longer queries because given a randomized text of constant size a longer query is statistically likely to have fewer valid
+occurences than a shorter query. We observe:
+
+\begin{lem}
+\label{Lemma 3}Search time for queries of size $m:\,m>k$ scales
+proportionally with the number of occurences of all the corresponding $p_{i}$.
+\end{lem}
+
+Searching queries of length $m:m\mod k=0$ (which do not have a rest)
+should be preferred because in that case every $p_{i}$ can be searched with the the well-performing \lstinline{search_k}.
+If there is a rest \lstinline{search_subk} will need to be employed which will result in overall worse performance.
+
+\section{Multi kmer-Index}
+
+As implied by the above lemmas correct choice of k relative to the queries size is paramount to achieving acceptable
+performance. In practical applications however the query length cannot be controlled and may be highly variable within
+a set of queries. To mitigate this the kmer-index was extended to unify indices for multiple k
+into one "multi" kmer-index. Given a query the multi kmer-index chooses the optimal k for searching the query available
+to it without any user interaction in order to achieve more flexiblity and more consistent
+performance compared to the "single" kmer-index.

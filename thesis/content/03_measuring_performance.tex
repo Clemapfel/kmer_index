@@ -1,0 +1,19 @@
+\chapter{Measuring Performance}
+\section{Single kmer-Index}
+\subsection{Methods}
+
+To further investigate the behavior implied by Lemmas 1, 2 and 3 a benchmark was conducted.
+Using a single kmer-index for $k=10$, randomly generated queries of length $\{6,7,...,50\}$ were searched in a
+randomly generated text and the search calls duration to return was measured.
+
+\subsection{Results}
+
+\begin{figure}[H]
+\includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/multi_vs_single/single_only}
+
+\caption{\label{figure 1}Average duration to get all occurences of a query
+of given length using a kmer-index for$k=\{10\}$. The inset graph
+shows a``zoomed in'' view of the area of query lengths$[16,29]$.
+The dotted lines mark query lengths that are a multiples of$k$.}
+
+\end{figure}
