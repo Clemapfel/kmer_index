@@ -100,7 +100,7 @@ get_diff_plot = function(text_length) {
     plot = plot + scale_x_continuous(name="query length (k)", breaks=seq(1, 30, 2))
     plot = plot + scale_y_continuous(name="runtime (ns)", breaks=seq(-100000, +100000, 100))
     plot = plot + ggtitle(label="(kmer - fm) absolute runtime difference")
-    plot = plot + theme(legend.position="bottom", panel.background =element_rect(fill="gray90"))
+    plot = plot + theme(legend.position="bottom", plot.title=element_text(face="bold", size=30), axis.title=element_text(size=20), axis.text=element_text(size=12), legend.text=element_text(size=20), panel.background =element_rect(fill="gray90"))
     plot = plot + scale_color_manual(name = "", values=c("coral", "skyblue2"), labels = c("fm index","kmer index"))
 
     #plot = plot + coord_cartesian(ylim=c(-150,30))
@@ -119,9 +119,8 @@ get_speedup_plot = function(text_length) {
     plot = plot + scale_x_continuous(name="query length (k)", breaks=seq(1, 30, 1))
     plot = plot + scale_y_continuous(name="% speedup", breaks=seq(-1000, 1000, 5))
     plot = plot + ggtitle(label="speedup(kmer, fm)", subtitle=paste("text size = ", text_length))
-    plot = plot + theme(plot.title=element_text(face="bold"), legend.position="bottom")
+    plot = plot + theme(plot.title=element_text(face="bold", size=30), axis.title=element_text(size=20), axis.text=element_text(size=12), legend.text=element_text(size=20), legend.position="bottom")
     plot = plot + scale_color_manual(name = "", values=c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
-
 
     inset_grob = ggplotGrob(get_line_plot(text_length))
     plot = plot + annotation_custom(grob=inset_grob, xmin=17, xmax=30, ymin=max(percent)-40, ymax=max(percent))
