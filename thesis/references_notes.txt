@@ -1,0 +1,15 @@
+### MEGAHIT ######################################
+
+engine for denovo assembly of metagenomic data
+
+succeinct de bruijin graphs:
+    represents overlaps between sequences
+    has m^n vertices, m = number of symbols, n = legnth of sequence
+megahit uses compressed sdbg
+
+" the bottleneck is sorting a set of (k+1)-mers that are the edges of an
+SdBG in reverse lexicographical order of their length-k prefixes (k-mers)."
+
+extracting k-mers from reads is vital, k-mer index speeds this up
+
+
