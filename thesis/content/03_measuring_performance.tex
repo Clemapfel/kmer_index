@@ -162,7 +162,7 @@ divides the query into 3 search calls with $k=11$. For $m=34$ it will use $k=15,
 For $m=35$ no such sum exists with the given $k$s so the index has to fall back to using the slower \lstinline{search_subk}
 which increases runtime significantly.
 
-\section{Comparison with fm_index}
+\section{Comparison with fm\_index}
 \subsection{Methods}
 To put the absolute runtime durations of the above figures into perspective a comparative analysis
 of seqan3s \lstinline{fm_index}\footnote{Note that for exact string matching there is is no relevant performance

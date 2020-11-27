@@ -12,4 +12,16 @@ SdBG in reverse lexicographical order of their length-k prefixes (k-mers)."
 
 extracting k-mers from reads is vital, k-mer index speeds this up
 
+### SOAP denovo #################################
+
+de novo transcriptome (all RNA and mRNA reads of an organism) assembly
+
+"very short reads (e.g. 2 × 90 bp paired ends)" (this was 2014)
+
+challenge: alterantive splicing = reordering parts of mRNA depending on non-genetic factors
+polyploid = multiple sets of paired chromosomes
+
+indexing reads as well as querying for overlaps all involve kmer-index
+
+
 
