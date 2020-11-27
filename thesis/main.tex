@@ -113,18 +113,30 @@ structure can be further customized at compile time to achieve greater
 performance for certain query sizes. The nature of the internal structure
 and search functions are explained and their performant nature demonstrated
 through benchmarks. Results indicate that for the purpose of finding
-positions or number of occurrences for queries of the commonly used
-length$k\in\{3,4,...,30\}$ compared to the fm-index the kmer-index
+positions or number of occurrences for queries of
+length $k\in\{3,4,...,30\}$ compared to seqan3s fm\_index the kmer-index
 performs up to 60\% faster and is thus recommended for use. For arbitrarily
 long queries the kmer-index was shown to exhibit speedup or slowdown
-of$\pm5$\% depending on text length and is therefore in it's current
+of $\pm5$\% depending on text length and is therefore in it's current
 iteration applicable if not necessarily better suited for this purpose.
 \end{abstractEN}
 \vfill
 
 % abstract in german
 \begin{abstractDE}
-TODO: german abstract
+Mit steigender Nachfrage f\"ur gro\ss fl\"achige genomisches Sequence Matching steigt
+auch die Nachfrage Positionen f\"ur kurze genomische Sequenzen oder kmer performant
+in einem Text zu finden. Zu diesem Zweck wurde ein sogenannter kmer-Index implementiert
+und dessen Performance evaluiert. Die Implementierung ist f\"ahig kmer von willk\"urlicher
+L\"ange zu finden, benutzt Parallelisierung f\"ur schneller Konstruktion und die interne
+Struktur des Indices kann weiterhin personalisiert werden um bessere Performance
+f\"ur bestimtte Query L\"angen zu erhalten. Die Natur der Personalisierung und die daraus 
+resultierende Performance wurde mit Benchmarks demonstriert. Ergebnisse legen nah, 
+dass f\"ur kmer der L\"ange $k\in\{3,4,...,30\}$ im Vergleich zu seqan3s fm\_index der 
+kmer-index bis zu 60\% schneller ist. F\"ur kmer beliebiger L\"ange zeigen Ergebnisse, 
+dass ein Speedup von $\pm5$\% je nach Textl\"ange erreicht wird. Der Einsatz der kmer-Index
+Implementierung wird daher f\"ur kurze kmer empfohlen w\"ahrend f\"ur l\"angere kmer der Index 
+je nach Text L\"ange einsetzbar aber nicht unbedingt besser geeignet ist.
 \end{abstractDE}
 \vfill
 
@@ -142,264 +154,11 @@ TODO: german abstract
 \include{content/03_measuring_performance}
 
 % 04: Outlook
-\include{content/04_outlook}
-\chapter{Outlook}
+\include{content/04_outlook_and_conclusion}
 
-To further improve performance and make the implementation generally
-more consistentlsapplicable the following additional features are
-proposed:
-
-\section{>64 bit Hash}
-
-
-However the size of the integer used for the hashes is technically arbitrary and
-expanding it to 128 or 256 bit would improve the maximum k that can
-still be searched with the overall faster $m=k$ search function as
-it is currently limited to$<31$ for the smallest relevant nucleotide
-alphabet. This may be especially important when working with bigger
-alphabets such as the complete list of\href{https://www.bioinformatics.org/sms/iupac.html}{IUPAC codes}
-for nucleotides or clear text for which$\sigma=255$. Furthermore
-in the application of read-mapping, reads are\href{https://www.illumina.com/science/technology/next-generation-sequencing/plan-experiments/read-length.html}{often of relatively short length}
-and being able to for example find all positions of a 50mer or 75mer
-could give programs in this application a significant speedup compared
-to factorizing these queries into multiple smaller kmer. Further research
-will have to be done to verify wether abstracting the hash type for
-the kmer-index to use for example integers of up to 1024 bit from
-boosts\href{https://www.boost.org/doc/libs/1_62_0/libs/multiprecision/doc/html/boost_multiprecision/tut/ints/cpp_int.html}{multiprecision header}
-could proof valuable as it may not be feasible due to memory limitation
-or runtime overhead inherent to these integer types. Furthermore as$k$
-and thus the number of possible hashes increases the indices maps
-maximum size will also increase and as observed from Table\ref{table kmer faster while}
-for larger texts bigger k do not neccessarily result in a significane
-speedup.
-
-\section{Multi kmer-index Compression}
-
-As has been shown in section\ref{subsec: multi k overview} using
-multiple k for the same index vastly increases the search performance
-for a broad variety of queries. Ideally we would want to just choose
-every possible k however memory limitations make this difficult. The
-kmer-index from Figure\ref{figure 5_100} offered decent coverage
-by choosing about every second$k$ in \{9,10,...31\} but for a text
-size of 10\textsuperscript{8} already occupied about 80gb of memory.
-While this is not unfeasible for stronger machines, as each map uses
-about $\#H*64*n*32$ (where $H$ is the set of all pairwise different
-hashes, $n$ is the text size) many bytes for bigger text such
-as an entire genome this means using every possible $k$ is currently not
-practical. To remedy this it could be possible to implement a way
-to compress the single kmer-indices contained in the multi kmer-index.
-Each index contains all positions of the text in it's map exactly
-once, which means in a multi kmer-index with 5 $k$s, the individual indices
-contain at least $(5-1)n*32$ many bits of redundant entries in the
-form of the vectors of positions for each hash. If a version of the
-kmer-index is implemented that only contains all the texts positions
-once while still allowing for adequate runtime performance an all-purpose
-kmer-index could be proposed that simply holds information for all
-possible ks regardless of user configuration and thus achieves optimal
-performance in all cases.
-
-\section{Hybrid Approach}
-
-As detailed above the performance peaks of the kmer-index are fairly
-consistently predictable. Therefore a two-pronged approach is proposed in which
-for queries for which we know the kmer-index will perform poorly the
-searching is instead done by a seperate fm-index. This allows this theoretical hybrid index
-to have the speedup the kmer offers while also covering the inherent inconsistencies by instead using the fm-index
-which performs highly consistently if sometimes worse. We can thus
-precalculate which queries should be searched with which index. The
-fm-index should be used to search a query of length$m$ if and only
-if at least one of the following is true:
-\begin{itemize}
-\item the text size is$>10{{}^8}$ (c.f. Table\ref{table kmer faster while})
-\item there is no set of$\{k_{a},k_{b},...\}$ such that$k_{a}+k_{b}+...=m$
-\end{itemize}
-In all other cases preferring the kmer-index component may result
-in an overall speedup, however further research is needed to develop
-a better tested heuristic that substantiates these recommendations
-and is capable of determining a more exact text size (which may also
-be dependent on the alphabet used) which when exceeded might proof
-use of the hybrid index to be more trouble than it is worth given
-the need for increased memory capacity.
-
-\chapter{Conclusion}
-
-The current kmer-index implementation is stable (c.f. Section\ref{Addendum: Correctness}
-below), reasonably well optimized and the indices performance is superior
-for searching kmers of relatively small length$m<30$ (or less than
-30 for bigger texts as detailed in Table\ref{table kmer faster while}).
-For this purpose it achieved a performance increase of up to 65\%
-and is thus well-suited and should be preferred to more generalist
-indices like the fm-index if runtime performance is important. For
-query lengths past 30 the kmer-index has been shown to have a performance
-increase between 5 and 10\% for smaller texts of length$m<10{{}^8}$
-while for bigger texts an overall performance change of$\pm2\%$ depending
-on query length was observed. With further optimization and features
-the kmer-index may become the decidedly more performant index for
-exact string matching purposes in all situations however in it's current
-iterations it is only recommended for use with appropriately small
-text sizes.
-
+% 05: Addendum
 \newpage{}
-
-\chapter{Addendum}
-
-\section{\label{Addendum: Correctness}Assuring Correctness}
-
-To assure that the kmer index returns the correct positions a\href{https://github.com/google/googletest}{test function}
-was written that repeatedly compares results of the kmer-index and
-the fm-index for randomized queries and texts. This asserts that the
-fm-index itself is bug-free and as both indices are meant to be used
-in the same library this assertion was presumed to be reasonable.
-
-\begin{algorithm}[H]
-\begin{verse}
-\textbf{Input}: seed,$n$,$m$
-
-\textbf{while}$(n>0)$\textbf{do}
-\begin{verse}
-\textbf{let} text$\leftarrow$ generate\_sequence($m$, seed)
-
-\textbf{let} fm$\leftarrow$ kmer\_index(text)
-
-\textbf{let} kmer$\leftarrow$ fm\_index(text)
-
-\textbf{for}$q$\textbf{in} \{k-1, k, k+1, ..., 2{*}k\}\textbf{do}
-\begin{verse}
-\textbf{let} query$\leftarrow$ generate\_sequence(q, seed)
-
-\textbf{let} result$_{fm}$$\leftarrow$ fm.search(query)
-
-\textbf{let} result$_{kmer}$$\leftarrow$ kmer.search(query)
-
-\textbf{assert} (result$_{fm}$ = result$_{kmer}$)
-\end{verse}
-\textbf{end}
-
-seed$\leftarrow$ seed + 1
-
-n$\leftarrow$ n-1
-\end{verse}
-\textbf{end}
-\end{verse}
-\caption{Test function comparing kmer- and fm-index results to assure correctness.}
-\end{algorithm}
-
-While given enough iterations and a big enough text size it is reasonable
-to assume that this function will uncover possible bugs itself the
-text was furthermore manually modified to account for edge cases (such
-as the query happening at the very end of the text as detailed in
-Section\ref{section m < k}). If a discrepancy between the fm- and
-kmer-index was uncovered the function furthermore reported the exact
-seed and query size. The randomness in\lstinline{generate_sequence}
-was implemented to be deterministic which made reproducing possible
-errors and what caused them reliable and easy. Before each benchmark
-presented in this paper correctness was assured with$n>10{{}^6}$
-iterations using text sizes$m$ as large as the machines memory allowed
-for.
-
-\section{Performance Optimization}
-
-Implementation of the kmer-index was guided at every step by benchmarking
-newly implemented components and comparing their performance against
-other possible implementations. In this section the most relevant
-of these decisions are explained. Note that C++20 was used for all
-performance relevant code.
-
-\subsection{Choosing the fastest Pow Implementation}
-
-By the nature of the hash, exponentiation (henceforth referred to
-as``pow'' in reference to the commonly used\lstinline{std::pow})
-is used every search call sometimes multiple times. To optimize performance
-four different versions of pow were implemented and their performance
-evaluated. Note that for the purpose of the kmer-index the pow implementation
-will only ever be used with positive integers and has\textasciicircum{}
-to be able to be evaluated at compile time.
-\begin{itemize}
-\item \lstinline{trivial_pow(base,n)}: A trivial implementation calling$base*base$$n$-many
-times
-\item \lstinline{recursive_pow(base,n)}: Utilizing a recursive approach,
-this function calls itself recursively$n$-many times and then evaluates
-each call from the inside out to return the correct result based on
-whether the exponent was odd or even
-\item \lstinline{bit_pow(base,n)}: Utilizes bit-operations which are generally
-more well-optimized on most modern machines
-\item \lstinline{switch_pow(base,n)}: Instead of using a loop, this implementation
-has multiple switch cases with identical code, when the function is
-called a lookup in a pre-calculated table produces the correct first
-switch case to start with. The result``falls through'' the rest
-of the switch cases the correct number of times. Any exponentiation
-that would overflow the unsigned 64 bit integer result is immediately
-caught and 0 is returned instead.
-\end{itemize}
-\begin{figure}[H]
-\textasciiacute \includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/pow_vs_pow/pow_vs_pow}
-
-\caption{Boxplot showing runtime distribution of average time to compute$x^{y}$.}
-\end{figure}
-
-Results indicate that the implementation utilizing the fall-through
-switch is overall the fastest and was thus used for the index whenever
-possible.
-
-\subsection{Choosing the fastest Map}
-
-The unordered map is the data structure at the center of the kmer-index
-and as such assuring fast access time even for very large map sizes
-is necessary. As\lstinline{std::unordered_map} did not proof sufficiently
-fast enough, other maps implemented by 3rd parties were tested and
-evaluated specifically in the context of use in a kmer-index:
-\begin{itemize}
-\item \lstinline{std::unordered_map} from the\href{https://en.cppreference.com/w/cpp/container/unordered_map}{C++17 standard library}
-\item \lstinline{boost::unordered_map} from the\href{https://www.boost.org/doc/libs/1_65_0/doc/html/boost/unordered_map.html}{1.65.1 Boost Library}
-\item \lstinline{absl::node_hash_map} from Googles\href{https://abseil.io/docs/cpp/guides/container\#abslnode_hash_map-and-abslnode_hash_set}{Abseil}
-\item \lstinline{robin_hood::unordered_map} as provided by\href{https://github.com/martinus/robin-hood-hashing}{Martin Ankerl et. al.}
-\end{itemize}
-Each map was filled with a fixed number of randomized elements and
-it's time to return a specific element was benchmarked. Only retrieval
-was tested here since after construction in the context of the kmer-index
-no insertion will take place.
-
-\begin{figure}[H]
-\includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/map_vs_map/map_vs_map}
-
-\caption{Search performance for different map implementations over size of
-map.}
-\end{figure}
-
-Results indicate that\lstinline{robin_hood::unordered_map} performed
-best regardless of the number of elements contained and was as such
-used as the central data structure for the kmer-index.
-
-\subsection{Parallelization}
-
-Other than the amount of memory needed the only true disadvantage
-of using the multi kmer-index is the fact that the time it takes to
-construct increases drastically with the number of$k_{i}$ specific.
-To address this a general purpose thread pool was implemented that
-allows all of the single kmer-index elements to be constructed in
-parallel:
-
-\begin{lstlisting}[caption={Paralell invocation of the create function for individual kmer-index
-elements during construction of the multi kmer-index.}]
-template<std::ranges::range text_t>
-multi_kmer_index(text_t& text)
-	: single_kmer_index<ks>()...
-{
-	auto pool = kmer::detail::thread_pool{(...)};
-	std::vector<std::future<(...)>> futures;
-	(futures.emplace_back(
-		pool.execute(&single_kmer_index<ks>::create, text)), ...);
-
-	// wait to finish
-	for (auto& f : futures)
-		f.get();
-}
-\end{lstlisting}
-
-As the number of possible$k$ is currently restricted to at most 31,
-modern systems with 32 or more CPUs are capable of constructing one
-multi kmer-index with optimal coverage with no additional runtime
-overhead compared to a single-k index.
+\include{content/05_addendum}
 
 \pagebreak{}
 

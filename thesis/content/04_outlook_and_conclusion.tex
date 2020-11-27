@@ -3,6 +3,7 @@
 To further improve performance and make the implementations runtime generally
 more consistently applicable the following additional features are proposed:
 
+% HASH
 \section{>64bit Hash}
 As mentioned above the datatype of the hashes is currently\lstinline{uint64_t}.
 64 bit integers were chosen because the standard C++ library does
@@ -20,6 +21,7 @@ integers from boosts \href{https://www.boost.org/doc/libs/1_62_0/libs/multipreci
 would actually improve performance. The x86-64 instruction set does support 128bit integers natively\footnote{As the \href{https://www.felixcloutier.com/x86/mul}{\lstinline{mul} instruction} supports multiplication of two 64-bit unsigned integers resulting in a 128bit result}
 however depending on the machine this may not always be the case.
 
+% COMPRESSION
 \section{Multi kmer-Index Compression}
 As has been shown the multi kmer-index is vastly superior to the single kmer-index in terms of performance.
 However as the set of supplied $k$ increases so does the memory requirement. The current implementation of the
@@ -43,6 +45,7 @@ kmer-index could be proposed that simply holds information for all
 possible ks regardless of user configuration and thus achieves optimal
 performance in all cases.
 
+% HYBRID INDEX
 \section{Hybrid Approach}
 As detailed above the performance peaks of the kmer-index are fairly
 consistently predictable. Therefore a two-pronged approach is proposed in which
@@ -60,5 +63,24 @@ In all other cases preferring the multi kmer-index component of the hybrid index
 may results in overall speedup however further research is needed to develop a well-tested
 heuristic that substantiates these recommendations and is capable of determining a more
 exact classification of which queries should be searched by which index.
+
+% Conclusion
+\chapter{Conclusion}
+
+The current kmer-index implementation is stable (c.f. Section\ref{Addendum: Correctness}
+below), reasonably well optimized and the indices performance is superior
+for searching kmers of small length $m<30$ (or less than
+30 for bigger texts as detailed in Table\ref{table kmer faster while}).
+For this purpose it achieved a performance increase of up to 65\%
+and is thus well-suited for this purpose and should be preferred to more generalist
+indices like the fm-index if runtime performance is important. For
+query lengths past 30 the kmer-index has been shown to have a performance
+increase between 5 and 10\% for smaller texts
+while for bigger texts an overall speedup of $\pm2\%$ depending
+on query length was observed. With further optimization and features
+the kmer-index may become the decidedly more performant index for
+exact string matching purposes in all situations however in it's current
+iterations it is only recommended for use with appropriately small
+text sizes or in cases where the set of query lenghts can be consistently predicted.
 
 

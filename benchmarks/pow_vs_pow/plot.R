@@ -23,5 +23,5 @@ plot <- qplot(name,
               fill = name)
 
 plot = plot + ggtitle(label="runtime distribution for different pow implementations", subtitle = "(base and exponent randomized each call, 100 benchmark cycles per pow implementation)")
-plot = plot + theme(plot.title=element_text(face="bold"))
+plot = plot + theme(plot.title=element_text(face="bold", size=20), axis.title=element_text(size=20), axis.text=element_text(size=20), legend.title=element_text(size=20), legend.text=element_text(size=20), plot.subtitle=element_text(size=12))
 ggsave("pow_vs_pow.png", plot,  width=30, height=15, units="cm")
