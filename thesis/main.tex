@@ -10,8 +10,6 @@
 \usepackage{textcomp}
 \usepackage{amsthm}
 
-\makeatletter
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
 %% Because html converters don't know tabularnewline
 \providecommand{\tabularnewline}{\\}
@@ -48,7 +46,22 @@
 \usepackage{algorithm,algpseudocode}
 \DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
 
-\makeatother
+\begin{document}
+
+\lehead*{}
+\rehead*{Chapter \upshape\thechapter: \headmark}
+\cehead*{}
+\lefoot*{}
+\refoot*{\pagemark}
+\cefoot*{}
+
+
+\lohead*{Chapter \upshape\thechapter: \headmark}
+\rohead*{}
+\cohead*{}
+\lofoot*{\pagemark}
+\rofoot*{}
+\cofoot*{}
 
 \lstset{keywordstyle={\bfseries \color{keyword}},
 commentstyle={\color{comment}},
@@ -62,42 +75,6 @@ captionpos=b,
 tabsize=2}
 \providecommand{\lemmaname}{Lemma}
 \renewcommand{\lstlistingname}{Listing}
-
-\begin{document}
-
-% thesis details
-\title{Implementation and Performance Evaluation of a kmer Index intended for Exact String Matching}
-\newcommand{\Year}{2020}
-\date{TODO\textsuperscript{st} December \Year2020}
-\newcommand{\thesisKind}{Bachelor}
-\newcommand{\degree}{Bachelor~of~Science}
-\newcommand{\versionnumber}{1.0}
-
-% author details
-\author{Clemens~Cords}
-\newcommand{\matrikelno}{4872639}
-\newcommand{\email}{clemens.cords@fu-berlin.de}
-
-% supervisor details
-\newcommand{\supervisor}{Prof. Dr. Knut Reinert}
-\newcommand{\supervisorUniversity}{Freie Universit\"at Berlin}
-\newcommand{\supervisorDepartment}{Dept. of Computer Science and Mathematics}
-\newcommand{\supervisorAG}{Algorithmische Bioinformatik}
-\newcommand{\supervisorCountry}{Germany}
-
-% Advisor 1 details
-\newcommand{\fstAdvisor}{Enrico Seiler}
-\newcommand{\fstAdvisorsUniversity}{Freie Universit\"at Berlin}
-\newcommand{\fstAdvisorsDepartment}{Dept. of Computer Science and Mathematics}
-\newcommand{\fstAdvisorsAG}{Algorithmische Bioinformatik}
-\newcommand{\fstAdvisorsCountry}{Germany}
-
-% Advisor 2 details
-\newcommand{\sndAdvisor}{Prof. Dr. Knut Reinert}
-\newcommand{\sndAdvisorsUniversity}{Freie Universit\"at Berlin} % or company
-%\newcommand{\sndAdvisorsDepartment}{Dept. of Computer Science and Mathematics}
-%\newcommand{\sndAdvisorsAG}{Algorithmische Bioinformatik}
-\newcommand{\sndAdvisorsCountry}{Germany}
 
 \include{titlepage}
 
@@ -142,7 +119,8 @@ je nach Text L\"ange einsetzbar aber nicht unbedingt besser geeignet ist.
 
 %%% TOC %%%
 \tableofcontents{}
-\setcounter{page}{1}
+\thispagestyle{empty}
+\setcounter{page}{0}
 
 % 01: Introduction and motivation
 \include{content/01_introduction}

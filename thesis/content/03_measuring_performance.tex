@@ -228,11 +228,11 @@ $10{{}^9}$ & < 7\% & 48.9\% & < -16.5\% & k < 11\tabularnewline
 \end{tabular*}
 \end{table}
 
-In praxis searching queries of size $m<31$ is rare, for example in
-in the application of read-mapping, reads are
+While in praxis searching queries of size $m<31$ may find use when for example developing and working with kmer spectra \cite{kmer:spectrum:dissimilarity}
+as a way of classification, in the application of read-mapping reads are
 \href{https://www.illumina.com/science/technology/next-generation-sequencing/plan-experiments/read-length.html}{rarely shorter than $m=50$}
-and in other applications query lengths may go far beyond that. Because of this the above comparison was repeated and
-relative speedup measured for queries of arbitrariy long length.
+and in other applications query lengths may go far beyond that. To investigate the kmer-index performance in these cases
+the same methods noted above were applied to queries of arbitrarily long sequences.
 
 \begin{figure}[H]
 \includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000/runtime_diff_over_text_size}\caption{\label{figure 5_100}

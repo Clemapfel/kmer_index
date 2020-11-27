@@ -23,5 +23,20 @@ polyploid = multiple sets of paired chromosomes
 
 indexing reads as well as querying for overlaps all involve kmer-index
 
+### COLON CANCER PHENOTYPE ##########
+kmer spectrum used along biomarkers to classify colo cancer with machine learning
+
+### SPECTRUM DISSIMARITY ##########
+comparison of kmer spectra for 5<k<11 used to compare metagenomes and
+evaluate how different they are
+
+### MUSKET ERROR CORRECTION #####################
+The core of substitution-error-based methods is to compute consensus bases
+using the highly redundant coverage information. When a sequencing error
+occurs in a read that originated from a certain position on the genome,
+all reads covering the erroneous position could be piled up to compute
+the consensus base. Considering that sequencing errors are generally random and infrequent, this consensus base is likely to be correct. However, as we assume that the source genome is unknown beforehand, we can neither determine the read locations on the genome nor the correctness of reads directly. Instead, reads that cover overlapping genomic positions can be inferred by assuming that they typically share common substrings. Furthermore, we can approximate the source genome using a k-mer spectrum, which was first introduced by Pevzner et al. (2001)
+
+
 
 

@@ -21,7 +21,7 @@
 \usepackage{mathtools}	% modifiziert amsmath
 \usepackage{amssymb}	% mathematische symbole, für \ceckmarks
 \usepackage{algorithm,algpseudocode}
-\usepackage{fancyhdr}
+\usepackage{scrlayer}
 \usepackage{fontspec}
 \usepackage{beramono}
 
@@ -133,23 +133,7 @@
 
 \renewcommand{\chaptermark}[1]{\markboth{#1}{#1}} % \markright, \markleft, \markboth
 
-
 \pagestyle{scrheadings}
-
-\lehead*{}
-\rehead*{Chapter \upshape\thechapter: \headmark}
-\cehead*{}
-\lefoot*{}
-\refoot*{\pagemark}
-\cefoot*{};
-
-
-\lohead*{Chapter \upshape\thechapter: \headmark}
-\rohead*{}
-\cohead*{}
-\lofoot*{\pagemark}
-\rofoot*{}
-\cofoot*{}
 
 %\lehead*{}
 %\cehead*{}
@@ -332,7 +316,7 @@
 
 \newenvironment{abstractDE}{%
 \thispagestyle{empty}%
-\selectlanguage{ngerman}%
+%\selectlanguage{ngerman}%
 \begin{center}%
 \textbf{Abstract (german)}
 \end{center}}{}

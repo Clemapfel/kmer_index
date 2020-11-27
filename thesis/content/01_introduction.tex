@@ -1,28 +1,26 @@
 %%% MOTIVATION %%%
-\chapter{Motivation}
-A k-mer (also known as "q-gram", henceforth written as "kmer") is any genomic sequence of length $k$ usually in the
-context of a sub-sequence of a longer genome. A kmer-index is a data structure that for every unique kmer that occured
+\chapter{Introduction}
+A k-mer (also known as "q-gram", henceforth written as "kmer") is any oligonucleotide of length $k$ usually in the
+context of a sub-sequence of a longer genome. A kmer-index is a data structure that for every unique kmer
 stores the position of all occurences in a given text. This allows the user to efficiently look up both the number of
 occurences as well their position once the kmer-index is built. Analysis of kmers is used in de novo (meta-)genome\cite{megahit}
-and transcriptome\cite(SOAPdenovo-Trans) assembly. In these applications efficiently accessing short reads from a given
+and transcriptome\cite{SOAPdenovo-Trans} assembly. In these applications efficiently accessing short reads from a given
 set as well as sorting kmer that represent the edges of for example de bruijin graphs during assembly may present a
 "[performance] bottleneck" (Li et. al) that may be somewhat alleviated with an efficient implementation of a kmer index.
-
-
-
-
-A k-mer (also known as``q-gram'', henceforth written as``kmer'')
-is any genomic sequence of length$k$, usually in the context of a
-sub-sequence of a longer genome. Analysis of kmers is used in a wide
-variety of contexts such as in de novo genome assembly\cite{SOAPdenovo},
-taxonomic profiling\cite{phenotype:classification:with:kmer:spectrum} and sequence
-classification\cite{kraken:sequence:classification}. Furthermore kmer spectra (a
-graph of the multiplicity of each kmer in the set of pairwise different
-kmer in the reference) have been used to assess genome similarity\cite{kmer:spectrum:dissimilarity}
-and to correct errors in sequence data\cite{musket:kmer:spectrum:error:correction}.\href{https://github.com/seqan/seqan3}{Seqan3},
-a newly released version of the C++ API for sequence analysis has
-yet to implement a purpose-build index for kmer searching. This paper
-aims to access the viability of substituting seqan3s fm-index\cite{fm:index:master:thesis}
-with the presented kmer-index implementation not only for the purpose
-of searching small kmers but for exact string matching in general
-by comparing the indices performance to each other.
+A kmer spectrum is a table that for each unique kmer notes the number of occurences in the text. Because the kmer-index
+stores all positions and thus the number of occurrences for each kmer building the kmer-index inherently also yields
+the kmer spectrum. Kmer spectra have been used along traditional biomarkers for phenotypic classification of cancer
+metagenome samples via the aid of machine learning\cite{phenotype:classification:with:kmer:spectrum}, pairwise dissimilarity
+analysis comparing metagenomes of arbitrary origin\cite{kmer:spectrum:dissimilarity} as well as assigning taxonomic labels
+to such metagenomes\cite{kraken:metagenome:classification}. Kmer spectra have furthermore been utilized for estimating genome
+size without the need of assembly\cite{genome:size:estimation} and for substitution-based error correction
+of next generation illumina sequencing data\cite{musket:kmer:spectrum:error:correction}.
+\newline
+Given the wide applicability of efficiently searching kmer a wide variety of tools and libraries have been developed.
+One such tool is seqan3s fm\_index \cite{fm:index:master:thesis}, an implementation of the commonly used
+fm-index that aims to provide a generalist tool to finding sequences both exact and non-exact in arbitrary genomic data
+Unlike the fm-index the kmer-index does not allow for searching of non-exact sequences and is furthermore optimized to
+search oligonucleotides of a previously specified length $k$ although queries of arbitrary length may be supplied instead.
+This paper aims to compare the applicability of the kmer-index implementation in comparison with the seqan3s fm\_index
+for this purpose and illuminate if utilizing the kmer-indices inherent strengths may results in an overall performance
+boost.
