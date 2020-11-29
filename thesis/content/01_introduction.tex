@@ -2,10 +2,11 @@
 \chapter{Introduction}
 A k-mer (also known as "q-gram", henceforth written as "kmer") is any oligonucleotide of length $k$ usually in the
 context of a sub-sequence of a longer genome. A kmer-index is a data structure that for every unique kmer
-stores the position of all occurences in a given text. This allows the user to efficiently look up both the number of
-occurences as well their position once the kmer-index is built. Analysis of kmers is used in de novo (meta-)genome\cite{megahit}
-and transcriptome\cite{SOAPdenovo-Trans} assembly. In these applications efficiently accessing short reads from a given
-set as well as sorting kmer that represent the edges of for example de bruijin graphs during assembly may present a
+stores the position of all occurences in a given text, usually relative to the beginning of the text.
+This allows the user to efficiently look up both the number of occurences as well their position once the kmer-index is built.
+Analysis of kmers is used in de novo (meta-)genome\cite{megahit} and transcriptome\cite{SOAPdenovo-Trans} assembly.
+In these applications efficiently accessing short reads from a given set as well as sorting kmer that represent
+the edges of for example de bruijin graphs during assembly may present a
 "[performance] bottleneck" (Li et. al) that may be somewhat alleviated with an efficient implementation of a kmer index.
 A kmer spectrum is a table that for each unique kmer notes the number of occurences in the text. Because the kmer-index
 stores all positions and thus the number of occurrences for each kmer building the kmer-index inherently also yields
@@ -18,7 +19,7 @@ of next generation illumina sequencing data\cite{musket:kmer:spectrum:error:corr
 \newline
 Given the wide applicability of efficiently searching kmer a wide variety of tools and libraries have been developed.
 One such tool is seqan3s fm\_index \cite{fm:index:master:thesis}, an implementation of the commonly used
-fm-index that aims to provide a generalist tool to finding sequences both exact and non-exact in arbitrary genomic data
+fm-index that aims to provide a generalist tool to finding sequences both exact and non-exact in arbitrary genomic data.
 Unlike the fm-index the kmer-index does not allow for searching of non-exact sequences and is furthermore optimized to
 search oligonucleotides of a previously specified length $k$ although queries of arbitrary length may be supplied instead.
 This paper aims to compare the applicability of the kmer-index implementation in comparison with the seqan3s fm\_index
