@@ -35,7 +35,7 @@ hashes, $n$ is the text size) many bytes for bigger text such
 as an entire genome this means using every possible $k$ is currently not
 practical.  To remedy this it could be possible to implement a way
 to compress the single kmer-indices contained in the multi kmer-index.
-Each index contains all positions of the text in it's map exactly
+Each index contains all positions of the text in its map exactly
 once, which means in a multi kmer-index with 5 $k$s, the individual indices
 contain at least $(5-1)n*32$ many bits of redundant entries in the
 form of the vectors of positions for each hash. If a version of the
@@ -79,7 +79,7 @@ increase between 5 and 10\% for smaller texts
 while for bigger texts an overall speedup of $\pm2\%$ depending
 on query length was observed. With further optimization and features
 the kmer-index may become the decidedly more performant index for
-exact string matching purposes in all situations however in it's current
+exact string matching purposes in all situations however in its current
 iterations it is only recommended for use with appropriately small
 text sizes or in cases where the set of query lenghts can be consistently predicted.
 

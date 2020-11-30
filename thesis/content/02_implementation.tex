@@ -2,19 +2,19 @@
 
 % CONSTRUCTION
 \section{Construction}
-The kmer-index utilizes an unordered map as it's central data structure.
+The kmer-index utilizes an unordered map as its central data structure.
 For each kmer said map notes the position of all occurrences of a given kmer in the text.
 To save on memory the kmers are converted to an unsigned integer via
 the following hash function:
 \begin{verse}
-let $kmer =(q_{1},\,q_{2},\,...,q_{k})$ where $q\in A$
+let $kmer =(q_{1},\,q_{2},\,...,q_{k})$ where $q\in A \text{the Alphabet}$
 
 $hash(kmer) = \sum_{i=0}^{k}\:r(q_{i})\:\sigma^{k-i-1}$
 \begin{verse}
 where $\sigma=\#A,r(q_{i})\in\{0,1,...,\sigma-1\}$ the rank of $q_{i}$
 \end{verse}
 \end{verse}
-This hash guarantees no hash collisions and is furthermore
+This hash guarantees no collisions and is furthermore
 \href{http://docs.seqan.de/seqan/3-master-user/group__views.html\#ga6e598d6a021868f704d39df73252974f}{also used} in the Seqan3
 library with which the kmer-index is intended to interface.
 
@@ -38,27 +38,28 @@ $\text{index}[h]\leftarrow(\text{index}[h],\:i)$
 \caption{Construction of the kmer index.}
 \end{algorithm}
 
-Constructing the kmer index is fairly straightforward: Keeping track of the current position we iterate through the
-text. As each position $i<n-k$ represents the position of a kmer $n-k$ hashes will be generated and inserted into the
-index' map. Construction therefore has linear amortized complexity. This is acceptably quick because genomic data is
-usually static and as such the construction will usually only be done once after which the index is serialized so it
-can be loaded directly at a later point.
-
+Constructing the kmer-index is fairly straightforward: While keeping track of the current position we iterate through the
+text one letter at a time, inserting the current position $i$ for the current kmer into the index.
+As each position $i<n-k$ represents the position of a kmer, $n-k$ hashes will be generated and the same number of insertion
+into the indices map will be performed. Construction therefore has linear amortized complexity. This is acceptably fast because genomic data is
+usually static and as such the construction will usually only be done a single time after which the index is serialized
+so it can be loaded directly at a later point.
+\newpage
 % SEARCHING
 \section{Searching}
 
 The kmer-index implementation is capable of searching queries of arbitrary length regardless of the $k$ specified on
-construction. However a $k$ will still need to be chosen and depending on the relation of the length of the query to $k$
+construction. However a $k$ will still need to be chosen and depending on the length of the query in relation to $k$
 performance may vary drastically.
 
 % M = K
 \subsection{Query Length m = k}
 
-The optimally performing case is a query length of exactly $k$. Here only a simple lookup in the unordered map will
-return all positions of the query directly.
+The optimally performing case is a query of length exactly $k$. In this case only a simple lookup in the unordered map will
+return all positions of the query directly:
 \begin{lstlisting}[caption={Search function for queries of size k.},language={[GNU]C++},tabsize=4]
 unordered_map<size_t, std::vector<uint32_t>> _data;
-uint64_t hash((...) query) const {(...)};
+uint64_t hash((...) query) const {(...)
 
 template<std::ranges::range query_t>
 std::vector<size_t>& search_k(query_t& query) const
@@ -71,7 +72,7 @@ std::vector<size_t>& search_k(query_t& query) const
 }
 \end{lstlisting}
 
-By nature of using an unordered map, querying it for the positions of a single entry has constant-time amortized complexity
+By nature of using an unordered map, querying it for the positions of a single entry has constant time amortized complexity
 dependent on the number entries in \lstinline{_data} which is equivalent to the number of pairwise different kmers in the text. C++s
 \href{https://en.cppreference.com/w/cpp/language/copy_elision}{return value optimization} ensures that the positions are
 never actually copied and only a reference to them is moved between functions. This means that the only overhead of querying
@@ -80,29 +81,28 @@ to compute the hash. This is the kmer-indices main strength and queries of lengt
 
 \begin{lem}
 \label{Lemma 1}
-Search performance for queries of size $m:\,m==k$ is dependent on the number of pairwise different kmers in the text
+Search performance for queries of size $m:\,m=k$ is dependent on the number of pairwise different kmers in the text.
 \end{lem}
-
+\newpage
 % M < K
 \subsection{Query Length m < k}
 
-To be able to search queries of arbitrary length without modifying the indices internal structrue (that is while still
-using the unordered map generate for the initial k) we cannot lookup the query directely. As $m < k$ we instead
-find the positions of all kmers that have the query as a prefix.
+To be able to search queries of arbitrary length without modifying the indices internal structure as dictated by the
+initial choice of $k$, we cannot lookup the query directly.
 
 \begin{verse}
-let $query=(q_{1},q_{2},...,q_{m})$ where $m<k$
+let $query=(q_{1},q_{2},...,q_{m})$ where $m<k$ \newline
 for an arbitrary $kmer=(s_{1},...,s_{k})$ it holds true that:
 
 iff $\forall i\leq m:\:q_{i}=s_{i}$ then any position $pos$ of $kmer$
 is also a position of $query$
-because the $m$ characters proceeding$pos$ are
+because the $m$ characters proceeding $pos$ are
 $s_{0},...,s_{m},...,s_{k}$ and $s_{0},...,s_{m}=q_{0},...,\,q_{m}=query$
 \end{verse}
 
-To find the position of a query we can thus generate all possible kmers that contain the query as a prefix and
-look up the position said kmers. Any valid occurence for any of these kmers is also a valid occurence of the query.
-To save on memory and runtime we generate the hashes of the set of kmers directly.
+To find the position of a query we can thus generate all possible kmers that contain the query as a prefix and look
+these up instead. Any valid occurence for any of these kmers is also a valid occurence of the query.
+To save on memory and runtime we need to generate the hashes of the set of kmers directly.
 
 \begin{verse}
 let $hash(q_{1},q_{1},...,q_{m})=\sum_{i=0}^{k}\:r(q_{i})\:\sigma^{k-i}=h_{q}$
@@ -112,14 +112,14 @@ let $H\subset\mathbb{Z}^{+}\coloneqq$ set of all hashes of kmer with
 a prefix equal to$query$
 
 let $h_{min},\:h_{max}:\:\forall h_{i}\in H:\:h_{min}\leq h_{i}<h_{max}$
-be the lower and upper bound of $H$
+be the strict lower and upper bound contained in $H$
 
 ~
 
 to find $h_{min}$ we observe that as the query $q_{min}:\,r(q_{min})=h_{min}$
 has a prefix equal to $query$ it holds true that
 
-$hash(h_{min})\geq h_{p}$ because the first $m$ summands$r(q_{min,j})\:\sigma^{k-j-1}:1\leq j\leq m$
+$hash(h_{min})\geq h_{p}$ because the first $m$ summands $r(q_{min,j})\:\sigma^{k-j-1}:1\leq j\leq m$
 of the hash are given by the prefix
 
 we choose the other summands $r(q_{i})\:\sigma^{k-i-1}:i>m$ to all
@@ -129,8 +129,8 @@ thus $h_{min}=h_{p}+\sum_{i=m+1}^{k}\:0*\sigma^{k-i-1}=h_{p}$
 
 ~
 
-to find $h_{max}$ we observe that$\#H=\sigma^{k-m}$ because$m$ characters
-of each query are given by the prefix
+to find $h_{max}$ we observe that $\#H=\sigma^{k-m}$ because $m$ characters
+of each query are provided by the prefix
 
 we furthermore observe that for two hashes $h_{a},\,h_{b}\in H:\,h_{a}<h_{b}$ the
 difference between the hashes $h_{a}-h_{b}\geq1$
@@ -184,7 +184,7 @@ in turn means $\#H$ (and thus the number of hashes that need to be searched) is 
 
 \begin{lem}
 \label{Lemma 2}
-search performance for queries of size $m:\,(k\mod m)\neq0\:\land m<k$ is inversely proportional to $k-m$
+search performance for queries of size $m:\,(k\mod m)\neq0\:\land m<k$ is inversely proportional to $k-m$.
 \end{lem}
 
 The actual implementation throws an exception if $\sigma^{k-m}>10^{7}$ in order to avoid a badly chosen $m$ and $k$
@@ -226,9 +226,9 @@ If a $\rho$ is found to exist for all parts $\rho_{seed}$ is confirmed to be a v
 
 For performance purposes if at any point the program does not find an appropriate $\rho_{i}$ the current position
 $\rho_{seed}$ is marked as invalid and the loop moves onto the next. While in the worst-case scenario (all positions
-in $\rho_{seed}$ are valid) performance will be relatively costly in praxis this is rarely the case, especially for
-longer queries because given a randomized text of constant size a longer query is statistically likely to have fewer valid
-occurences than a shorter query. We observe:
+in $\rho_{seed}$ are valid) performance will be relatively costly in praxis especially for longer queries this is rarely the case
+because given a randomized text of constant size a longer query is statistically likely to have fewer valid
+occurences than a shorter query.
 
 \begin{lem}
 \label{Lemma 3}Search time for queries of size $m:\,m>k$ scales
@@ -237,7 +237,7 @@ proportionally with the number of occurences of all the corresponding $p_{i}$.
 
 Searching queries of length $m:m\mod k=0$ (which do not have a rest)
 should be preferred because in that case every $p_{i}$ can be searched with the the well-performing \lstinline{search_k}.
-If there is a rest \lstinline{search_subk} will need to be employed which will result in overall worse performance.
+If there is a rest \lstinline{search_subk} will need to be employed resulting in overall worse performance.
 
 \section{Multi kmer-Index}
 
@@ -245,5 +245,23 @@ As implied by the above lemmas correct choice of k relative to the queries size 
 performance. In practical applications however the query length cannot be controlled and may be highly variable within
 a set of queries. To mitigate this the kmer-index was extended to unify indices for multiple k
 into one "multi" kmer-index. Given a query the multi kmer-index chooses the optimal k for searching the query available
-to it without any user interaction in order to achieve more flexiblity and more consistent
-performance compared to the "single" kmer-index.
+to it in order to achieve more flexiblity and more consistent performance compared to the "single" kmer-index.
+
+\begin{lstlisting}[caption={Class Definition and Constructor implementation of the (multi) kmer-index.},language={[GNU]C++},tabsize=2]
+template<size_t k>
+class single_kmer_index;
+
+template<size_t... ks>
+struct multi_kmer_index
+        : public single_kmer_index<ks>...
+{
+	// ctor
+	template<std::ranges::range text_t>
+	multi_kmer_index(text_t& text)
+		: single_kmer_index<ks>(text)...
+	{
+		(...)
+	}
+}
+
+\end{lstlisting}

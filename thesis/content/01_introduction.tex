@@ -20,10 +20,10 @@ size without the need of assembly\cite{genome:size:estimation} and for substitut
 of next generation illumina sequencing data\cite{musket:kmer:spectrum:error:correction}.
 \newline
 Given the wide applicability of efficiently searching kmer a wide variety of tools and libraries have been developed.
-One such tool is \href{https://github.com/seqan/seqan3}{seqan3}s fm\_index \cite{fm:index:master:thesis}, an implementation
+One such tool is \href{https://github.com/seqan/seqan3}{Seqan3}s fm\_index \cite{fm:index:master:thesis}, an implementation
 of the commonly used fm-index first created by P. Ferragina and G. Manzini \cite{original:fm} that aims to provide a generalist
 tool to finding sequences both exact and non-exact in arbitrary genomic data.
 Unlike the fm-index the kmer-index implementation does not allow for searching of non-exact sequences to allow for further
 optimization and is thus more deliberatly aimed at specifcially searching kmer. This paper aims to compare the applicability
-of the kmer-index implementation with the seqan3s fm\_index for this purpose and attempt to illuminate wether utilizing
+of the kmer-index implementation with the Seqan3s fm\_index for this purpose and attempt to illuminate wether utilizing
 the kmer-indices inherent strengths may results in an overall performance boost.
