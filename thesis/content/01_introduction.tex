@@ -3,13 +3,15 @@
 A k-mer (also known as "q-gram", henceforth written as "kmer") is any oligonucleotide of length $k$ usually in the
 context of a sub-sequence of a longer genome. A kmer-index is a data structure that for every unique kmer
 stores the position of all occurences in a given text, usually relative to the beginning of the text.
-This allows the user to efficiently look up both the number of occurences as well their position once the kmer-index is built.
+This allows the user to efficiently look up both how often and exactly where a kmer occurs.
 Analysis of kmers is used in de novo (meta-)genome\cite{megahit} and transcriptome\cite{SOAPdenovo-Trans} assembly.
-In these applications efficiently accessing short reads from a given set as well as sorting kmer that represent
-the edges of for example de bruijin graphs during assembly may present a
+In these applications efficiently accessing short reads from a set of next-generation sequencing data as well as sorting
+kmer that represent the edges of for example de bruijin graphs during assembly may present a
 "[performance] bottleneck" (Li et. al) that may be somewhat alleviated with an efficient implementation of a kmer index.
-A kmer spectrum is a table that for each unique kmer notes the number of occurences in the text. Because the kmer-index
-stores all positions and thus the number of occurrences for each kmer building the kmer-index inherently also yields
+\newline
+A kmer spectrum is a frequency spectrum that for a given k depicts how many occurences kmer of a certain multiplicity in a text
+exhibit. %how many of the kmer that have x copies in the text are there
+Because the kmer index provides the number of occurences of each kmer, building the kmer-index inherently also yields
 the kmer spectrum. Kmer spectra have been used along traditional biomarkers for phenotypic classification of cancer
 metagenome samples via the aid of machine learning\cite{phenotype:classification:with:kmer:spectrum}, pairwise dissimilarity
 analysis comparing metagenomes of arbitrary origin\cite{kmer:spectrum:dissimilarity} as well as assigning taxonomic labels
@@ -18,10 +20,10 @@ size without the need of assembly\cite{genome:size:estimation} and for substitut
 of next generation illumina sequencing data\cite{musket:kmer:spectrum:error:correction}.
 \newline
 Given the wide applicability of efficiently searching kmer a wide variety of tools and libraries have been developed.
-One such tool is seqan3s fm\_index \cite{fm:index:master:thesis}, an implementation of the commonly used
-fm-index that aims to provide a generalist tool to finding sequences both exact and non-exact in arbitrary genomic data.
-Unlike the fm-index the kmer-index does not allow for searching of non-exact sequences and is furthermore optimized to
-search oligonucleotides of a previously specified length $k$ although queries of arbitrary length may be supplied instead.
-This paper aims to compare the applicability of the kmer-index implementation in comparison with the seqan3s fm\_index
-for this purpose and illuminate if utilizing the kmer-indices inherent strengths may results in an overall performance
-boost.
+One such tool is \href{https://github.com/seqan/seqan3}{seqan3}s fm\_index \cite{fm:index:master:thesis}, an implementation
+of the commonly used fm-index first created by P. Ferragina and G. Manzini \cite{original:fm} that aims to provide a generalist
+tool to finding sequences both exact and non-exact in arbitrary genomic data.
+Unlike the fm-index the kmer-index implementation does not allow for searching of non-exact sequences to allow for further
+optimization and is thus more deliberatly aimed at specifcially searching kmer. This paper aims to compare the applicability
+of the kmer-index implementation with the seqan3s fm\_index for this purpose and attempt to illuminate wether utilizing
+the kmer-indices inherent strengths may results in an overall performance boost.

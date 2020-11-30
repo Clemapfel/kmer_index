@@ -101,17 +101,17 @@ iteration applicable if not necessarily better suited for this purpose.
 
 % abstract in german
 \begin{abstractDE}
-Mit steigender Nachfrage f\"ur gro\ss fl\"achige genomisches Sequence Matching steigt
-auch die Nachfrage Positionen f\"ur kurze genomische Sequenzen oder kmer performant
+Mit steigender Nachfrage f\"ur gro\ss fl\"achiges Sequence Matching steigt
+auch die Nachfrage Positionen f\"ur kmer, genomisches Sequenzen der länge $k$ performant
 in einem Text zu finden. Zu diesem Zweck wurde ein sogenannter kmer-Index implementiert
-und dessen Performance evaluiert. Die Implementierung ist f\"ahig kmer von willk\"urlicher
-L\"ange zu finden, benutzt Parallelisierung f\"ur schneller Konstruktion und die interne
-Struktur des Indices kann weiterhin personalisiert werden um bessere Performance
-f\"ur bestimtte Query L\"angen zu erhalten. Die Natur der Personalisierung und die daraus 
+und dessen Performance evaluiert. Die Implementierung ist f\"ahig kmer von frei w\"ahlbarer
+L\"ange zu finden, benutzt Parallelisierung f\"ur schnellere Konstruktion und die interne
+Struktur des Indices kann weiterhin individuell angepasst werden um bessere Performance
+f\"ur bestimmte Query L\"angen zu erhalten. Die Natur der Personalisierung und die daraus
 resultierende Performance wurde mit Benchmarks demonstriert. Ergebnisse legen nah, 
 dass f\"ur kmer der L\"ange $k\in\{3,4,...,30\}$ im Vergleich zu seqan3s fm\_index der 
 kmer-index bis zu 60\% schneller ist. F\"ur kmer beliebiger L\"ange zeigen Ergebnisse, 
-dass ein Speedup von $\pm5$\% je nach Textl\"ange erreicht wird. Der Einsatz der kmer-Index
+dass ein Speedup von $\pm5$\% je nach Textl\"ange erreicht werden kann. Der Einsatz der kmer-Index
 Implementierung wird daher f\"ur kurze kmer empfohlen w\"ahrend f\"ur l\"angere kmer der Index 
 je nach Text L\"ange einsetzbar aber nicht unbedingt besser geeignet ist.
 \end{abstractDE}
