@@ -43,14 +43,14 @@ query_length_limit = 350
 ylim = c()
 y_scale = scale_y_continuous(name = "speedup %")#, breaks=seq(-10000, 10000, 1))
 x_scale = scale_x_continuous(name="query length", breaks=seq(0, 1000, 30))
-theme = theme(plot.title=element_text(face="bold", size=20), plot.subtitle=element_text(size=20), legend.position="none", axis.title.x=element_blank(), legend.text=element_text(size=20))
+theme = theme(plot.title=element_text(face="bold", size=20), plot.subtitle=element_text(size=20), legend.position="none", axis.title.x=element_blank(), legend.text=element_text(size=20), axis.title.y=element_text(size=20), axis.text.x=element_text(size=12))
 coord = coord_cartesian(ylim=c(-5,5))#min(diff), max(diff)))
 coord = coord_cartesian(ylim=c(-10,40))
 color = scale_color_manual(name = "", values =c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
 
 get_plot = function(text_length, col_a_name, col_b_name) {
 
-  coord = coord_cartesian(ylim=c(-50,50))
+  coord = coord_cartesian(ylim=c(-40,40))
 
   y_scale = scale_y_continuous(name = "speedup (%)", breaks=seq(-100,100,10))
 
@@ -80,7 +80,7 @@ get_plot = function(text_length, col_a_name, col_b_name) {
 
   plot = ggplot() + geom_rect(aes(xmin=3, xmax=30, ymin=-1000, ymax=1000),color="darkgrey", alpha=0.1)
   plot = plot + geom_segment(aes(x=query_length, xend=query_length, y=0, yend=speedup, color=ifelse(speedup>0, multi_color_label, fm_color_label)), size=0.75)
-  plot = plot + ggtitle(label=paste("text length = ", text_length, sep=""), subtitle=paste("median speedup in [", 31, ",", max(data_a$query_length), "] = ", median_total, " %",sep="")) + y_scale + x_scale + theme + color
+  plot = plot + ggtitle(label=paste("text size = ", text_length, sep=""), subtitle=paste("median speedup in [", 31, ",", max(data_a$query_length), "] = ", median_total, " %",sep="")) + y_scale + x_scale + theme + color
   plot = plot + coord
 }
 
@@ -102,11 +102,11 @@ proxy = ggplot() + geom_segment(aes(x=query_length, xend=query_length, y=0, yend
 proxy = proxy + theme(legend.position="bottom", legend.text=element_text(size=20)) + color
 
 plot = grid.arrange(plot_1e6, plot_1e7, plot_1e8, ncol=1,
-                     top=textGrob(expression(bold("relative speedup: kmer vs. fm over query length"), gp=gpar(textsize=30))),
+                     top=textGrob(expression(bold("relative speedup: kmer vs. fm over query length")), gp=gpar(fontsize=20)),
                      bottom=get_legend(proxy))#legendGrob(c("fm faster than kmer", "kmer faster than fm"), pch=c(15,15), gp=gpar(color=c(fm_color, multi_color_label))))
 
 print(plot)
-ggsave("runtime_diff_over_text_size.png", plot, width=30, height=20, units="cm")
+ggsave("runtime_diff_over_text_size.png", plot, width=30, height=25, units="cm")
 
 
 
@@ -138,7 +138,7 @@ if (FALSE) {
 
 y_scale = scale_y_continuous(name = "speedup (%)", breaks=c(-1000, 1000, 10))
 x_scale = scale_x_continuous(name="query length", breaks=seq(0, 1000, 30))
-theme = theme(plot.title=element_text(face="bold"), legend.position="none", axis.title.x=element_blank())
+theme = theme(plot.title=element_text(face="bold"), legend.position="none", axis.title.x=element_blank(), axis.title=element_text(size=30), axis.text.x=element_text(size=30))
 coord = coord_cartesian(ylim=c(-100, 100))#min(diff), max(diff)))
 color = scale_color_manual(name = "", values =c(fm_color, multi_color), labels = c("fm faster than kmer","kmer faster than fm"))
 
