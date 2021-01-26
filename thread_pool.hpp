@@ -14,18 +14,14 @@
 #include <map>
 #include <iostream>
 
-// thread pool of variable size, accepts tasks and puts them in a not lock-free queue,
-// worker threads work through them as they free up
-// supports resizing and aborting at any time
-
 namespace kmer::detail
 {
 
+// generic variable sized thread pool
 struct thread_pool
 {
     private:
         // callable wrapper for storing functions in thread pool queue
-        // abstract class so unique_ptr can hold wrapper which means function of all signatures can be held
         class _task_wrapper_base
         {
             public:
@@ -77,6 +73,7 @@ struct thread_pool
         void setup_threads(size_t);
 
     public:
+        // DTOR
         ~thread_pool();
 
         // CTOR
@@ -111,7 +108,7 @@ struct thread_pool
         }
 };
 
-}// end of namespace kmer::detail
+} // end of namespace kmer::detail
 
 // references used:
 // https://codereview.stackexchange.com/questions/221626/c17-thread-pool

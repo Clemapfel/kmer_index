@@ -359,11 +359,7 @@ namespace kmer
 
             inline static std::vector<size_t> _all_ks = std::vector<size_t>{ks...};
 
-            // ###
-            // setup such that kmer_index can call a specific search function of one of it's elements
-            // by specifying a non-constexpr k during runtime
-
-            // we first fill an array with functions for an individual kmer_index_elements' search (and search_k)
+            // workaround to allow for RVO call of specific element with non-constexpr k (c.f. [1])
             template<size_t k>
             result_t call_search(std::vector<alphabet_t>& query) const
             {
@@ -388,10 +384,6 @@ namespace kmer
             const std::array<search_k_fn, sizeof...(ks)> _search_k_fns = {
                     (&kmer_index<alphabet_t, position_t, ks...>::call_search_k<ks>)...};
 
-            // then fill an array such that _k_to_search_fns_i[k] returns the correct
-            // index to get a function from _search_fns
-            // now we can call this->*(_search_fns[k])(query); where k ist non-constexpr and
-            // invoke the corresponding kmer_index_element with RVO
             std::array<int, std::max({ks...}) + 1> _k_to_search_fns_i;
 
             void setup_k_to_search_fn()
@@ -489,6 +481,7 @@ namespace kmer
             kmer_index(text_t& text, size_t n_threads = std::max(std::thread::hardware_concurrency(), 1u))
                     : index_element_t<ks>()...
             {
+                // construct each element in paralell
                 auto pool = detail::thread_pool{n_threads};
                 std::vector<std::future<void>> futures;
                 (futures.emplace_back(
@@ -586,3 +579,25 @@ namespace kmer
     }
 
 } // end of namespace kmer
+
+// ###################################
+//
+// [1]
+//
+// As it is paramount to choose the appropriate k to search for each query the kmer-index has
+// to have a way of invoking the search function of one of it's specific elements. Because k is a
+// template parameter list this is not possible as the k would've have to depend on the text and thus
+// be chosen at runtime and simply invoking all elements with a fold-expression would perform suboptimally
+// To address this a work-around was implement where two arrays are allocated: _search_fns holds one
+// specific search function for each element, so for example for k = 3, 5, 6. search_fns[0] would hold
+// kmer_index_element<3>::search, etc.. The second array _k_to_search_fns_i is a mapping of which index
+// in search_fns corresponds to which k so for our example _k_to_search_fns_i[3] = 0, etc.
+//
+// Through this workaround it is now possible to evoke exactly one of the elements using a non-constexpr
+// k supplied at runtime without using a fold expression while also benefitting from return
+// value optimization as such:
+//
+// size_t k = 3;
+// const auto* pos = (this->*_search_k_fns[k])(query);
+//
+// ###################################

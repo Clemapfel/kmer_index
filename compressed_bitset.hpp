@@ -2,12 +2,9 @@
 
 #pragma once
 
-
-namespace kmer
+namespace kmer::detail
 {
-namespace detail
-{
-    // runtime-optimized equivalent for std::vector<bool>
+    // runtime-optimized functional equivalent for std::vector<bool>
     template<typename integer_t = uint_fast64_t>
     class compressed_bitset
     {
@@ -17,22 +14,18 @@ namespace detail
             static constexpr integer_t _rshift_v = log2((sizeof(integer_t) * 8));  // i / n = i >> log2(n)
             static constexpr integer_t _one = 1, _zero = 0, _not_zero = ~_zero;
 
-            // last valid index (equivalent to std::vector::size())
             size_t _n_bits;
-
-            // holds integers
             std::vector<integer_t> _bits;
 
         public:
             // CTOR
-            // while n_bits is arbitrary, if n_bits % sizeof(integer_t) != 0, there will be overfill
             compressed_bitset(size_t n_bits, bool zero_or_one)
                     : _bits(std::max(n_bits / (sizeof(integer_t) * 8) + 1, 1ul), (zero_or_one ? _not_zero : _zero))
             {
                 _n_bits = n_bits;
             }
 
-            // convert to regular vector
+            [[nodiscard]]
             std::vector<bool> to_vector() const
             {
                 std::vector<bool> out;
@@ -42,12 +35,10 @@ namespace detail
                 return out;
             }
 
-            // cast to regular vector
             explicit operator std::vector<bool>()
             {
                 return to_vector();
             }
-
 
             // set ith bit to 0
             void set_0(size_t i)
@@ -102,7 +93,7 @@ namespace detail
             // popcount
             size_t count_bits_equal_to(bool b) const
             {
-                // TODO: do new x86 std::popcount
+                // TODO: use new x86 std::popcount instead
                 size_t n_ones = 0;
 
                 for (size_t i = 0; i < _n_bits; ++i)
@@ -113,5 +104,4 @@ namespace detail
             }
     };
 
-} // end of namespace detail
-} // end of namespace kmer
+} // end of namespace kmer::detail

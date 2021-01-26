@@ -7,8 +7,10 @@
 
 namespace kmer::detail
 {
+    // if bitmask bypassed, skip operator arithmetics and treat bitmask as all 11111...11
     enum class BYPASS_BITMASK : bool {YES = true, NO = false};
 
+    // container for kmer index results (c.f. [1])
     template<typename position_t>
     class kmer_index_result
     {
@@ -17,27 +19,21 @@ namespace kmer::detail
             const bool _bypass_bitmask;
             const size_t _n_results;
 
-            // pointers to positions inside kmer index map
-            std::vector<const std::vector<position_t> *> _positions;
+            // pointers to positions inside kmer_index::_data
+            std::vector<const std::vector<position_t>*> _positions;
 
         protected:
-            // iterator class that automatically jumps to next valid result
             class kmer_index_result_iterator
             {
                 friend class kmer_index_result<position_t>;
 
                 private:
-                    // result the iterator is operating on
                     const kmer_index_result<position_t> *_result;
-
-                    // current index of the position pointed to
                     size_t _position_i = 0;
 
-                    // first and last valid index for the positions, computer on construction
+                    // first and last valid index for the positions, computed at construction
                     size_t _first_valid_i, _last_valid_i;
 
-                    // move iterator to next valid position
-                    // returns true if moving possible, false if end is hit
                     bool advance_to_next_valid_result()
                     {
                         if (_position_i == _last_valid_i)
@@ -54,8 +50,6 @@ namespace kmer::detail
                         return true;
                     }
 
-                    // move iterator to previous valid position
-                    // returns true if moving possible, false if start is hit
                     bool advance_to_previous_valid_result()
                     {
                         if (_position_i == _first_valid_i)
@@ -73,11 +67,10 @@ namespace kmer::detail
                     }
 
                 protected:
-                    // ctor, choose wether to start at beginning or end of range
-                    kmer_index_result_iterator(kmer_index_result<position_t> *result, bool beginning_or_end)
+                    kmer_index_result_iterator(kmer_index_result<position_t> *result, bool start_at_beginning_or_end)
                             : kmer_index_result_iterator(result)
                     {
-                        if (beginning_or_end)
+                        if (start_at_beginning_or_end)
                         {
                             if (not _result->_bitmask.at(0))
                                 advance_to_next_valid_result();
@@ -89,14 +82,13 @@ namespace kmer::detail
                     }
 
                 public:
-                    // typedefs required by std
                     using iterator_category = std::bidirectional_iterator_tag;
                     using value_type = position_t;
                     using difference_type = void;
                     using pointer = void;
                     using reference = void;
 
-                    // typedef of own type for readability
+                    // typedef for readability
                     using iterator_t = kmer_index_result<position_t>::kmer_index_result_iterator;
 
                     // CTOR
@@ -119,7 +111,6 @@ namespace kmer::detail
                             _first_valid_i = 0;
                     }
 
-                    // operators: arithmetics
                     iterator_t &operator++()
                     {
                         advance_to_next_valid_result();
@@ -176,7 +167,6 @@ namespace kmer::detail
                         }
                     }
 
-                    // compare
                     bool operator==(iterator_t other)
                     {
                         return this->_position_i == other._position_i and this->_result == other._result;
@@ -187,7 +177,6 @@ namespace kmer::detail
                         return not(*this == other);
                     }
 
-                    // dereference
                     value_type operator*()
                     {
                         auto result = _result->at(_position_i);
@@ -195,6 +184,7 @@ namespace kmer::detail
                     }
             };
 
+            // is i a valid position
             bool is_valid(size_t i) const
             {
                 if (_bypass_bitmask)
@@ -209,20 +199,18 @@ namespace kmer::detail
             }
 
         public:
-            // CTOR: defailt
+            // CTORs
             kmer_index_result()
                     : _bitmask(0, true), _bypass_bitmask(false), _n_results(0)
             {
             }
 
-            // CTOR: k or nk
-            kmer_index_result(const std::vector<position_t> *positions, bool zero_or_one, BYPASS_BITMASK bypass_bitmask)
-                    : _bitmask((bool(bypass_bitmask) ? 0 : positions->size()), zero_or_one), _bypass_bitmask(bool(bypass_bitmask)), _n_results(positions->size())
+            kmer_index_result(const std::vector<position_t> *positions, bool fill_with_zero_or_ones, BYPASS_BITMASK bypass_bitmask)
+                    : _bitmask((bool(bypass_bitmask) ? 0 : positions->size()), fill_with_zero_or_ones), _bypass_bitmask(bool(bypass_bitmask)), _n_results(positions->size())
             {
                 _positions = {positions};
             }
 
-            // CTOR: sub k
             kmer_index_result(std::vector<const std::vector<position_t>*> positions)
                     : _bitmask(0, true),
                       _bypass_bitmask(true),
@@ -247,13 +235,12 @@ namespace kmer::detail
                 _bitmask.set_1(i);
             }
 
-            // get number of valid positions
+            // number of valid positions
             size_t size() const
             {
                 return _bitmask.count_bits_equal_to(true);
             }
 
-            // copy result into vector and sort
             std::vector<position_t> to_vector() const
             {
                 if (_positions.empty())
@@ -272,7 +259,6 @@ namespace kmer::detail
                 return output;
             }
 
-            // iterables
             kmer_index_result_iterator begin()
             {
                 return kmer_index_result_iterator(this, true); // set to beginning
@@ -285,6 +271,22 @@ namespace kmer::detail
 
     };
 } // end of namespace kmer::detail
+
+// ###################################
+//
+// [1]
+//
+// When searching for query positions with a query of length != k, the kmer index has to not
+// only lookup the corresponding vector of positions in it's data member but furthermore check
+// each position for wether the query actually occurs there. Usually one would just discard
+// the non-valid positions however this requires reallocation. This kmer-index result class allows
+// the positional vector (holding all positions of the k-prefix of the quey) to be returned by
+// reference by also holding a bitmask that for each index in that vector marks wether or not the
+// rest of the query actually occurs after it.
+// By utilizing kmer_index_result instead of simple std::vector and furthermore optimizing the bitmask
+// to be compressed the minimal amount of allocation per query is needed drastically improving performance
+//
+// ###################################
 
 
 

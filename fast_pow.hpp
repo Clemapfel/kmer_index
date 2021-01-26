@@ -1,17 +1,12 @@
-// Copyright (c) 2020 Clemens Cords. All rights reserved.
-
 #pragma once
 
 #include <cstdint>
 #include <cstdlib>
 
-// reference used: https://gist.github.com/orlp/3551590
+// source: https://gist.github.com/orlp/3551590
 
 namespace kmer::detail
 {
-
-    // highly optimized pow for size_t
-
     constexpr uint8_t highest_bit_set[] =
     {
             0, 1, 2, 2, 3, 3, 3, 3,
@@ -21,7 +16,7 @@ namespace kmer::detail
             6, 6, 6, 6, 6, 6, 6, 6,
             6, 6, 6, 6, 6, 6, 6, 6,
             6, 6, 6, 6, 6, 6, 6, 6,
-            6, 6, 6, 6, 6, 6, 6, 255, // anything past 63 is a guaranteed overflow with base > 1
+            6, 6, 6, 6, 6, 6, 6, 255,
             255, 255, 255, 255, 255, 255, 255, 255,
             255, 255, 255, 255, 255, 255, 255, 255,
             255, 255, 255, 255, 255, 255, 255, 255,
