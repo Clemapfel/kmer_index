@@ -3,11 +3,11 @@
 % CONSTRUCTION
 \section{Construction}
 The kmer-index utilizes an unordered map as its central data structure.
-For each kmer said map notes the position of all occurrences of a given kmer in the text.
+For each kmer said map stores the position of all occurrences of a given kmer in the text.
 To save on memory the kmers are converted to an unsigned integer via
 the following hash function:
 \begin{verse}
-let $kmer =(q_{1},\,q_{2},\,...,q_{k})$ where $q\in A \text{the Alphabet}$
+let $kmer =(q_{1},\,q_{2},\,...,q_{k})$ where $q\in A, \text{the Alphabet}$
 
 $hash(kmer) = \sum_{i=0}^{k}\:r(q_{i})\:\sigma^{k-i-1}$
 \begin{verse}
@@ -81,7 +81,7 @@ to compute the hash. This is the kmer-indices main strength and queries of lengt
 
 \begin{lem}
 \label{Lemma 1}
-Search performance for queries of size $m:\,m=k$ is dependent on the number of pairwise different kmers in the text.
+Search performance for queries of size $m:\,m=k$ is dependent on the number of pairwise different kmers in the text
 \end{lem}
 \newpage
 % M < K
@@ -172,6 +172,7 @@ std::vector<size_t> search_sub_k(range_t& query) const
 }
 \end{lstlisting}
 \end{minipage}
+\label{section m < k}
 
 Note that after looking up all the hashes we also need to call \lstinline{check_last_kmer}. This function covers an
 edge case were the query happens to be a substring of the last kmer in the text. As the query is compared
@@ -184,17 +185,18 @@ in turn means $\#H$ (and thus the number of hashes that need to be searched) is 
 
 \begin{lem}
 \label{Lemma 2}
-search performance for queries of size $m:\,(k\mod m)\neq0\:\land m<k$ is inversely proportional to $k-m$.
+Search performance for queries of size $m:\,(k\mod m)\neq0\:\land m<k$ is inversely proportional to $k-m$
 \end{lem}
 
 The actual implementation throws an exception if $\sigma^{k-m}>10^{7}$ in order to avoid a badly chosen $m$ and $k$
 combination to take hours to search for if the number of resulting hashes is too high.\footnote{While somewhat arbitrarily
-chosen, $10^{7}$ represents the case of $k-m>11$ for the nucleotide alphabet ($\sigma=4$) which should allow most users
+chosen, $10^{7}$ represents the case of $k-m>11$ for the smallest nucleotide alphabet ($\sigma=4$) which should allow most users
 to be able to not encounter the exception during proper usage of the kmer-index and notably will mean for $k=10$ queries
 of all length be accepted.}
 
 % QUERY SIZE M > K
 \subsection{Query Length m > k}
+\label{m > k}
 
 To search queries of length $m>k$ the query is split into parts of length $k$ which are then searched individually.
 If $m\mod k\neq0$ there will be a "rest" of length $r<k$.
@@ -232,7 +234,7 @@ occurences than a shorter query.
 
 \begin{lem}
 \label{Lemma 3}Search time for queries of size $m:\,m>k$ scales
-proportionally with the number of occurences of all the corresponding $p_{i}$.
+proportionally with the number of occurences of all the corresponding $p_{i}$
 \end{lem}
 
 Searching queries of length $m:m\mod k=0$ (which do not have a rest)
@@ -241,15 +243,15 @@ If there is a rest \lstinline{search_subk} will need to be employed resulting in
 
 \section{Multi kmer-Index}
 
-As implied by the above lemmas correct choice of k relative to the queries size is paramount to achieving acceptable
+As implied by the above lemmas correct choice of $k$ relative to the queries size is paramount to achieving acceptable
 performance. In practical applications however the query length cannot be controlled and may be highly variable within
-a set of queries. To mitigate this the kmer-index was extended to unify indices for multiple k
-into one "multi" kmer-index. Given a query the multi kmer-index chooses the optimal k for searching the query available
+a set of queries. To mitigate this the kmer-index was extended to unify indices for multiple $k$
+into one "multi" kmer-index. When provided a query the multi kmer-index chooses the optimal $k$ for searching the query available
 to it in order to achieve more flexiblity and more consistent performance compared to the "single" kmer-index.
 
 \begin{lstlisting}[caption={Class definition and constructor implementation of the (multi) kmer-index.},language={[GNU]C++},tabsize=2]
 template<size_t k>
-class single_kmer_index;
+class single_kmer_index { (...)
 
 template<size_t... ks>
 struct multi_kmer_index
@@ -262,6 +264,16 @@ struct multi_kmer_index
 	{
 		(...)
 	}
+
+	// this is the only search function
+	template<std::ranges::range query_t>
+	result_t search(query_t& query) const
+	{
+		(...)
+	}
 }
 
 \end{lstlisting}
+Other than some small extensions relating to picking the optimal $k$ the multi kmer-index is
+implemented by simple inheriting all relevant member function of the single kmer-index elements. This allows the index
+to internally query specific single kmer-indices while outwardly providing a single search function for ease of use.

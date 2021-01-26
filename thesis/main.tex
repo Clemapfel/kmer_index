@@ -82,16 +82,16 @@ tabsize=2}
 \begin{abstractEN}
 As demand for large-scale genomic sequence matching rises, as does
 demand for the ability to efficiently compute the positions or number of occurrences
-of a nucleotide sequence of length k called a kmer. A kmer-index optimized for this
+of a nucleotide sequence of length $k$ called a kmer. A kmer-index optimized for this
 purposes was implemented and its performance evaluated. The implementation
 is capable of searching kmers of arbitrary length specified at runtime,
 utilizes parallelization for faster construction and its internal
 structure can be further customized at compile time to achieve greater
 performance for certain query sizes. The nature of the internal structure
-and search functions are explained and their performant nature demonstrated
-through benchmarks. Results indicate that for the purpose of finding
+and search functions are explained and their performance demonstrated.
+Results indicate that for the purpose of finding
 positions or number of occurrences for queries of
-length $k\in\{3,4,...,30\}$ compared to Seqan3s fm\_index the kmer-index
+length $k\in\{3,4,...,31\}$ compared to Seqan3s fm\_index the kmer-index
 performs up to 60\% faster and is thus recommended for use. For arbitrarily
 long queries the kmer-index was shown to exhibit speedup or slowdown
 of $\pm5$\% depending on text length and is therefore in its current
@@ -102,14 +102,14 @@ iteration applicable if not necessarily better suited for this purpose.
 % abstract in german
 \begin{abstractDE}
 Mit steigender Nachfrage f\"ur gro\ss fl\"achiges Sequence Matching steigt
-auch die Nachfrage Positionen f\"ur kmer, genomisches Sequenzen der länge $k$ performant
+auch die Nachfrage Positionen f\"ur kmer, genomisches Sequenzen der l\"nge $k$ performant
 in einem Text zu finden. Zu diesem Zweck wurde ein sogenannter kmer-Index implementiert
 und dessen Performance evaluiert. Die Implementierung ist f\"ahig kmer von frei w\"ahlbarer
 L\"ange zu finden, benutzt Parallelisierung f\"ur schnellere Konstruktion und die interne
 Struktur des Indices kann weiterhin individuell angepasst werden um bessere Performance
 f\"ur bestimmte Query L\"angen zu erhalten. Die Natur der Personalisierung und die daraus
 resultierende Performance wurde mit Benchmarks demonstriert. Ergebnisse legen nah, 
-dass f\"ur kmer der L\"ange $k\in\{3,4,...,30\}$ im Vergleich zu Seqan3s fm\_index der
+dass f\"ur kmer der L\"ange $k\in\{3,4,...,31\}$ im Vergleich zu Seqan3s fm\_index der
 kmer-index bis zu 60\% schneller ist. F\"ur kmer beliebiger L\"ange zeigen Ergebnisse, 
 dass ein Speedup von $\pm5$\% je nach Textl\"ange erreicht werden kann. Der Einsatz der kmer-Index
 Implementierung wird daher f\"ur kurze kmer empfohlen w\"ahrend f\"ur l\"angere kmer der Index 

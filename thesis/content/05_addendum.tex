@@ -2,9 +2,9 @@
 \chapter{Addendum}
 \section{\label{Addendum: Correctness}Assuring Correctness}
 
-To assure that the kmer index returns the correct positions a \href{https://github.com/google/googletest}{test function}
+To assure that the kmer-index returns the correct positions a \href{https://github.com/google/googletest}{test function}
 was written that repeatedly compares search results of the kmer-index and
-the seqan3s fm\_index for randomized queries and texts. This asserts that the
+Seqan3s fm\_index for randomized queries and texts. This asserts that the
 fm\_index itself is bug-free and as both indices are meant to be used
 in the same library this assertion was presumed to be reasonable.
 
@@ -16,13 +16,13 @@ in the same library this assertion was presumed to be reasonable.
 \begin{verse}
 \textbf{let} text $\leftarrow$ generate\_sequence($m$, seed)
 
-\textbf{let} fm $\leftarrow$ kmer\_index(text)
+\textbf{let} kmer $\leftarrow$ kmer\_index(text)
 
-\textbf{let} kmer $\leftarrow$ fm\_index(text)
+\textbf{let} fm $\leftarrow$ fm\_index(text)
 
-\textbf{for }$q$ \textbf{in} \{k-1, k, k+1, ..., 2{*}k\} \textbf{do}
+\textbf{for }$q$ \textbf{in} $\{k-1, k, k+1, ..., 2{*}k\}$ \textbf{do}
 \begin{verse}
-\textbf{let} query $\leftarrow$ generate\_sequence(q, seed)
+\textbf{let} query $\leftarrow$ generate\_sequence($q$, seed)
 
 \textbf{let} result $_{fm}$$\leftarrow$ fm.search(query)
 
@@ -34,6 +34,7 @@ in the same library this assertion was presumed to be reasonable.
 \textbf{end}
 
 seed $\leftarrow$ seed + 1
+
 n $\leftarrow$ n-1
 \end{verse}
 
@@ -42,15 +43,16 @@ n $\leftarrow$ n-1
 \caption{Test function comparing kmer- and fm-index results to assure correctness.}
 \end{algorithm}
 
-Given enough time and iteration over a big enough text it is reasonable to assume
-that this function will uncover possible bugs by itself. The text was furthermore manually
-modified to account for edge cases (such
+Given enough time and iterations over a big enough text this function will uncover possible bugs by itself.
+During random generation the text was furthermore manually
+modified at the end to account for edge cases (such
 as the query happening at the very end of the text as detailed in
-Section\ref{section m < k}). If a discrepancy between the fm- and kmer-index was uncovered
+Section \ref{section m < k}). If a discrepancy between the fm- and kmer-index was uncovered
 the function would report the exact seed and query size. As all the randomness in the above
 algorithm is determinstic this made it easy to reproduce possible bugs. Before each benchmark run
-whos results where presented in this paper correcteness was assured with $n>10{{}^6}$ iterations
-using text sizes as large as the machines memory allowed for. During these runs no bugs were found.
+whose results where presented in this paper correcteness was assured with $n>10{{}^6}$ iterations
+using text sizes as large as the machines memory allowed for. During these runs all tested results between
+the fm- and kmer-index were confirmed to be identical.
 
 \section{Performance Optimization}
 Implementation of the kmer-index was guided at every step by benchmarking
@@ -58,50 +60,13 @@ newly implemented components and comparing their performance against
 other possible implementations. In this section the most relevant
 of these decisions are explained. Note that C++20 was used for all
 performance relevant code.
-
-\subsection{Choosing the fastest Pow Implementation}
-\subsubsection{Methods}
-By the nature of the hash, exponentiation (henceforth referred to
-as "pow" ()in reference to the commonly used \lstinline{std::pow})
-is used every search call, sometimes multiple times. Four different versions of pow were
-implemented and their performance evaluated. Note that for the purpose of the kmer-index the pow implementation
-will only ever be used with positive integers and has to be able to be evaluated at compile time.
-
-\begin{itemize}
-\item \lstinline{trivial_pow(base,n)}: A trivial implementation calling $base*base$ $n$-many
-times
-\item \lstinline{recursive_pow(base,n)}: Utilizing a recursive approach,
-this function calls itself recursively $n$-many times and then evaluates
-each call from the inside out to return the correct result based on
-whether the exponent was odd or even
-\item \lstinline{bit_pow(base,n)}: Utilizes bit-operations which are generally
-more well-optimized on most modern machines
-\item \lstinline{switch_pow(base,n)}: Instead of using a loop, this implementation
-has multiple switch cases with identical code, when the function is
-called a lookup in a pre-calculated table produces the correct first
-switch case to start with. The result then "falls through" the rest
-of the switch cases the correct number of times. Any exponentiation
-that would overflow the unsigned 64 bit integer result is immediately
-caught and 0 is returned instead.
-\end{itemize}
-\subsubsection{Results}
-\begin{figure}[H]
-\includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/pow_vs_pow/pow_vs_pow}
-
-\caption{Boxplot showing runtime distribution of average time to compute $x^{y}$.}
-\end{figure}
-
-Results indicate that the implementation utilizing the fall-through
-switch is overall the fastest and was thus used whenever
-possible.
-
 \subsection{Paralellization}
 Other than the amount of memory needed the only true disadvantage of the
 multi kmer-index is the fact that the time it takes to construct it increases drastically with the
 number of $k_{i}$ specified. To address this a general purpose thread pool was implemented that
 allows all of the single kmer-index elements to be constructed in parallel.
 \begin{minipage}{\linewidth}
-\begin{lstlisting}[caption={Paralell invocation of the create function for individual kmer-index
+\begin{lstlisting}[caption={Paralell invocation of the create function for individual single kmer-index
 elements during construction of the multi kmer-index.}]
 template<std::ranges::range text_t>
 multi_kmer_index(text_t& text)
@@ -122,3 +87,38 @@ multi_kmer_index(text_t& text)
 As the number of possible $k$ is currently restriced to at most 31, modern systems with 32 or more CPU cores are
 capable of constructing a single multi kmer-index with optimal coverage with no additional runtime overhead compared
 to a single kmer-index.
+
+\subsection{Choosing the fastest Pow Implementation}
+\subsubsection{Methods}
+By the nature of the hash, exponentiation (henceforth referred to
+as "pow" in reference to the commonly used \lstinline{std::pow})
+is used every search call, sometimes multiple times. Four different versions of pow were
+implemented and their performance evaluated. \newpage Note that for the purpose of the kmer-index the pow implementation
+will only ever be used with positive integers and has to be able to be evaluated at compile time.
+\begin{itemize}
+\item \lstinline{trivial_pow(base,n)}: A trivial implementation calling \lstinline{base*base} n-many
+times
+\item \lstinline{recursive_pow(base,n)}: Utilizing a recursive approach,
+this function calls itself recursively $n$-many times and then evaluates
+each call from the inside out to return the correct result based on
+whether the exponent was odd or even
+\item \lstinline{bit_pow(base,n)}: Utilizes bit-operations which are generally
+more well-optimized on most modern machines
+\item \lstinline{switch_pow(base,n)}: Instead of using a loop, this implementation
+has multiple switch cases with identical code, when the function is
+called a lookup in a pre-calculated table produces the correct first
+switch case to start with. The result then "falls through" the rest
+of the switch cases the correct number of times. Any exponentiation
+that would overflow the unsigned 64 bit integer result is immediately
+caught and 0 is returned instead.
+\end{itemize}
+\subsubsection{Results}
+\begin{figure}[H]
+\includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/pow_vs_pow/pow_vs_pow}
+
+\caption{Boxplot showing runtime distribution of average time to compute $x^{y}$ for different pow implementations.}
+\end{figure}
+
+Results indicate that the implementation utilizing the fall-through
+switch is overall the fastest and was thus used whenever
+possible.

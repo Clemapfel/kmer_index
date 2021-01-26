@@ -6,7 +6,7 @@
 \section{Unordered Map}
 \subsection{Methods}
 Because an unordered map is the central data structure of the kmer-index choosing the best performing available
-implementation contributes tremendously to the performance of the kmer-index. As C++s \lstinline{std::unorderd_map}
+implementation contributes tremendously to the performance of the kmer-index. As C++s \lstinline{std::unordered_map}
 did not prove sufficiently performant enough the following maps implemented by 3rd parties were additionally tested and evaluated
 specifically in the context of use within the kmer-index:
 
@@ -18,8 +18,8 @@ specifically in the context of use within the kmer-index:
 \end{itemize}
 
 Each map was filled with a fixed number of randomized integers simulating both the hash and position of kmer in the
-final implementation and the duration to return a specific element according to a randomized key was measured.
-Only retrieval was tested here since after construction of the kmer-index no insertions will take place.
+final implementation and the duration to return a specific element when provided a randomized key was measured.
+Only retrieval was tested here because after construction of the kmer-index no insertions will take place.
 
 % UNORDERED MAP: RESULTS
 \subsection{Results}
@@ -47,7 +47,7 @@ randomly generated text and the search calls duration to return was measured.
 \begin{figure}[H]
 \includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/multi_vs_single/single_only}
 
-\caption{\label{figure 1} Average duration to return searching a query of given length.
+\caption{\label{figure 1} Average duration of searching a query of given length.
 The dotted lines designate query lengths that are a multiple of $k$.}
 \end{figure}
 
@@ -85,24 +85,24 @@ given length was measured and compared to the results for the single kmer-index 
 \includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/multi_vs_single/multi_vs_single}
 \label{single_vs_multi}
 \caption{Average search performance of multi and single kmer-index to find
-all occurrences of a query of given length in a text of size $10^{6}$.}
+all occurrences of a query of given length.}
 \end{figure}
 
 Despite the suboptimal coverage of the multi kmer-index performance is still very close to optimal. Note that at query
-length 10 the single kmer-index exhibits better performance than the multi kmer-index (c.f. red vertical line in figure 2.3).
+length 10 the single kmer-index exhibits better performance than the multi kmer-index (c.f. red vertical line in figure \ref{single_vs_multi}).
 This illustrates the slight difference in runtime between $k=m$ (which is the case for the single kmer-index
-at $m=10$) and $k=m+1$ (which is true for the multi kmer-index) as it was provided $k=11$).
+at $m=10$) and $k=m+1$ (which is true for the multi kmer-index) as it was provided $k=11$ instead.
 Note further how after $m=33$ runtime increases significantly. To explain this we need to investigate how the
-multi kmer-index handles queries that cannot optimally be search using only a single k more closely.
+multi kmer-index handles queries that cannot optimally be search using only a single $k$ more closely.
 
 % MULTI KMER: HOW TO CHOOSE K
 \subsection{How to choose the appropriate k}
-As demonstrated above the success of the multi kmer-inde to perform well relies heavily on both being provided the
+As demonstrated above the success of the multi kmer-index to perform well relies heavily on both being provided the
 approriate $k$ and choosing which $k$s to use for a certain query length. The latter is achieved
 via a table that computes for every possible query length $m$ a set of$\{k_{0},k_{1},...\}$
 such that $k_{0}+k_{1}+...=m$. To achieve best performance we want
-the minimal set (in regards to cardinality) of $k_{i}$ and it is optimal for each of the $k_{i}$ to be furthermore chosen
-as big as possible which in accordance with Lemma\ref{Lemma 3} reduces runtime for longer queries. This table is constructed with a simple
+the minimal set (in regards to cardinality) of $k_{i}$ and it is desirable for each of the $k_{i}$ to be furthermore chosen
+as big as possible which in accordance with Lemma \ref{Lemma 3} reduces runtime for longer queries. This table is constructed with a simple
 dynamic programming approach where to find the set of $k_{i}$ for a given query $m_{j}$ the already computed
 set for a queries $m_{a},m_{b}<m_{j}:m_{a}+m_{b}=m_{j}$ are unified to create the new set.
 
@@ -141,13 +141,13 @@ This is to avoid redundancy as the higher $k_{i}$ will always be chosen.
 \item all $k_{i}$ should be as big as possible.
 \item small $k_{i}$ should be avoided completey. If $k_{1}=3$ is provided
 and is used for a sum, the index will have to crossreference positions of occurences of a single
-3mer which depending on the texts length may be far slower
-than just searching that query with \lstinline{search_subk}. Initial
+3mer (c.f. Section \ref{m > k}) which depending on the texts length may be far slower
+than just searching the query with \lstinline{search_subk}. Initial
 results suggest to not use any $k_{i}<10$. While they can still be supplied
 the index will not use them for searching queries of bigger lengths unless unavoidable.
 \end{itemize}
 The author recommends for the set of $k_{i}$ to be a subset of \{9,
-11, 13, 17, 19, 21, 23, 27, 29, 31\}\footnote{We are limited to k <= 31 as the hashspace for k >= 32 cannot be represented with a single 64bit unsigned integer}, primes are preferable because
+11, 13, 17, 19, 21, 23, 27, 29, 31\}\footnote{We are limited to $k\leq31$ as the entirety of the hashspace for $k\geq32$ cannot be represented with a single 64-bit unsigned integer}, primes are preferable because
 most queries will be able to be factorized into a subset of them.
 For example $\{11,13,17,19,21\}$ will cover every query length $31<m\leq10000$, that is no
 query in that range will need to be searched with \lstinline{search_subk}
@@ -155,18 +155,19 @@ and the $k$ are small enough to be stored on less capable machines
 even with bigger texts such as an entire genome.\newline Note that if searching
 for occurences of queries of length $m\in[3,31]$ the query length
 should be directly supplied to the set of $k_{i}$ because for a query length $m < min(ks)$
-there is no combination of $k_{i}$ such that $\sum k_{i} = m$.
+there is no combination of $k_{i}$ such that $\sum k_{i} = m$ and thus the index will have to
+fall back to the possible worse performing \lstinline{search_subk}.
 
-Given this information we can now explain the harsh increase at $m=35$ in Figure \ref{single_vs_multi}: For $m=33$ the index
-divides the query into 3 search calls with $k=11$ resulting in acceptable performance. For $m=34$ it will pick $k=15, 19$ also resulting in good performance,
-however for $m=35$ no such sum exists with the given $k$s so the index has to fall back to using the slower \lstinline{search_subk}
-which increases runtime significantly.
+Given this information we can now explain the harsh increase at $m=35$ in Figure \ref{single_vs_multi}:
+\footnote{Recall that the kmer-index is using $k_{i}\in\{5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31\}$}
+For $m=33$ the index divides the query into three search calls using $k=11$ resulting in acceptable performance. For $m=34$ it will pick $k=15, 19$ also resulting in good performance,
+however for $m=35$ it will have to choose to search seven 5-mers and crossreference their numerous positions resulting
+in (as outlined in the recommendations above) worse performance.
 
 \section{Comparison with fm\_index}
 \subsection{Methods}
 To put the absolute runtime durations of the previous figures into perspective a comparative analysis
-of Seqan3s fm\_index\footnote{Note that for exact string matching there is is no relevant performance
-difference between the fm- and bi-fm-index.} and the multi kmer-index runtime was conducted. Both indices were
+of Seqan3s fm\_index and the multi kmer-index runtime was conducted. Both indices were
 constructed over the same randomized text and queried with the same set of randomized queries. \newpage
 The measured runtime was converted into relative speedup as such:
 
@@ -186,13 +187,12 @@ then $\text{{speedup}}(i)=
 \begin{figure}[H]
 \includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/just_k/relative_speedup}
 
-\caption{Relative speedup (in \%) for search calls using the kmer-index and
+\caption{\label{speedup to 30} Relative speedup (in \%) for search calls using the kmer-index and
 fm-index respectively per query length with a text size of $10{{}^8}$. The inset
-plot shows the absolute runtime (in ns). The multi kmer-index used $k\in$
-\{3, 4, ..., 9, 10, 11, 12, ..., 31\}}.
+plot shows the absolute runtime (in ns). The multi kmer-index used $k_{i}\in{5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31}$}.
 \end{figure}
 \begin{table}[H]
-\noindent \raggedright{}\caption{\label{table kmer faster while}Average$speedup(t_{kmer},t_{fm})$
+\noindent \raggedright{}\caption{\label{table kmer faster while} Average$speedup(t_{kmer},t_{fm})$
 in the interval$[3,30]$ per text length. Results rounded to 1 decimal
 digit to account for noise in benchmark results.}
 \begin{tabular*}{1\textwidth}{@{\extracolsep{\fill}}>{\centering}p{0.15\textwidth}>{\raggedleft}p{0.1\textwidth}>{\raggedleft}p{0.15\textwidth}>{\raggedleft}p{0.15\textwidth}>{\centering}p{0.25\textwidth}}
@@ -216,15 +216,16 @@ $10{{}^9}$ & < 7\% & 48.9\% & < -16.5\% & k < 11\tabularnewline
 \bottomrule
 \end{tabular*}
 \end{table}
-Results indicate that for bigger texts the kmer index will only perform
+Results indicate that for bigger texts the kmer-index will only perform
 better for relatively small $k$. This is because the indices map will never have more than
-$\sigma^{k}$ entries, this means for smaller k the maximum map size (and thus map traversal runtime)
+$\sigma^{k}$ entries, this means for smaller $k$ the maximum map size (and thus map traversal runtime)
 is reached even for smaller texts. As $k$ increases the kmer-indices map increases in
 size dramatically resulting in worse performance.
-For sufficiently small texts however it is reasonable to assume that  all $k\in\{3,30\}$ will be searched faster than
-with the fm\_index and as such results suggest that preferring the kmer-index in these cases is recommended.
+For sufficiently small texts it is reasonable to assume that all $k\in\{3,30\}$ will be searched faster than
+with the fm\_index\footnote{Note that for exact string matching there is is no relevant performance
+difference between the fm- and bi-fm-index.} and as such results suggest that preferring the kmer-index in these applications is recommended.\linebreak
 While in praxis searching queries of size $m<31$ may find use when for example developing and working with kmer spectra
-(Dubinkina et. al. for example decided to employ kmer spectra for $k\in[5, 11]$ \cite{kmer:spectrum:dissimilarity}),
+(Dubinkina et. al. decided to employ kmer spectra for $k\in[5, 11]$ \cite{kmer:spectrum:dissimilarity}),
 in the application of read-mapping reads are
 \href{https://www.illumina.com/science/technology/next-generation-sequencing/plan-experiments/read-length.html}{rarely shorter than $m=50$}
 and in other applications query lengths may go far beyond that. To investigate the kmer-indices performance in these cases
@@ -234,7 +235,8 @@ the same methods used above were applied to queries of arbitrary length. \newpag
 \includegraphics[width=1\textwidth]{/home/clem/Workspace/kmer_index/source/benchmarks/multi_kmer_vs_fm/5_1000/runtime_diff_over_text_size}\caption{\label{figure 5_100}
 Graphs showing relative $\text{speedup}(t_{kmer},t_{fm})$ over
 query lengths for different text sizes. The grey area highlights query
-lengths $[5, 30]$ which were excluded when calculating the depicted median speedup per text length.}
+lengths $[5, 30]$ which were excluded when calculating the depicted median speedup per text length. The results in Figure
+\ref{speedup to 30} where taken from the same benchmark run as these.}
 \end{figure}
 
 \section{Discussion}
@@ -242,8 +244,8 @@ Overall the multi kmer-index has proved superior for searching appropriately sma
 \ref{table kmer faster while}. While more testing will need to be done to confirm this, it seems reasonable to assume
 that the multi kmer-index will always perform better than Seqan3s fm\_index for query of length $m<10$. Queries this small
 rarely see application in praxis however depending on text size the multi kmer-index may
-exhibit overall speedup compared to the fm\_index for longer queries and is therefore recommend for use with texts
-under a certain sizes. More testing needs to be done to confirm this boundary but results presented here suggest
-overall positive speedup is achieved for text length $n<1e+07$.
+exhibit overall speedup compared to the fm\_index for longer queries and is therefore recommend for use with text sizes
+under a certain threshold. More testing needs to be done to confirm this boundary but results presented here suggest
+overall positive speedup is achieved for text length $n<10^{7}$.
 
 

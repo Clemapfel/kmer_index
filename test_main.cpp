@@ -36,7 +36,7 @@ void run_test()
             // get results as vectors
             std::vector<unsigned int> fm_result;
             for (auto res : seqan3::search(query, fm))
-                fm_result.push_back(res.reference_begin_pos());
+                fm_result.push_back(res.reference_begin_position());
 
             std::vector<unsigned int> single_kmer_result = single_kmer.search(query).to_vector();
             std::vector<unsigned int> multi_kmer_result = multi_kmer.search(query).to_vector();

@@ -1,44 +1,43 @@
 \chapter{Outlook}
 
-To further improve performance and make the implementations runtime generally
+To further improve performance and make the implementation generally
 more consistently applicable the following additional features are proposed:
 
 % HASH
 \section{>64bit Hash}
-As mentioned above the datatype of the hashes is currently\lstinline{uint64_t}.
-64 bit integers were chosen because the standard C++ library does
-not currently support >64 bit integers natively and seqan3s kmer hash\href{http://docs.seqan.de/seqan/3-master-user/group__views.html\#ga6e598d6a021868f704d39df73252974f}{also uses them}.
-However technically the size of the integer is arbitrary and expanding it to 128 or 256bit my improve performance
-by increasing the maximum k that can still be searched with the overall faster $m=k$ search. $k$ is currently
-limited to $<31$ (given the smallest relevant nucleotide alphabet). Increasing this boundary
-may be especially important when working with bigger alphaebts such as the complete list of such as the complete list of
+As mentioned above the datatype of the hashes is currently \lstinline{uint64_t}.
+64-bit integers were chosen because the standard C++ library does
+not currently support >64 bit integers natively and Seqan3s kmer hash \href{http://docs.seqan.de/seqan/3-master-user/group__views.html\#ga6e598d6a021868f704d39df73252974f}{currently also uses them}.
+However technically the size of the integer is arbitrary and expanding it to 128 or 256 bit may improve performance
+by increasing the maximum $k$ that can still be searched with the overall faster $m=k$ search. $k$ is currently
+limited to $<31$ (given the smallest relevant nucleotide alphabet of size 4). Raising this boundary
+may be especially important when working with bigger alphabets such as the complete list of such as the complete list of
 \href{https://www.bioinformatics.org/sms/iupac.html}{IUPAC codes}. Furthermore in the application
 of read-mapping ultra shorts reads, reads are \href{https://www.illumina.com/science/technology/next-generation-sequencing/plan-experiments/read-length.html}{often below the length of 75}
 . Given a sufficiently big enough integer type entire reads could be treated as a single kmer and searched as such which
-may result in a significant speedup.\footnote{Given a 128bit integer, reads of size $m<64$ could be searched on their own. Given a 256bit integer this number increases to $m<128$}
-Further research will have to be done to confirm wether abstracting the hash type to use for example
+may result in a significant speedup. Using a 128-bit integer, reads of size $m<64$ could be searched this way;
+when increasing the size to 256-bit this number increases to $m<128$. Further research will have to be done to confirm wether abstracting the hash type to use for example
 integers from boosts \href{https://www.boost.org/doc/libs/1_62_0/libs/multiprecision/doc/html/boost_multiprecision/tut/ints/cpp_int.html}{multiprecision header}
-would actually improve performance. The x86-64 instruction set does support 128bit integers natively\footnote{As the \href{https://www.felixcloutier.com/x86/mul}{\lstinline{mul} instruction} supports multiplication of two 64-bit unsigned integers resulting in a 128bit result}
-however depending on the machine this may not always be the case.
+would actually improve performance. Furthermore it is not guaranteed that the CPU architecture of the machine
+natively supports >64-bit integers in a way that does not introduce significant overhead though this may change in the future.
 
 % COMPRESSION
 \section{Multi kmer-Index Compression}
 As has been shown the multi kmer-index is vastly superior to the single kmer-index in terms of performance.
 However as the set of supplied $k$ increases so does the memory requirement. The current implementation of the
-multi-kmer index for a set of $k\in\{k_{0}, k_{1}, ...\}$ uses memory equivalent to the sum of the memory used for
+multi kmer-index for a set of $k\in\{k_{0}, k_{1}, ...\}$ uses memory equivalent to the sum of the memory used for
 single kmer-indices with $k$ equal to the $k_{i}$ respectively.  The
-kmer-index from Figure\ref{figure 5_100} offered decent coverage
-by choosing about every second$k$ in \{9,10,...31\} but for a text
+kmer-index from Figure \ref{speedup to 30} offered decent but not complete coverage but for a text
 size of 10\textsuperscript{8} already occupied about 80gb of memory. While this is not unfeasible for stronger machines,
 as each map uses about $\#H*64*n*32$ (where $H$ is the set of all pairwise different
-hashes, $n$ is the text size) many bytes for bigger text such
-as an entire genome this means using every possible $k$ is currently not
-practical.  To remedy this it could be possible to implement a way
+hashes, $n$ is the text size) many bits, for bigger text such
+as bigger genomes this means using every possible $k$ may currently not be
+practical.  To remedy this it could be feasible to implement a way
 to compress the single kmer-indices contained in the multi kmer-index.
 Each index contains all positions of the text in its map exactly
-once, which means in a multi kmer-index with 5 $k$s, the individual indices
-contain at least $(5-1)n*32$ many bits of redundant entries in the
-form of the vectors of positions for each hash. If a version of the
+once which means in a multi kmer-index with 5 $k$s, the individual indices
+contain at least $(5-1)*n*32$ many bits of redundant entries in the
+form of the vectors of the same positions for each hash. If a version of the
 kmer-index is implemented that only contains all the texts positions
 once while still allowing for adequate runtime performance an all-purpose
 kmer-index could be proposed that simply holds information for all
@@ -47,40 +46,40 @@ performance in all cases.
 
 % HYBRID INDEX
 \section{Hybrid Approach}
-As detailed above the performance peaks of the kmer-index are fairly
+As detailed here the performance peaks of the kmer-index are fairly
 consistently predictable. Therefore a two-pronged approach is proposed in which
 for queries for which we know the kmer-index will perform poorly the
 searching is instead done by a seperate fm-index. This allows this theoretical hybrid index
-to have the speedup the kmer offers while also covering the inherent inconsistencies with the fm-index
-which performs highly consistently if slightly worse. It is possible to calculate
-which queries should be searched with which index: The fm-index should be used to
-search a query of length $m$ if and only if at least one of the following is true:
+to have the speedup the kmer-index offers while also covering the inherent inconsistencies with the slightly worse performing
+but highly consistent fm-index. It may be possible to predetermine
+which queries should be searched with which index: Results presented here suggest that
+the Seqan3 fm\_index should be used to search a query of length $m$ if and only if at least one of the following is true:
 \begin{itemize}
-\item the text size is $>10{{}^8}$ (c.f. Table\ref{table kmer faster while})
-\item there is no set of$\{k_{a},k_{b},...\}$ such that$k_{a}+k_{b}+...=m$
+\item the text size is $>10{{}^8}$ (c.f. Table \ref{table kmer faster while})
+\item there is no set of$\{k_{a},k_{b},...\}$ such that $k_{a}+k_{b}+...=m$
 \end{itemize}
 In all other cases preferring the multi kmer-index component of the hybrid index
-may results in overall speedup however further research is needed to develop a well-tested
+may results in overall speedup, however further research is needed to develop a well-tested
 heuristic that substantiates these recommendations and is capable of determining a more
-exact classification of which queries should be searched by which index.
+exact way of classifying which queries should be searched by which index.
 
 % Conclusion
 \chapter{Conclusion}
 
-The current kmer-index implementation is stable (c.f. Section\ref{Addendum: Correctness}
-below), reasonably well optimized and the indices performance is superior
+The current kmer-index implementation is stable (c.f. Section \ref{Addendum: Correctness}),
+reasonably well optimized and the indices performance is superior
 for searching kmers of small length $m<30$ (or less than
-30 for bigger texts as detailed in Table\ref{table kmer faster while}).
-For this purpose it achieved a performance increase of up to 65\%
+30 for bigger texts as detailed in Table \ref{table kmer faster while}).
+For this purpose it achieved a speedup increase of up to 65\%
 and is thus well-suited for this purpose and should be preferred to more generalist
-indices like the fm-index if runtime performance is important. For
-query lengths past 30 the kmer-index has been shown to have a performance
+indices like the fm-index in applications where runtime performance is important. For
+query lengths $m>30$ the kmer-index has been shown to exhibit a performance
 increase between 5 and 10\% for smaller texts
 while for bigger texts an overall speedup of $\pm2\%$ depending
-on query length was observed. With further optimization and features
+on query length was observed. With further optimization and additional features
 the kmer-index may become the decidedly more performant index for
 exact string matching purposes in all situations however in its current
 iterations it is only recommended for use with appropriately small
-text sizes or in cases where the set of query lenghts can be consistently predicted.
+text sizes or in cases where the set of query lengths can be consistently predicted.
 
 
