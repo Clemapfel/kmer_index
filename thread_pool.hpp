@@ -1,5 +1,5 @@
 //
-// Created by Clemens Cords on 4/20/20.
+// Created by Clemens Cords (mail@clemens-cords.com) on 4/20/20.
 // Copyright (c) 2020 Clemens Cords. All rights reserved.
 //
 
